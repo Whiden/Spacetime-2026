@@ -2,108 +2,54 @@
 
 ---
 
-## Epic 6: Corporations — Data Model & Lifecycle
+## Epic 7: Contract System
 
-### Story 6.4 — Corporations View (2026-02-17)
-
-**What changed:**
-- Created `src/components/corporation/CorpCard.vue` — corp summary card with name, type badge (color-coded), level, capital, tax, infra capacity bar, traits, home planet. Clickable to detail view.
-- Created `src/components/corporation/CorpAssets.vue` — infrastructure holdings display by colony with domain-level breakdowns and total/max summary
-- Created `src/components/corporation/CorpHistory.vue` — contract history placeholder (wired in Story 7.2)
-- Updated `src/views/CorporationsView.vue` — corp list sorted by level (highest first), then name. Shows count header, CorpCard for each corp, empty state guidance
-- Updated `src/views/CorpDetailView.vue` — full detail view: stats panel (type description, abilities, level, capital, tax, home planet), capital breakdown (level up cost, acquisition value, infra capacity bar), personality trait descriptions, CorpAssets, CorpHistory, planets present
-
-**Key details:**
-- Corp type badges color-coded by type (amber=Exploitation, sky=Shipbuilding, violet=Science, etc.)
-- Detail view two-column layout: stats+traits+capital on left, assets+history+planets on right
-- Tax shown as "Exempt" for level 1-2 corps (0 BP tax)
-- Level up cost and acquisition value calculated from growth formulas
-- Empty state: "No corporations yet — Post a contract to kickstart your first corporation"
-
-**Acceptance criteria met:**
-- List view shows all corps: name, type icon/label, level, capital, personality traits, home planet ✓
-- Corps sorted by level (highest first) ✓
-- Detail view shows: full stats, personality trait descriptions, infrastructure owned (list by planet), contract history, capital breakdown ✓
-- Initially empty with "No corporations yet — post a contract to kickstart your first corporation" guidance ✓
-- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
-- `npx vitest run` — 225/225 tests pass ✓
-
----
-
-### Story 6.3 — Corporation Capital Formulas (2026-02-17)
+### Story 7.1 — Contract Engine: Creation & Validation (2026-02-18)
 
 **What changed:**
-- Created `src/engine/formulas/growth.ts` — corporation capital gain, completion bonus, level up cost, acquisition cost, max infrastructure formulas
-- Created `src/__tests__/engine/formulas/growth.test.ts` — 28 unit tests
+- Created `src/engine/actions/create-contract.ts` — pure engine function for contract creation and validation
+- Created `src/__tests__/engine/actions/create-contract.test.ts` — 36 unit tests
 
 **Functions implemented:**
-- `getTotalOwnedInfra(infrastructureByColony)`: sums all infrastructure levels a corp owns across all colonies
-- `calculateCapitalGain(totalOwnedInfra)`: returns `randomInt(0,1) + floor(totalInfra / 10)`
-- `calculateCompletionBonus(contractBPPerTurn, duration)`: returns `floor((bpPerTurn × duration) / 5)`
-- `calculateLevelUpCost(currentLevel)`: returns `currentLevel × 3`
-- `calculateAcquisitionCost(targetLevel)`: returns `targetLevel × 5`
-- `calculateMaxInfra(corpLevel)`: returns `corpLevel × 4`
+- `createContract(params)`: validates all inputs and returns a new `Contract` object or a typed validation error
+- `isCorpEligible(corp, contractType)`: checks corp type eligibility; cross-type allowed at level 3+ except specialized contracts; megacorp (level 6+) unrestricted
+- `validateTarget(params)`: validates target type matches contract type, entity exists, and entity status is valid
+- `calculateBpPerTurn(params)`: returns cost from contract definition; colonization defers to colony type definition
+- `calculateDuration(params, corp)`: exploration scales with corp level (max(2, 4−floor(level/2))); colonization uses colony type duration; trade route sentinel 9999
+
+**Validation error codes:**
+- `CORP_NOT_FOUND`, `INVALID_TARGET_TYPE`, `TARGET_NOT_FOUND`, `INVALID_PLANET_STATUS`, `SECTORS_NOT_ADJACENT`, `CORP_NOT_ELIGIBLE`, `INSUFFICIENT_BP`, `MISSING_COLONY_TYPE`, `MISSING_SHIP_PARAMS`
+
+**Key design decisions:**
+- Colonization requires Accepted or GroundSurveyed status (not OrbitScanned)
+- Ground survey accepts OrbitScanned or Accepted planets
+- Cross-type (level 3+) does NOT apply to Colonization, ShipCommission, or TradeRoute — specialized only
+- `sectorAdjacency` passed separately (Galaxy.adjacency map) since Sector itself has no adjacency field
+- Trade route duration uses sentinel 9999 — contract store handles "ongoing until cancelled" (Story 17.1)
+- Ship commission cost/duration are placeholders — full calculation deferred to Story 15.2
 
 **Acceptance criteria met:**
-- `calculateCapitalGain`: random(0,1) + floor(totalInfra / 10) ✓
-- `calculateCompletionBonus`: floor((bpPerTurn × duration) / 5) ✓
-- `calculateLevelUpCost`: currentLevel × 3 ✓
-- `calculateAcquisitionCost`: targetLevel × 5 ✓
-- `calculateMaxInfra`: corpLevel × 4 ✓
-- Unit tests for all functions with boundary values ✓
+- Validates contract type + target combination ✓
+- Calculates BP/turn and duration based on contract type and corp level ✓
+- Validates player has sufficient BP for at least first turn ✓
+- Validates corp eligibility (correct type or level 3+ cross-type, level 6+ megacorp) ✓
+- Returns new Contract object or validation error ✓
+- Unit tests: valid creation, invalid target, insufficient BP, ineligible corp ✓
 - `npx vue-tsc --noEmit` — zero TypeScript errors ✓
-- `npx vitest run` — 225/225 tests pass ✓
+- `npx vitest run` — 261/261 tests pass ✓
 
 ---
 
-### Story 6.2 — Corporation Store (2026-02-17)
+## Epic 6: Corporations — Data Model & Lifecycle (Completed 2026-02-17)
 
-**What changed:**
-- Created `src/stores/corporation.store.ts` — Pinia store for all corporations
-- Updated `src/stores/budget.store.ts` — wired corporation taxes into income calculation, removed Story 6.2 TODO
+Implemented corporation generation, capital system, store, and display (Stories 6.1-6.4). Built name generator (`generateCorpName` — prefix+suffix or prefix+connector+suffix, uniqueness registry, `clearNameRegistry()` for new games) and corp generator (`generateCorporation` — unique name, type from param or random, 1-2 traits with conflict exclusion: Cautious/Aggressive, Innovative/Conservative, Ethical/Ruthless, level 1, capital 0). Created capital formulas (`growth.ts` — `calculateCapitalGain`, `calculateCompletionBonus`, `calculateLevelUpCost`, `calculateAcquisitionCost`, `calculateMaxInfra`, `getTotalOwnedInfra`). Built corporation Pinia store (Map by ID; actions: `addCorporation`, `kickstartCorp`, `addCapital`, `spendCapital`, `levelUp`; getters: `getCorp`, `getCorpsByType`, `getCorpsByPlanet`, `getCorpTax`, `allCorporations`, `corpCount`; wired corp taxes into budget store). Built `CorporationsView.vue` (sorted by level descending, empty state), `CorpDetailView.vue` (two-column: stats+traits+capital left, assets+history+planets right), `CorpCard.vue` (color-coded type badge, level, capital, tax, infra bar, traits, home planet), `CorpAssets.vue` (infra holdings by colony), `CorpHistory.vue` (contract history placeholder — wired in Story 7.2).
 
-**Store API:**
-- **State**: `corporations` (Map by ID)
-- **Actions**: `addCorporation(corp)` adds to store; `kickstartCorp(type, homePlanetId, foundedTurn)` generates and adds a new level 1 corp; `addCapital(corpId, amount)` increases capital; `spendCapital(corpId, amount)` decreases capital with validation; `levelUp(corpId)` increases level if capital sufficient (cost = level × 3)
-- **Getters**: `getCorp(id)`, `getCorpsByType(type)`, `getCorpsByPlanet(planetId)`, `getCorpTax(id)` (calculated via `calculateCorpTax`), `allCorporations`, `corpCount`
+**Key architecture decisions:**
+- Level 1-2 corps show "Exempt" for tax (startup exemption)
+- Corp type badges color-coded: amber=Exploitation, sky=Shipbuilding, violet=Science, etc.
+- `getTotalOwnedInfra` helper sums all infra levels across all colonies for capital gain calculation
 
-**Acceptance criteria met:**
-- Holds all corporations in a map by ID ✓
-- Action: `addCorporation(corp)` adds to store ✓
-- Action: `kickstartCorp(type, homePlanet)` generates and adds a new level 1 corp ✓
-- Action: `addCapital(corpId, amount)` increases corp capital ✓
-- Action: `spendCapital(corpId, amount)` decreases corp capital, validates sufficient funds ✓
-- Action: `levelUp(corpId)` increases level if capital sufficient (cost = level × 3) ✓
-- Getter: `getCorp(id)`, `getCorpsByType(type)`, `getCorpsByPlanet(planetId)` ✓
-- Getter: `getCorpTax(id)` returns calculated tax for corp ✓
-- Corp taxes now wired into budget store `calculateIncome()` ✓
-- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
-- `npx vitest run` — 197/197 tests pass ✓
-
----
-
-### Story 6.1 — Corporation Generator (2026-02-17)
-
-**What changed:**
-- Created `src/generators/name-generator.ts` — shared name generation utility with uniqueness registry, generates "Prefix Suffix" or "Prefix Connector Suffix" patterns
-- Created `src/generators/corp-generator.ts` — corporation generation: unique name, type, personality traits, starting stats
-- Created `src/__tests__/generators/corp-generator.test.ts` — 23 unit tests
-
-**Functions implemented:**
-- `generateCorpName(prefixes, suffixes, connectors, connectorChance)`: generates a unique name from pools, 80% direct join / 20% with connector. Tracks generated names to guarantee uniqueness.
-- `clearNameRegistry()`: resets the name uniqueness tracker (for new games).
-- `generateCorporation(params)`: creates a level 1 Corporation with unique name, type (from parameter or random), 1-2 personality traits (no conflicting pairs), capital 0, home planet from parameter, empty assets.
-- `generateTraits()`: picks 1 trait (70%) or 2 traits (30%) using spawn weights, excluding Cautious/Aggressive, Innovative/Conservative, Ethical/Ruthless conflicts.
-
-**Acceptance criteria met:**
-- Generates unique name from name pools (prefix + suffix or pattern) ✓
-- Assigns type (from parameter or random) ✓
-- Assigns 1 trait (70%) or 2 traits (30%), excluding conflicting pairs ✓
-- Sets level 1, capital 0, home planet from parameter ✓
-- Returns typed Corporation object ✓
-- Unit tests: name uniqueness over 100 generations, trait conflict exclusion, valid type assignment ✓
-- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
-- `npx vitest run` — 197/197 tests pass ✓
+**Tests:** 225 passing (corp-generator: 23, growth: 28, prior: 174)
 
 ---
 
