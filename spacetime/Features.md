@@ -198,7 +198,7 @@
 - Generates sector with unique name from name pool
 - Assigns density (Sparse/Moderate/Dense) by spawn weight
 - Assigns threat modifier (0.5-1.5)
-- Assigns exploration percentage (0% default, 100% for starting sector)
+- Assigns exploration percentage (0% default, 10% for starting sector)
 - Returns typed Sector object
 - Unit tests verify valid output ranges
 

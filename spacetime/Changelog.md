@@ -276,6 +276,70 @@
 
 ---
 
+## Epic 3: Galaxy Generation & Sectors
+
+### Story 3.2 — Galaxy Generator (2026-02-17)
+
+**What changed:**
+- Created `src/generators/galaxy-generator.ts` — generates the full galaxy with 10-15 sectors and adjacency graph
+- Created `src/__tests__/generators/galaxy-generator.test.ts` — 16 unit tests
+- Updated `src/generators/sector-generator.ts` — resolved Story 3.2 TODO
+
+**Algorithm:**
+1. Generates 10-15 sectors and assigns them to distance layers from start (max 5 hops)
+2. Builds spanning tree connecting each sector to one in the previous layer
+3. Designates 1-2 leaf sectors as bottlenecks (exactly 2 connections)
+4. Adds edges to bring all non-bottleneck sectors to 3+ connections
+5. Validates all constraints; retries if needed (generate-and-test approach)
+
+**Key details:**
+- `generateGalaxy()` returns a typed `Galaxy` object with `sectors` Map, `adjacency` Map, and `startingSectorId`
+- Adjacency is always bidirectional — if A→B exists, B→A exists
+- Starting sector exploration set to `GALAXY_GENERATION_PARAMS.startingSectorExplorationPercent` (10%)
+- All other sectors start at 0% exploration
+- No Vue or Pinia imports
+
+**Acceptance criteria met:**
+- Generates 10-15 sectors ✓
+- Builds adjacency graph: 2-4 connections per sector, all sectors reachable from start ✓
+- Starting sector has 2-3 connections ✓
+- 1-2 bottleneck sectors (exactly 2 connections) ✓
+- Max 4 connections per sector ✓
+- Max 5 hops from start to furthest sector ✓
+- Starting sector exploration set ✓
+- Unit tests verify: connectivity, connection limits, bottleneck count, no duplicates ✓
+- No Vue or Pinia imports ✓
+- `npm run test:unit` — 101/101 tests pass ✓
+- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
+
+---
+
+### Story 3.1 — Sector Generator (2026-02-17)
+
+**What changed:**
+- Created `src/generators/sector-generator.ts` — generates individual sector objects for the galaxy
+- Created `src/__tests__/generators/sector-generator.test.ts` — 11 unit tests
+
+**Generator details:**
+- `generateSector(options?)` produces a fully typed `Sector` object
+- Picks a unique name from the `SECTOR_NAMES` pool (avoids duplicates via `usedNames` set)
+- Assigns density (`Sparse`/`Moderate`/`Dense`) by spawn weight (30%/50%/20%)
+- Assigns threat modifier as a random float in [0.5, 1.5], rounded to 2 decimal places
+- Starting sector gets exploration percentage from `GALAXY_GENERATION_PARAMS.startingSectorExplorationPercent` (10%); all others default to 0%
+- Exports `DENSITY_SPAWN_WEIGHTS` for reuse and testing
+
+**Acceptance criteria met:**
+- Generates sector with unique name from name pool ✓
+- Assigns density by spawn weight ✓
+- Assigns threat modifier (0.5–1.5) ✓
+- Assigns exploration percentage (0% default, starting value for starting sector) ✓
+- Returns typed Sector object ✓
+- Unit tests verify valid output ranges ✓
+- `npm run test:unit` — 85/85 tests pass ✓
+- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
+
+---
+
 ### Story 2.4 — Shared UI Components (2026-02-17)
 
 **What changed:**
