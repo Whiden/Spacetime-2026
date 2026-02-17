@@ -4,6 +4,32 @@
 
 ## Epic 5: Budget System
 
+### Story 5.3 — Budget Display (2026-02-17)
+
+**What changed:**
+- Created `src/composables/useBudgetDisplay.ts` — composable providing formatted budget data for header and dashboard
+- Updated `src/components/layout/AppHeader.vue` — wired to budget store via composable: live BP, income, expenses, net with color coding
+- Updated `src/views/DashboardView.vue` — budget summary cards (balance, income, expenses, net), itemized income/expense breakdowns, debt token warning with stability malus
+
+**Key details:**
+- BP display color-coded: green (positive net > 2), yellow (near zero 0-2), red (deficit)
+- Net display: green (positive), yellow (zero), red (negative)
+- Income breakdown: per-colony with "Colony" badge, per-corp with "Corp" badge (purple)
+- Expense breakdown: per-contract (amber), per-mission (red), per-investment (cyan), per-debt (orange)
+- Debt warning panel: red border, shows token count and stability malus, only visible when debt > 0
+- Turn number still hardcoded (wired in Story 12.5)
+
+**Acceptance criteria met:**
+- Header shows: current BP (prominent), income/turn, expenses/turn, net/turn ✓
+- BP display color-coded: green (positive net), yellow (near zero), red (deficit) ✓
+- Dashboard shows itemized income breakdown (per colony, per corp) ✓
+- Dashboard shows itemized expense breakdown (per contract, per mission) ✓
+- Debt tokens displayed if any exist, with stability malus warning ✓
+- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
+- `npm run test` — 174/174 tests pass ✓
+
+---
+
 ### Story 5.2 — Budget Store (2026-02-17)
 
 **What changed:**
