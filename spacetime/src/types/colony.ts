@@ -47,7 +47,6 @@ export interface ColonyAttributes {
 /**
  * A settled colony. The core economic and social unit of the game.
  *
- * TODO (Story 4.2): colony-generator.ts creates colonies from planet + colony type.
  * TODO (Story 10.3): colony-phase.ts recalculates attributes and growth each turn.
  */
 export interface Colony {
@@ -91,7 +90,6 @@ export interface Colony {
    *   - Reapplied based on current market state each turn
    *   - NOT saved to file (recalculated on load)
    *
-   * TODO (Story 4.2): Permanent modifiers registered in colony-generator.ts.
    * TODO (Story 9.2): Shortage modifiers applied in market-phase.ts.
    */
   modifiers: Modifier[]

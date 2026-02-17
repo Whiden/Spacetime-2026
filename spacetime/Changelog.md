@@ -28,89 +28,52 @@ Built the application shell (Stories 2.1-2.4). Configured Vue Router with 11 laz
 
 ---
 
-## Epic 3: Galaxy Generation & Sectors
+## Epic 3: Galaxy Generation & Sectors (Completed 2026-02-17)
 
-### Story 3.4 — Galaxy View (2026-02-17)
+Implemented galaxy generation and display (Stories 3.1-3.4). Built sector generator (`generateSector` — unique name from pool, density by spawn weight, threat modifier 0.5-1.5) and galaxy generator (`generateGalaxy` — 10-15 sectors, adjacency graph with 2-4 connections per sector, 1-2 bottlenecks, max 5 hops, all reachable). Created Pinia galaxy store with `sectors`, `adjacency`, `startingSectorId`, and getters for adjacent/explorable sectors. Built Galaxy View with sector list (expandable cards showing density, exploration %, adjacency connections, presence indicators), adjacency graph visualization, and summary bar.
+
+**Key architecture decisions:**
+- Galaxy generator uses layered approach: spanning tree → bottleneck designation → edge augmentation → constraint validation with retry
+- `explorableSectors` getter uses starting sector as only presence source (colony/fleet store integration deferred to Stories 4.3 and 15.4)
+- Sector cards show green/indigo/gray dots for presence/explorable/unreachable status
+
+**Tests:** 101 passing (sector-generator: 11, galaxy-generator: 16, prior: 74)
+
+---
+
+## Epic 4: Planets & Colonies — Data Model
+
+### Story 4.2 — Colony Generator (2026-02-17)
 
 **What changed:**
-- Created `src/components/galaxy/SectorCard.vue` — expandable sector card with name, density, exploration %, adjacency, and presence indicators
-- Created `src/components/galaxy/SectorGraph.vue` — text-based adjacency visualization with color-coded nodes and legend
-- Updated `src/views/GalaxyView.vue` — full implementation with galaxy store integration, auto-generation on first load
+- Created `src/generators/colony-generator.ts` — initializes a colony from a planet and colony type
+- Created `src/__tests__/generators/colony-generator.test.ts` — 27 unit tests
 
-**UI details:**
-- Sector list (2/3 width) + adjacency graph sidebar (1/3 width) on large screens
-- Each sector card shows: presence dot (green=presence, indigo=explorable, gray=unreachable), name, Home/Explorable badges, density, exploration progress bar
-- Click to expand: adjacency connections, threat modifier, presence info (Terra Nova colony indicator for starting sector)
-- Summary bar shows total sectors, explorable count, presence count
-- Empty state shown when no galaxy exists
+**Generator details:**
+- `generateColony(options)` accepts planet, colonyType, optional overrides (name, populationLevel, infrastructure)
+- Builds infrastructure map: initializes all 12 domains to zero, then applies starting infra from colony type definition
+- Deposit-dependent infrastructure (e.g., Agricultural for Frontier Colony, Mining/DeepMining/GasExtraction for Mining Outpost) only added if planet has a matching deposit
+- Registers planet feature modifiers onto `colony.modifiers` with fresh IDs (independent of planet object)
+- Registers colony type passive bonus as modifiers with `sourceType: 'colonyType'`
+- Calculates initial attributes using `resolveModifiers()` (simplified — full formulas deferred to Story 10.1)
+- Does NOT register empire-wide bonuses as modifiers
+- Supports `overrideInfrastructure` for Terra Nova's custom starting state
 
 **Acceptance criteria met:**
-- Lists all sectors with name, density, exploration %, presence indicators ✓
-- Shows adjacency connections (text-based) ✓
-- Explorable sectors visually distinguished from unexplorable ✓
-- Starting sector shown with Terra Nova colony indicator ✓
-- Clicking a sector shows expanded detail ✓
-- `npm run test:unit` — 101/101 tests pass ✓
+- Accepts planet + colony type as input ✓
+- Creates colony with population level from colony type (or override) ✓
+- Applies starting infrastructure from colony type definition ✓
+- Calculates initial attributes using attribute formulas ✓
+- Applies colony type passive bonus ✓
+- Returns fully typed Colony object ✓
+- Registers planet feature modifiers onto `colony.modifiers` with correct sourceType/sourceId ✓
+- Registers colony type passive bonus as a modifier onto `colony.modifiers` ✓
+- Does NOT register empire-wide bonuses as modifiers ✓
+- Unit tests: starting infra matches colony type, attributes calculate correctly ✓
+- `npm run test` — 153/153 tests pass ✓
 - `npx vue-tsc --noEmit` — zero TypeScript errors ✓
 
 ---
-
-### Story 3.3 — Galaxy Store (2026-02-17)
-
-**What changed:**
-- Created `src/stores/galaxy.store.ts` — Pinia store for galaxy state
-- Updated `src/types/sector.ts` — resolved completed TODOs for Stories 3.1-3.3
-
-**Store API:**
-- **State**: `sectors` (Map by ID), `adjacency` (Map of connections), `startingSectorId`
-- **Action**: `generate()` — calls galaxy generator, stores result
-- **Action**: `updateSector(sector)` — updates a sector (e.g., after exploration)
-- **Getter**: `getSector(id)` — returns sector by ID
-- **Getter**: `getAdjacentSectors(id)` — returns adjacent sector IDs
-- **Getter**: `allSectors` — all sectors sorted by name
-- **Getter**: `startingSector` — the starting sector object
-- **Getter**: `explorableSectors` — sectors adjacent to those with player presence, not yet at 100% explored
-
-**Notes:**
-- `explorableSectors` currently uses starting sector as the only presence. Colony and fleet store integration deferred to Stories 4.3 and 15.4 (noted with TODOs).
-
----
-
-### Story 3.2 — Galaxy Generator (2026-02-17)
-
-**What changed:**
-- Created `src/generators/galaxy-generator.ts` — generates the full galaxy with 10-15 sectors and adjacency graph
-- Created `src/__tests__/generators/galaxy-generator.test.ts` — 16 unit tests
-
-**Algorithm:**
-1. Generates 10-15 sectors and assigns them to distance layers from start (max 5 hops)
-2. Builds spanning tree connecting each sector to one in the previous layer
-3. Designates 1-2 leaf sectors as bottlenecks (exactly 2 connections)
-4. Adds edges to bring all non-bottleneck sectors to 3+ connections
-5. Validates all constraints; retries if needed (generate-and-test approach)
-
-**Key details:**
-- `generateGalaxy()` returns a typed `Galaxy` object with `sectors` Map, `adjacency` Map, and `startingSectorId`
-- Adjacency is always bidirectional — if A→B exists, B→A exists
-- Starting sector exploration set to `GALAXY_GENERATION_PARAMS.startingSectorExplorationPercent` (10%)
-- All other sectors start at 0% exploration
-
----
-
-### Story 3.1 — Sector Generator (2026-02-17)
-
-**What changed:**
-- Created `src/generators/sector-generator.ts` — generates individual sector objects for the galaxy
-- Created `src/__tests__/generators/sector-generator.test.ts` — 11 unit tests
-
-**Generator details:**
-- `generateSector(options?)` produces a fully typed `Sector` object
-- Picks a unique name from the `SECTOR_NAMES` pool (avoids duplicates via `usedNames` set)
-- Assigns density (`Sparse`/`Moderate`/`Dense`) by spawn weight (30%/50%/20%)
-- Assigns threat modifier as a random float in [0.5, 1.5], rounded to 2 decimal places
-- Starting sector gets exploration percentage from `GALAXY_GENERATION_PARAMS.startingSectorExplorationPercent` (10%); all others default to 0%
-
-## Epic 4: Planets & Colonies — Data Model
 
 ### Story 4.1 — Planet Generator (2026-02-17)
 
@@ -118,32 +81,11 @@ Built the application shell (Stories 2.1-2.4). Configured Vue Router with 11 laz
 - Created `src/generators/planet-generator.ts` — generates planets with type, size, features, deposits, and feature modifiers
 - Created `src/__tests__/generators/planet-generator.test.ts` — 25 unit tests
 
-**Generator algorithm:**
-1. Selects planet type by spawn weight (or forced type for Terra Nova)
-2. Selects planet size by spawn weight (or forced size)
-3. Rolls features from eligible pool (type/size match + spawn chance), up to the size's feature slot count
-4. Rolls deposits from the type's deposit pool: guaranteed deposits always appear, then common/uncommon/rare roll against tier chances
-5. Each deposit gets a random richness level by spawn weight (Poor 30%, Moderate 40%, Rich 20%, Exceptional 10%)
-6. Builds `Modifier[]` from rolled feature templates for future colony application
-
 **Key details:**
-- `generatePlanet(options)` returns a fully typed `Planet` object
-- Procedural name generation from prefix + suffix pools (540+ combinations)
-- Features are shuffled before rolling to avoid ordering bias
-- Deposits: guaranteed first, then shuffled non-guaranteed with tier chances
-- Feature modifiers have `sourceType: 'feature'` and `sourceId` pointing to the feature ID for traceability
-- All features start `revealed: false`; all deposits start `richnessRevealed: false`
+- Selects planet type and size by spawn weight (verified over 1000 runs at ±5%)
+- Rolls features from eligible pool (type/size match + spawn chance), shuffled to avoid bias, up to size's feature slot count
+- Rolls deposits from type's deposit pool: guaranteed first, then shuffled non-guaranteed with tier chances
+- Each deposit gets random richness by spawn weight; builds `Modifier[]` from feature templates
 - Supports `forcedType`, `forcedSize`, `usedNames`, and `initialStatus` options for Terra Nova and testing
-
-**Acceptance criteria met:**
-- Selects planet type by spawn weight ✓
-- Selects size by spawn weight ✓
-- Rolls features from eligible pool up to feature slot count ✓
-- Rolls deposits from type's deposit pool with likelihood chances ✓
-- Each spawned deposit gets random richness by spawn weight ✓
-- Returns fully typed Planet object ✓
-- Unit tests: types match spawn weights over 1000 runs (±5%), deposits match planet type pools, feature count within slot limits ✓
-- `npm run test` — 126/126 tests pass ✓
-- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
 
 ---

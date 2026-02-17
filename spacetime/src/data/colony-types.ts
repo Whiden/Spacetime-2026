@@ -26,7 +26,7 @@ export interface ColonyTypeDefinition {
   startingInfrastructure: StartingInfraEntry[]
   /**
    * Permanent passive bonus registered as a modifier on the colony when it is founded.
-   * TODO (Story 4.2): colony-generator.ts registers this as a modifier with sourceType 'colonyType'.
+   * Registered by colony-generator.ts with sourceType 'colonyType'.
    */
   passiveBonusModifiers: FeatureModifierTemplate[]
 }
