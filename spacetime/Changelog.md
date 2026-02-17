@@ -240,3 +240,36 @@
 - Responsive layout (sidebar collapses) ✓
 - Tailwind CSS only ✓
 - `npm run build` passes ✓
+
+---
+
+### Story 2.3 — Empty View Scaffolds (2026-02-17)
+
+**What changed:**
+- Updated all 11 view components in `src/views/` with styled titles and contextual empty state messages
+
+**Consistent layout pattern per view:**
+- `<h1>` with `text-2xl font-semibold text-white mb-6`
+- Empty state card: centered, rounded, bordered, with primary message (zinc-400) and secondary guidance (zinc-500)
+
+**Empty state messages:**
+
+| View | Message |
+|---|---|
+| Dashboard | "Welcome to Spacetime. Your empire begins here." |
+| Colonies | "No colonies yet." |
+| Colony Detail | "Colony {id} — details not yet available." |
+| Corporations | "No corporations yet. Post a contract to kickstart your first corporation." |
+| Corp Detail | "Corporation {id} — details not yet available." |
+| Contracts | "No active contracts. Create a contract to explore, colonize, build infrastructure, or commission ships." |
+| Fleet | "No ships yet. Commission your first ship..." (full prerequisites guidance) |
+| Science | "No discoveries yet. Invest in science infrastructure..." |
+| Market | "No market activity." |
+| Galaxy | "No sectors generated." |
+| Settings | "No save data." |
+
+**Acceptance criteria met:**
+- Each view renders with its screen title ✓
+- Each view shows an appropriate empty state message ✓
+- Views use a consistent layout pattern ✓
+- All routes render without errors (`npm run build` passes) ✓
