@@ -34,7 +34,7 @@ Implemented galaxy generation and display (Stories 3.1-3.4). Built sector genera
 
 **Key architecture decisions:**
 - Galaxy generator uses layered approach: spanning tree → bottleneck designation → edge augmentation → constraint validation with retry
-- `explorableSectors` getter uses starting sector as only presence source (colony/fleet store integration deferred to Stories 4.3 and 15.4)
+- `explorableSectors` getter initially used starting sector as only presence source (colony store wired in Story 4.3, fleet store deferred to Story 15.4)
 - Sector cards show green/indigo/gray dots for presence/explorable/unreachable status
 
 **Tests:** 101 passing (sector-generator: 11, galaxy-generator: 16, prior: 74)
@@ -42,6 +42,36 @@ Implemented galaxy generation and display (Stories 3.1-3.4). Built sector genera
 ---
 
 ## Epic 4: Planets & Colonies — Data Model
+
+### Story 4.3 — Planet & Colony Stores (2026-02-17)
+
+**What changed:**
+- Created `src/stores/planet.store.ts` — Pinia store for discovered planets
+- Created `src/stores/colony.store.ts` — Pinia store for all colonies with Terra Nova initialization
+- Updated `src/stores/galaxy.store.ts` — wired colony store into `explorableSectors` getter for presence detection
+
+**Planet store API:**
+- **State**: `planets` (Map by ID)
+- **Actions**: `addPlanet`, `removePlanet`, `updatePlanet`, `initialize`
+- **Getters**: `getPlanet(id)`, `getPlanetsByStatus(status)`, `getPlanetsBySector(sectorId)`, computed `orbitScannedPlanets`, `groundSurveyedPlanets`, `acceptedPlanets`, `rejectedPlanets`, `colonizedPlanets`
+
+**Colony store API:**
+- **State**: `colonies` (Map by ID)
+- **Actions**: `addColony`, `updateColony`, `removeColony`, `initializeTerraNova(sectorId)`
+- **Getters**: `getColony(id)`, `getColoniesBySector(sectorId)`, computed `allColonies`, `sectorsWithColonies`, `colonyCount`
+- `initializeTerraNova()` builds Terra Nova planet from start-conditions data (fixed features, deposits, habitability), adds it to planet store, then generates the colony with override infrastructure and population level 7
+
+**Galaxy store update:**
+- `explorableSectors` now reads `colonyStore.sectorsWithColonies` for presence detection (resolves Story 3.3 TODO)
+
+**Acceptance criteria met:**
+- Planet store: holds discovered planets, actions to add/remove, getter by ID, getter by status ✓
+- Colony store: holds all colonies, actions to add/update, getter by ID, getter by sector ✓
+- Colony store initializes Terra Nova on game start using start-conditions data ✓
+- `npm run test` — 153/153 tests pass ✓
+- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
+
+---
 
 ### Story 4.2 — Colony Generator (2026-02-17)
 

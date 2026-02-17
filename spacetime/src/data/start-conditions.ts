@@ -6,7 +6,6 @@
  * Terra Nova is the only pre-defined planet — all others are procedurally generated.
  *
  * TODO (Story 12.4): game.store.ts initializeGame() uses these values.
- * TODO (Story 4.3): colony.store.ts applies these values to create the starting colony.
  */
 
 import {

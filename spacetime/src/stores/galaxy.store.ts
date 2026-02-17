@@ -4,7 +4,6 @@
  * Holds all sectors, the adjacency graph, and the starting sector ID.
  * Provides getters for sector lookup, adjacency queries, and explorable sectors.
  *
- * TODO (Story 4.3): colony.store.ts provides colony-sector mapping for presence detection.
  * TODO (Story 15.4): fleet.store.ts provides ship-sector mapping for presence detection.
  */
 
@@ -13,6 +12,7 @@ import { ref, computed } from 'vue'
 import type { SectorId } from '../types/common'
 import type { Sector } from '../types/sector'
 import { generateGalaxy } from '../generators/galaxy-generator'
+import { useColonyStore } from './colony.store'
 
 export const useGalaxyStore = defineStore('galaxy', () => {
   // ─── State ───────────────────────────────────────────────────────────────────
@@ -75,14 +75,11 @@ export const useGalaxyStore = defineStore('galaxy', () => {
    * - It is not yet 100% explored
    * - An adjacent sector has player presence (colony or stationed ships)
    *
-   * For now, only the starting sector and its neighbors are considered
-   * (player presence = starting sector). Colony and fleet stores will
-   * provide full presence data once implemented.
-   *
-   * TODO (Story 4.3): Read colony.store for colony-sector presence.
    * TODO (Story 15.4): Read fleet.store for ship-sector presence.
    */
   const explorableSectors = computed<Sector[]>(() => {
+    const colonyStore = useColonyStore()
+
     // Collect all sectors where the player has presence
     const presentSectorIds = new Set<SectorId>()
 
@@ -91,7 +88,11 @@ export const useGalaxyStore = defineStore('galaxy', () => {
       presentSectorIds.add(startingSectorId.value)
     }
 
-    // TODO: Add sectors with colonies from colony.store
+    // Add sectors with colonies
+    for (const sectorId of colonyStore.sectorsWithColonies) {
+      presentSectorIds.add(sectorId)
+    }
+
     // TODO: Add sectors with stationed ships from fleet.store
 
     // Collect all sectors adjacent to sectors with presence
