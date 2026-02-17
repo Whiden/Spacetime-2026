@@ -43,6 +43,38 @@ Implemented galaxy generation and display (Stories 3.1-3.4). Built sector genera
 
 ## Epic 4: Planets & Colonies — Data Model
 
+### Story 4.5 — Colony Detail View (2026-02-17)
+
+**What changed:**
+- Created `src/components/colony/AttributePanel.vue` — all 6 attributes with bars and hover tooltip showing modifier breakdown via `getModifierBreakdown()`
+- Created `src/components/colony/InfraPanel.vue` — all 12 infrastructure domains with level bars, cap, ownership (public/corporate), disabled Invest button
+- Created `src/components/colony/ResourceFlow.vue` — production and consumption per resource based on active infrastructure domains
+- Updated `src/views/ColonyDetailView.vue` — full colony detail with two-column layout: attributes, features, deposits (left) and infrastructure, resource flow, corporations (right)
+
+**Key details:**
+- Attribute tooltips show: "Habitability 9: Base 8 (Continental) + 1 (Temperate Climate)" using `getModifierBreakdown()`
+- Each modifier source displayed with name and value (green for positive, red for negative)
+- Features list shows revealed features with description and modifier badges
+- Deposits list shows richness level with color-coded badges and extraction cap
+- Infrastructure rows show total/cap, public vs corporate ownership breakdown
+- Corporations section shown (empty initially)
+- Invest button per infrastructure domain (disabled until budget system, Story 5.4)
+- Back navigation to colonies list
+
+**Acceptance criteria met:**
+- Shows all 6 attributes with current value, bar visualization, and tooltip explaining formula ✓
+- Infrastructure panel: lists all domains with current level, ownership, cap ✓
+- Resource flow: shows production and consumption per resource for this colony ✓
+- Features list with modifiers shown ✓
+- Deposits list with richness and current extraction level ✓
+- Corporations present (empty initially) ✓
+- "Invest" button per infrastructure domain (disabled until budget system works) ✓
+- Attribute tooltips use `getModifierBreakdown()` with source name and value ✓
+- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
+- `npm run test` — 153/153 tests pass ✓
+
+---
+
 ### Story 4.4 — Colony List View (2026-02-17)
 
 **What changed:**
