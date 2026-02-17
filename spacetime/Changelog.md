@@ -171,3 +171,39 @@
 - All files compile with zero TypeScript errors ✓
 - `npm run build` — production build passes ✓
 - `npm run test:unit` — 74/74 tests pass ✓
+
+---
+
+## Epic 2: Game Shell & Navigation
+
+### Story 2.1 — Router Configuration (2026-02-17)
+
+**What changed:**
+- Configured Vue Router in `src/router/index.ts` with all 11 primary routes
+- Created 11 placeholder view components in `src/views/`:
+
+| Route | Name | View Component |
+|---|---|---|
+| `/` | `dashboard` | `DashboardView.vue` |
+| `/colonies` | `colonies` | `ColoniesView.vue` |
+| `/colonies/:id` | `colony-detail` | `ColonyDetailView.vue` |
+| `/corporations` | `corporations` | `CorporationsView.vue` |
+| `/corporations/:id` | `corp-detail` | `CorpDetailView.vue` |
+| `/contracts` | `contracts` | `ContractsView.vue` |
+| `/fleet` | `fleet` | `FleetView.vue` |
+| `/science` | `science` | `ScienceView.vue` |
+| `/market` | `market` | `MarketView.vue` |
+| `/galaxy` | `galaxy` | `GalaxyView.vue` |
+| `/settings` | `settings` | `SettingsView.vue` |
+
+**Key decisions:**
+- All routes use lazy loading (`() => import(...)`) for code splitting
+- Detail views (`ColonyDetailView`, `CorpDetailView`) read `:id` param from route
+- Each placeholder view includes a TODO comment referencing the future story that will implement its full content
+- Default route `/` points to Dashboard
+
+**Acceptance criteria met:**
+- Routes defined for all primary screens ✓
+- Default route is Dashboard (`/`) ✓
+- Route transitions work without errors (`npm run build` passes) ✓
+- All 74 existing tests still pass ✓
