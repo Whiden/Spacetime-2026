@@ -4,8 +4,6 @@
  * Budget Points (BP) are the single currency of the game.
  * Income from planet taxes and corp taxes; expenses from contracts, missions, and investments.
  *
- * TODO (Story 5.1): tax.ts implements planet and corp tax formulas.
- * TODO (Story 5.2): budget.store.ts manages the budget state.
  * TODO (Story 12.2): income-phase.ts and expense-phase.ts wire into turn resolution.
  */
 

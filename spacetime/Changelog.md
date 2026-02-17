@@ -4,6 +4,32 @@
 
 ## Epic 5: Budget System
 
+### Story 5.2 — Budget Store (2026-02-17)
+
+**What changed:**
+- Created `src/stores/budget.store.ts` — Pinia store for budget state management
+- Updated `src/types/budget.ts` — removed completed TODOs for Stories 5.1 and 5.2
+
+**Store API:**
+- **State**: `currentBP`, `incomeSources` (itemized), `expenseEntries` (itemized), `debtTokens`
+- **Actions**: `initialize()` sets starting BP (10) and calculates initial income from Terra Nova; `calculateIncome()` iterates all colonies and corps to sum planet/corp taxes; `addExpense(type, sourceId, sourceName, amount)` tracks expense by source; `clearExpenses()` resets expense list; `applyDebt(deficit)` creates debt tokens: `floor(deficit / 3)`, min 1, capped at 10; `clearDebtToken()` removes 1 token, costs 1 BP; `adjustBP(amount)` directly modifies balance
+- **Getters**: `totalIncome` (sum of income sources), `totalExpenses` (sum of expense entries), `netBP` (income - expenses), `stabilityMalus` (`floor(debtTokens / 2)`)
+
+**Acceptance criteria met:**
+- State: currentBP, income (itemized), expenses (itemized), debtTokens ✓
+- Action: `calculateIncome()` sums all planet taxes + corp taxes ✓
+- Action: `addExpense(source, amount)` tracks expense by source ✓
+- Action: `applyDebt(deficit)` creates debt tokens: `floor(deficit / 3)`, min 1, capped at 10 total ✓
+- Action: `clearDebtToken()` removes 1 token, costs 1 BP ✓
+- Getter: `netBP` returns income - expenses ✓
+- Getter: `stabilityMalus` returns `floor(debtTokens / 2)` ✓
+- Initializes with 10 BP, income from Terra Nova ✓
+- Corp tax wiring deferred to Story 6.2 (TODO in store) ✓
+- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
+- `npm run test` — 174/174 tests pass ✓
+
+---
+
 ### Story 5.1 — Tax Formulas (2026-02-17)
 
 **What changed:**
