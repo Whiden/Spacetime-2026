@@ -4,6 +4,32 @@
 
 ## Epic 6: Corporations — Data Model & Lifecycle
 
+### Story 6.2 — Corporation Store (2026-02-17)
+
+**What changed:**
+- Created `src/stores/corporation.store.ts` — Pinia store for all corporations
+- Updated `src/stores/budget.store.ts` — wired corporation taxes into income calculation, removed Story 6.2 TODO
+
+**Store API:**
+- **State**: `corporations` (Map by ID)
+- **Actions**: `addCorporation(corp)` adds to store; `kickstartCorp(type, homePlanetId, foundedTurn)` generates and adds a new level 1 corp; `addCapital(corpId, amount)` increases capital; `spendCapital(corpId, amount)` decreases capital with validation; `levelUp(corpId)` increases level if capital sufficient (cost = level × 3)
+- **Getters**: `getCorp(id)`, `getCorpsByType(type)`, `getCorpsByPlanet(planetId)`, `getCorpTax(id)` (calculated via `calculateCorpTax`), `allCorporations`, `corpCount`
+
+**Acceptance criteria met:**
+- Holds all corporations in a map by ID ✓
+- Action: `addCorporation(corp)` adds to store ✓
+- Action: `kickstartCorp(type, homePlanet)` generates and adds a new level 1 corp ✓
+- Action: `addCapital(corpId, amount)` increases corp capital ✓
+- Action: `spendCapital(corpId, amount)` decreases corp capital, validates sufficient funds ✓
+- Action: `levelUp(corpId)` increases level if capital sufficient (cost = level × 3) ✓
+- Getter: `getCorp(id)`, `getCorpsByType(type)`, `getCorpsByPlanet(planetId)` ✓
+- Getter: `getCorpTax(id)` returns calculated tax for corp ✓
+- Corp taxes now wired into budget store `calculateIncome()` ✓
+- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
+- `npx vitest run` — 197/197 tests pass ✓
+
+---
+
 ### Story 6.1 — Corporation Generator (2026-02-17)
 
 **What changed:**

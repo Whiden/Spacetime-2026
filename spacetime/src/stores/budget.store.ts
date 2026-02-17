@@ -4,7 +4,6 @@
  * Manages BP balance, itemized income/expenses, and debt tokens.
  * Calls tax formulas from engine to calculate income.
  *
- * TODO (Story 5.3): Budget display composable reads from this store.
  * TODO (Story 12.2): income-phase.ts and expense-phase.ts produce income/expense data for this store.
  * TODO (Story 12.4): game.store.ts calls initialize() during game init.
  */
@@ -15,6 +14,7 @@ import type { BPAmount, ColonyId, CorpId, ContractId, MissionId } from '../types
 import type { IncomeSource, ExpenseEntry } from '../types/budget'
 import { calculatePlanetTax, calculateCorpTax } from '../engine/formulas/tax'
 import { useColonyStore } from './colony.store'
+import { useCorporationStore } from './corporation.store'
 import { STARTING_BP, MAX_DEBT_TOKENS, DEBT_TOKEN_CLEAR_COST_BP } from '../data/start-conditions'
 
 export const useBudgetStore = defineStore('budget', () => {
@@ -66,13 +66,11 @@ export const useBudgetStore = defineStore('budget', () => {
 
   /**
    * Recalculates all income sources from planet taxes and corporation taxes.
-   * Reads colony store for planet taxes and will read corp store for corp taxes
-   * once corporations exist.
-   *
-   * TODO (Story 6.2): corporation.store.ts provides corp data for corp tax calculation.
+   * Reads colony store for planet taxes and corporation store for corp taxes.
    */
   function calculateIncome() {
     const colonyStore = useColonyStore()
+    const corpStore = useCorporationStore()
     const sources: IncomeSource[] = []
 
     // Planet taxes: one entry per colony
@@ -89,19 +87,17 @@ export const useBudgetStore = defineStore('budget', () => {
     }
 
     // Corporation taxes: one entry per corporation
-    // TODO (Story 6.2): Iterate corporation store and calculate corp taxes
-    // const corpStore = useCorporationStore()
-    // for (const corp of corpStore.allCorporations) {
-    //   const tax = calculateCorpTax(corp.level)
-    //   if (tax > 0) {
-    //     sources.push({
-    //       type: 'corp_tax',
-    //       sourceId: corp.id,
-    //       sourceName: corp.name,
-    //       amount: tax as BPAmount,
-    //     })
-    //   }
-    // }
+    for (const corp of corpStore.allCorporations) {
+      const tax = calculateCorpTax(corp.level)
+      if (tax > 0) {
+        sources.push({
+          type: 'corp_tax',
+          sourceId: corp.id,
+          sourceName: corp.name,
+          amount: tax as BPAmount,
+        })
+      }
+    }
 
     incomeSources.value = sources
   }
