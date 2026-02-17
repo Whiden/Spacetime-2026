@@ -273,3 +273,34 @@
 - Each view shows an appropriate empty state message ✓
 - Views use a consistent layout pattern ✓
 - All routes render without errors (`npm run build` passes) ✓
+
+---
+
+### Story 2.4 — Shared UI Components (2026-02-17)
+
+**What changed:**
+- Created 9 reusable components in `src/components/shared/`:
+
+| Component | Props | Behavior |
+|---|---|---|
+| `ProgressBar` | `value` (0-100), `color?`, `label?` | Filled bar with customizable color, optional label |
+| `AttributeBar` | `value` (0-10), `label` | Color-coded bar: green >6, yellow 4-6, red <4 |
+| `StatCard` | `label`, `value`, `trend?` | Key-value display with up/down/neutral trend arrow |
+| `ResourceBadge` | `resourceType`, `amount` | Short symbol (F, CM, RM...) + signed amount, color-coded |
+| `EventCard` | `event` (GameEvent) | Priority-colored dot, title, click-to-expand description |
+| `ConfirmDialog` | `title`, `message`, `confirmLabel?`, `cancelLabel?` | Modal with backdrop, confirm/cancel buttons, emits events |
+| `Tooltip` | `text` | Hover-triggered popup positioned above trigger slot content |
+| `DataTable` | `columns`, `rows` | Sortable table with named cell slots for custom rendering |
+| `EmptyState` | `message`, `description?`, `actionLabel?` | Centered card with optional action button |
+
+**Key decisions:**
+- `ResourceBadge` uses short symbols (F, CM, RM, V, CG, HM, HT, SP, TC) for compact display, with full name as title attribute
+- `DataTable` supports custom cell rendering via named slots (`cell-{key}`) and handles null/mixed-type sorting
+- `EventCard` uses priority color mapping matching `EventPriority` enum (Critical=red, Warning=amber, Info=zinc, Positive=emerald)
+- `Tooltip` uses CSS transitions (no JS animation library), positioned above trigger with max-width constraint
+- All components use Tailwind CSS only (one scoped exception in Tooltip for transition styles)
+
+**Acceptance criteria met:**
+- All 9 components created with TypeScript typed props ✓
+- All components use Tailwind CSS only ✓
+- `npm run build` passes ✓
