@@ -4,6 +4,32 @@
 
 ## Epic 6: Corporations — Data Model & Lifecycle
 
+### Story 6.3 — Corporation Capital Formulas (2026-02-17)
+
+**What changed:**
+- Created `src/engine/formulas/growth.ts` — corporation capital gain, completion bonus, level up cost, acquisition cost, max infrastructure formulas
+- Created `src/__tests__/engine/formulas/growth.test.ts` — 28 unit tests
+
+**Functions implemented:**
+- `getTotalOwnedInfra(infrastructureByColony)`: sums all infrastructure levels a corp owns across all colonies
+- `calculateCapitalGain(totalOwnedInfra)`: returns `randomInt(0,1) + floor(totalInfra / 10)`
+- `calculateCompletionBonus(contractBPPerTurn, duration)`: returns `floor((bpPerTurn × duration) / 5)`
+- `calculateLevelUpCost(currentLevel)`: returns `currentLevel × 3`
+- `calculateAcquisitionCost(targetLevel)`: returns `targetLevel × 5`
+- `calculateMaxInfra(corpLevel)`: returns `corpLevel × 4`
+
+**Acceptance criteria met:**
+- `calculateCapitalGain`: random(0,1) + floor(totalInfra / 10) ✓
+- `calculateCompletionBonus`: floor((bpPerTurn × duration) / 5) ✓
+- `calculateLevelUpCost`: currentLevel × 3 ✓
+- `calculateAcquisitionCost`: targetLevel × 5 ✓
+- `calculateMaxInfra`: corpLevel × 4 ✓
+- Unit tests for all functions with boundary values ✓
+- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
+- `npx vitest run` — 225/225 tests pass ✓
+
+---
+
 ### Story 6.2 — Corporation Store (2026-02-17)
 
 **What changed:**
