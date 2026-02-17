@@ -109,3 +109,41 @@ Built the application shell (Stories 2.1-2.4). Configured Vue Router with 11 laz
 - Assigns density (`Sparse`/`Moderate`/`Dense`) by spawn weight (30%/50%/20%)
 - Assigns threat modifier as a random float in [0.5, 1.5], rounded to 2 decimal places
 - Starting sector gets exploration percentage from `GALAXY_GENERATION_PARAMS.startingSectorExplorationPercent` (10%); all others default to 0%
+
+## Epic 4: Planets & Colonies — Data Model
+
+### Story 4.1 — Planet Generator (2026-02-17)
+
+**What changed:**
+- Created `src/generators/planet-generator.ts` — generates planets with type, size, features, deposits, and feature modifiers
+- Created `src/__tests__/generators/planet-generator.test.ts` — 25 unit tests
+
+**Generator algorithm:**
+1. Selects planet type by spawn weight (or forced type for Terra Nova)
+2. Selects planet size by spawn weight (or forced size)
+3. Rolls features from eligible pool (type/size match + spawn chance), up to the size's feature slot count
+4. Rolls deposits from the type's deposit pool: guaranteed deposits always appear, then common/uncommon/rare roll against tier chances
+5. Each deposit gets a random richness level by spawn weight (Poor 30%, Moderate 40%, Rich 20%, Exceptional 10%)
+6. Builds `Modifier[]` from rolled feature templates for future colony application
+
+**Key details:**
+- `generatePlanet(options)` returns a fully typed `Planet` object
+- Procedural name generation from prefix + suffix pools (540+ combinations)
+- Features are shuffled before rolling to avoid ordering bias
+- Deposits: guaranteed first, then shuffled non-guaranteed with tier chances
+- Feature modifiers have `sourceType: 'feature'` and `sourceId` pointing to the feature ID for traceability
+- All features start `revealed: false`; all deposits start `richnessRevealed: false`
+- Supports `forcedType`, `forcedSize`, `usedNames`, and `initialStatus` options for Terra Nova and testing
+
+**Acceptance criteria met:**
+- Selects planet type by spawn weight ✓
+- Selects size by spawn weight ✓
+- Rolls features from eligible pool up to feature slot count ✓
+- Rolls deposits from type's deposit pool with likelihood chances ✓
+- Each spawned deposit gets random richness by spawn weight ✓
+- Returns fully typed Planet object ✓
+- Unit tests: types match spawn weights over 1000 runs (±5%), deposits match planet type pools, feature count within slot limits ✓
+- `npm run test` — 126/126 tests pass ✓
+- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
+
+---
