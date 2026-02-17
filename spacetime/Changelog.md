@@ -2,78 +2,43 @@
 
 ---
 
-## Epic 5: Budget System
+## Epic 6: Corporations — Data Model & Lifecycle
 
-### Story 5.3 — Budget Display (2026-02-17)
-
-**What changed:**
-- Created `src/composables/useBudgetDisplay.ts` — composable providing formatted budget data for header and dashboard
-- Updated `src/components/layout/AppHeader.vue` — wired to budget store via composable: live BP, income, expenses, net with color coding
-- Updated `src/views/DashboardView.vue` — budget summary cards (balance, income, expenses, net), itemized income/expense breakdowns, debt token warning with stability malus
-
-**Key details:**
-- BP display color-coded: green (positive net > 2), yellow (near zero 0-2), red (deficit)
-- Net display: green (positive), yellow (zero), red (negative)
-- Income breakdown: per-colony with "Colony" badge, per-corp with "Corp" badge (purple)
-- Expense breakdown: per-contract (amber), per-mission (red), per-investment (cyan), per-debt (orange)
-- Debt warning panel: red border, shows token count and stability malus, only visible when debt > 0
-- Turn number still hardcoded (wired in Story 12.5)
-
-**Acceptance criteria met:**
-- Header shows: current BP (prominent), income/turn, expenses/turn, net/turn ✓
-- BP display color-coded: green (positive net), yellow (near zero), red (deficit) ✓
-- Dashboard shows itemized income breakdown (per colony, per corp) ✓
-- Dashboard shows itemized expense breakdown (per contract, per mission) ✓
-- Debt tokens displayed if any exist, with stability malus warning ✓
-- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
-- `npm run test` — 174/174 tests pass ✓
-
----
-
-### Story 5.2 — Budget Store (2026-02-17)
+### Story 6.1 — Corporation Generator (2026-02-17)
 
 **What changed:**
-- Created `src/stores/budget.store.ts` — Pinia store for budget state management
-- Updated `src/types/budget.ts` — removed completed TODOs for Stories 5.1 and 5.2
-
-**Store API:**
-- **State**: `currentBP`, `incomeSources` (itemized), `expenseEntries` (itemized), `debtTokens`
-- **Actions**: `initialize()` sets starting BP (10) and calculates initial income from Terra Nova; `calculateIncome()` iterates all colonies and corps to sum planet/corp taxes; `addExpense(type, sourceId, sourceName, amount)` tracks expense by source; `clearExpenses()` resets expense list; `applyDebt(deficit)` creates debt tokens: `floor(deficit / 3)`, min 1, capped at 10; `clearDebtToken()` removes 1 token, costs 1 BP; `adjustBP(amount)` directly modifies balance
-- **Getters**: `totalIncome` (sum of income sources), `totalExpenses` (sum of expense entries), `netBP` (income - expenses), `stabilityMalus` (`floor(debtTokens / 2)`)
-
-**Acceptance criteria met:**
-- State: currentBP, income (itemized), expenses (itemized), debtTokens ✓
-- Action: `calculateIncome()` sums all planet taxes + corp taxes ✓
-- Action: `addExpense(source, amount)` tracks expense by source ✓
-- Action: `applyDebt(deficit)` creates debt tokens: `floor(deficit / 3)`, min 1, capped at 10 total ✓
-- Action: `clearDebtToken()` removes 1 token, costs 1 BP ✓
-- Getter: `netBP` returns income - expenses ✓
-- Getter: `stabilityMalus` returns `floor(debtTokens / 2)` ✓
-- Initializes with 10 BP, income from Terra Nova ✓
-- Corp tax wiring deferred to Story 6.2 (TODO in store) ✓
-- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
-- `npm run test` — 174/174 tests pass ✓
-
----
-
-### Story 5.1 — Tax Formulas (2026-02-17)
-
-**What changed:**
-- Created `src/engine/formulas/tax.ts` — planet tax and corporation tax calculation functions
-- Created `src/__tests__/engine/formulas/tax.test.ts` — 21 unit tests
+- Created `src/generators/name-generator.ts` — shared name generation utility with uniqueness registry, generates "Prefix Suffix" or "Prefix Connector Suffix" patterns
+- Created `src/generators/corp-generator.ts` — corporation generation: unique name, type, personality traits, starting stats
+- Created `src/__tests__/generators/corp-generator.test.ts` — 23 unit tests
 
 **Functions implemented:**
-- `calculatePlanetTax(popLevel, habitability)`: computes planet tax income using Specs.md § 2 formula. `habitability_cost = max(0, 10 - habitability) × max(1, floor(pop_level / 3))`, then `planet_tax = max(0, floor(pop² / 4) - habitability_cost)`. Returns 0 for popLevel < 5.
-- `calculateCorpTax(corpLevel)`: computes corporation tax as `floor(corpLevel² / 5)`. Level 1-2 corps naturally pay 0 (startup exemption).
+- `generateCorpName(prefixes, suffixes, connectors, connectorChance)`: generates a unique name from pools, 80% direct join / 20% with connector. Tracks generated names to guarantee uniqueness.
+- `clearNameRegistry()`: resets the name uniqueness tracker (for new games).
+- `generateCorporation(params)`: creates a level 1 Corporation with unique name, type (from parameter or random), 1-2 personality traits (no conflicting pairs), capital 0, home planet from parameter, empty assets.
+- `generateTraits()`: picks 1 trait (70%) or 2 traits (30%) using spawn weights, excluding Cautious/Aggressive, Innovative/Conservative, Ethical/Ruthless conflicts.
 
 **Acceptance criteria met:**
-- `calculatePlanetTax(popLevel, habitability)` implements the planet tax formula from Specs.md § 2 ✓
-- Higher population yields more tax, low habitability reduces it ✓
-- Returns 0 for very low population or very low habitability ✓
-- Verifies: pop 7 hab 9 = 10 BP, pop 5 hab 2 = 0 BP, pop 7 hab 2 = 0 BP ✓
-- Returns 0 if popLevel < 5 ✓
+- Generates unique name from name pools (prefix + suffix or pattern) ✓
+- Assigns type (from parameter or random) ✓
+- Assigns 1 trait (70%) or 2 traits (30%), excluding conflicting pairs ✓
+- Sets level 1, capital 0, home planet from parameter ✓
+- Returns typed Corporation object ✓
+- Unit tests: name uniqueness over 100 generations, trait conflict exclusion, valid type assignment ✓
 - `npx vue-tsc --noEmit` — zero TypeScript errors ✓
-- `npm run test` — 174/174 tests pass ✓
+- `npx vitest run` — 197/197 tests pass ✓
+
+---
+
+## Epic 5: Budget System (Completed 2026-02-17)
+
+Implemented the BP economy (Stories 5.1-5.3). Built tax formulas (`calculatePlanetTax` using `floor(pop²/4) - habitability_cost` with pop < 5 returning 0; `calculateCorpTax` using `floor(corpLevel²/5)` with level 1-2 exemption). Created budget Pinia store (`budget.store.ts` — state: `currentBP`, itemized `incomeSources`/`expenseEntries`, `debtTokens`; actions: `calculateIncome()`, `addExpense()`, `applyDebt()` with `floor(deficit/3)` min 1 capped at 10, `clearDebtToken()` costs 1 BP; getters: `netBP`, `stabilityMalus`). Built budget display composable and wired into header (live BP/income/expenses/net with green/yellow/red color coding) and dashboard (itemized breakdowns per colony/corp/contract/mission, debt warning panel with stability malus).
+
+**Key architecture decisions:**
+- Budget store initializes with 10 BP and income from Terra Nova
+- Corp tax wiring deferred to Story 6.2 (TODO in store)
+- Turn number still hardcoded (wired in Story 12.5)
+
+**Tests:** 174 passing (tax: 21, prior: 153)
 
 ---
 

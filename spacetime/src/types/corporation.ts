@@ -29,7 +29,6 @@ export type CorpInfrastructureHoldings = Partial<Record<InfraDomain, number>>
 /**
  * All assets a corporation owns across all planets.
  *
- * TODO (Story 6.1): Populated by corp-generator.ts at creation.
  * TODO (Story 11.1): Updated by corp-ai.ts when corps invest in infrastructure.
  * TODO (Story 14.3): Schematics added by schematic-generator.ts.
  */
@@ -54,7 +53,6 @@ export interface CorpAssets {
  * They grow through contract revenue, invest capital autonomously, and can merge
  * or acquire other corporations at level 6+.
  *
- * TODO (Story 6.1): corp-generator.ts creates Corporation objects.
  * TODO (Story 11.1): corp-ai.ts implements the corporation AI turn logic.
  * TODO (Story 11.2): corp-phase.ts integrates corp AI into turn resolution.
  */
