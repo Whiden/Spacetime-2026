@@ -38,92 +38,25 @@
 ### Story 1.1: Project Scaffolding 🔧
 **Description**: Initialize the Vue 3 + TypeScript project with Vite, Pinia, Vue Router, Tailwind CSS, and Vitest. Configure all tooling.
 
-**Acceptance Criteria**:
-- `npm run dev` starts dev server with hot reload
-- `npm run build` produces production build with no errors
-- `npm run test` runs Vitest with zero tests passing (empty suite)
-- Tailwind CSS classes render correctly in a test component
-- TypeScript strict mode enabled
-- Folder structure matches Structure.md
-
 ### Story 1.2: Core Types — Common 🔧
 **Description**: Define shared types used across the entire project: Id types, TurnNumber, BPAmount, enums for planet types, sizes, resource types, etc.
-
 **Files**: `src/types/common.ts`
-
-**Acceptance Criteria**:
-- All entity ID types defined with branded string pattern (ColonyId, CorpId, etc.)
-- TurnNumber, BPAmount as branded number types
-- All shared enums defined: PlanetType, PlanetSize, ResourceType, InfraDomain, CorpType, ContractType, ContractStatus, MissionType, MissionPhase, ShipRole, SizeVariant, SchematicCategory, ScienceSectorType, EventPriority
-- File compiles with zero errors
 
 ### Story 1.3: Core Types — All Entities 🔧
 **Description**: Define TypeScript interfaces for every game entity.
-
 **Files**: `src/types/colony.ts`, `src/types/planet.ts`, `src/types/corporation.ts`, `src/types/contract.ts`, `src/types/resource.ts`, `src/types/infrastructure.ts`, `src/types/science.ts`, `src/types/ship.ts`, `src/types/mission.ts`, `src/types/combat.ts`, `src/types/sector.ts`, `src/types/budget.ts`, `src/types/event.ts`, `src/types/trade.ts`, `src/types/game.ts`
-
-**Acceptance Criteria**:
-- Every entity from Specs.md and Data.md has a corresponding interface
-- `GameState` master type in `game.ts` combines all domain states
-- All interfaces use proper ID types from `common.ts`
-- All files compile with zero errors and zero `any` types
-- Interfaces match the properties listed in Specs.md tables
 
 ### Story 1.3b: Modifier System Types & Resolver 🔧🧪
 **Description**: Define the modifier type system and implement the resolver function that colony attributes and ship stats use for local per-entity variation. Also define the EmpireBonuses type for global cumulative values.
-
 **Files**: `src/types/modifier.ts`, `src/types/empire.ts`, `src/engine/formulas/modifiers.ts`
-
-**Acceptance Criteria**:
-- `Modifier` interface defined with: id, target (string), operation ('add' | 'multiply'), value (number), sourceType ('feature' | 'colonyType' | 'schematic' | 'shortage' | 'event'), sourceId (string)
-- `ModifierCondition` interface defined with optional fields: attribute, comparison ('lte' | 'gte'), value, scope ('colony')
-- `EmpireBonuses` interface defined with: shipStats (per-stat cumulative bonuses), infraCaps (per-domain cumulative bonuses)
-- `resolveModifiers(baseValue, target, modifiers)` function: filters modifiers by target, applies all additive modifiers first, then all multiplicative modifiers, returns final value
-- `getModifierBreakdown(baseValue, target, modifiers)` function: returns array of `{ source, operation, value }` for UI tooltip display
-- Additive modifiers sum, multiplicative modifiers multiply sequentially
-- Result clamped to provided min/max bounds when specified
-- Conditional modifiers only apply when condition is met
-- Unit tests: additive stacking, multiplicative stacking, mixed add+multiply order, empty modifier list returns base value, conditional modifier applies/doesn't apply, breakdown returns correct attribution
-- `EmpireBonuses` initializes with all zeros, is a plain object (not modifiers)
 
 ### Story 1.4: Utility Functions 🔧🧪
 **Description**: Implement shared utility functions for random number generation, math helpers, formatting, and ID generation.
-
 **Files**: `src/utils/random.ts`, `src/utils/math.ts`, `src/utils/format.ts`, `src/utils/id.ts`
-
-**Acceptance Criteria**:
-- `random.ts`: seeded random, `randomInt(min, max)`, `weightedRandom(options)`, `randomFloat(min, max)`, `chance(percent)` — all accept optional seed
-- `math.ts`: `clamp(value, min, max)`, `roundDown(value)`, `scale(value, fromRange, toRange)`
-- `format.ts`: `formatBP(amount)`, `formatPercent(value)`, `formatTurns(count)`
-- `id.ts`: `generateId(prefix)` returning prefixed nanoid strings
-- All functions have unit tests
-- No Vue or Pinia imports
 
 ### Story 1.5: Static Data Files 🔧
 **Description**: Create all static data files containing game constants, tables, and templates as defined in Data.md.
-
 **Files**: All files in `src/data/`
-
-**Acceptance Criteria**:
-- `planet-types.ts`: all 10 planet types with base habitability, deposit pools, spawn weights
-- `planet-features.ts`: all 20 features with modifiers, visibility, spawn conditions
-- `planet-deposits.ts`: all 6 deposit types with richness levels and production modifiers
-- `colony-types.ts`: all 7 colony types with starting infra, passive bonuses, costs
-- `resources.ts`: all 9 resources + TC with categories
-- `infrastructure.ts`: all 10 domains with production/consumption rules
-- `corporation-types.ts`: all 8 corp types with investment priorities
-- `corporation-names.ts`: name generation pools (50+ prefixes, 50+ suffixes minimum)
-- `personality-traits.ts`: all 8 traits with effects and spawn weights
-- `contracts.ts`: all 8 contract type templates with base costs and durations
-- `ship-roles.ts`: all 7 roles with base stats, size variants, derived stat formulas
-- `schematics.ts`: all 10 schematic categories with stat affinities, level scaling, name pools
-- `patents.ts`: patent definitions (placeholder structure for future corp differentiation)
-- `mission-types.ts`: all 5 mission types with costs and durations
-- `science-sectors.ts`: all 9 sectors with level thresholds
-- `sector-names.ts`: name generation pool (50+ names)
-- `start-conditions.ts`: Terra Nova, starting colony, starting budget
-- All files export typed constants matching Data.md tables
-- No Vue or Pinia imports
 
 ---
 
@@ -133,56 +66,19 @@
 
 ### Story 2.1: Router Configuration 🖥️
 **Description**: Set up Vue Router with routes for all primary screens.
-
 **Files**: `src/router/index.ts`
-
-**Acceptance Criteria**:
-- Routes defined: `/` (Dashboard), `/colonies` , `/colonies/:id`, `/corporations`, `/corporations/:id`, `/contracts`, `/fleet`, `/science`, `/market`, `/galaxy`, `/settings`
-- Default route is Dashboard
-- Route transitions work without errors
 
 ### Story 2.2: App Layout Shell 🖥️
 **Description**: Create the main application layout with sidebar navigation, top header bar, and main content area.
-
 **Files**: `src/App.vue`, `src/components/layout/AppHeader.vue`, `src/components/layout/AppSidebar.vue`
-
-**Acceptance Criteria**:
-- Sidebar with navigation links to all primary screens, visually indicating active route
-- Header displays: turn number (placeholder), BP balance (placeholder), End Turn button (disabled)
-- Main content area renders current route view
-- Clean, modern aesthetic: dark or light theme, clear typography, proper spacing
-- Responsive layout (sidebar collapses on small screens)
-- Tailwind CSS only, no custom class names
 
 ### Story 2.3: Empty View Scaffolds 🖥️
 **Description**: Create placeholder views for all screens with titles and empty states.
-
 **Files**: All files in `src/views/`
-
-**Acceptance Criteria**:
-- Each view renders with its screen title
-- Each view shows an appropriate empty state message (e.g., "No colonies yet", "No active contracts")
-- Views use a consistent layout pattern
-- All routes render without errors
 
 ### Story 2.4: Shared UI Components 🖥️
 **Description**: Build reusable UI components used across multiple screens.
-
 **Files**: `src/components/shared/ProgressBar.vue`, `AttributeBar.vue`, `StatCard.vue`, `ResourceBadge.vue`, `EventCard.vue`, `ConfirmDialog.vue`, `Tooltip.vue`, `DataTable.vue`, `EmptyState.vue`
-
-**Acceptance Criteria**:
-- `ProgressBar`: accepts value (0-100), color, optional label. Renders filled bar.
-- `AttributeBar`: accepts value (0-10), label, color coding (green >6, yellow 4-6, red <4)
-- `StatCard`: accepts label + value, optional trend indicator (up/down/neutral)
-- `ResourceBadge`: accepts resource type + amount, shows icon/symbol + formatted number
-- `EventCard`: accepts event object, shows priority-colored indicator + summary + expandable detail
-- `ConfirmDialog`: modal with message, confirm/cancel buttons, emits result
-- `Tooltip`: hover-triggered info box, accepts text content
-- `DataTable`: accepts columns definition + row data, supports sorting by column
-- `EmptyState`: accepts message + optional action button text, emits action click
-- All components use props with TypeScript types
-- All components use Tailwind CSS only
-
 ---
 
 ## Epic 3: Galaxy Generation & Sectors
@@ -191,56 +87,19 @@
 
 ### Story 3.1: Sector Generator 🔧🧪
 **Description**: Implement sector generation: name, density, threat modifier.
-
 **Files**: `src/generators/sector-generator.ts`
-
-**Acceptance Criteria**:
-- Generates sector with unique name from name pool
-- Assigns density (Sparse/Moderate/Dense) by spawn weight
-- Assigns threat modifier (0.5-1.5)
-- Assigns exploration percentage (0% default, 10% for starting sector)
-- Returns typed Sector object
-- Unit tests verify valid output ranges
 
 ### Story 3.2: Galaxy Generator 🔧🧪
 **Description**: Generate the full galaxy: 10-15 sectors with adjacency graph.
-
 **Files**: `src/generators/galaxy-generator.ts`
-
-**Acceptance Criteria**:
-- Generates 10-15 sectors
-- Builds adjacency graph: 2-4 connections per sector, all sectors reachable from start
-- Starting sector has 2-3 connections
-- 1-2 bottleneck sectors (exactly 2 connections)
-- Max 4 connections per sector
-- Max 5 hops from start to furthest sector
-- Starting sector at 100% explored
-- Unit tests verify: connectivity (all reachable), connection limits, bottleneck count
-- No Vue or Pinia imports
 
 ### Story 3.3: Galaxy Store 🔧
 **Description**: Create Pinia store for galaxy state.
-
 **Files**: `src/stores/galaxy.store.ts`
-
-**Acceptance Criteria**:
-- Holds array of Sector objects and adjacency map
-- Action: `generateGalaxy()` calls galaxy generator, stores result
-- Getter: `getSector(id)` returns sector by ID
-- Getter: `getAdjacentSectors(id)` returns adjacent sector IDs
-- Getter: `explorableSectors` returns sectors adjacent to those with player presence
 
 ### Story 3.4: Galaxy View 🖥️
 **Description**: Display sector list with adjacency connections, exploration status, and basic info.
-
 **Files**: `src/views/GalaxyView.vue`, `src/components/galaxy/SectorCard.vue`, `src/components/galaxy/SectorGraph.vue`
-
-**Acceptance Criteria**:
-- Lists all sectors with name, density, exploration %, fleet/colony presence indicators
-- Shows adjacency connections (text-based: "Connected to: Sector A, Sector B")
-- Explorable sectors visually distinguished from unexplorable
-- Starting sector shown with Terra Nova colony indicator
-- Clicking a sector shows expanded detail (POIs discovered, contracts active)
 
 ---
 
@@ -250,72 +109,23 @@
 
 ### Story 4.1: Planet Generator 🔧🧪
 **Description**: Generate planets with type, size, features, and deposits according to Data.md rules.
-
 **Files**: `src/generators/planet-generator.ts`
-
-**Acceptance Criteria**:
-- Selects planet type by spawn weight
-- Selects size by spawn weight
-- Rolls features from eligible pool up to feature slot count
-- Rolls deposits from type's deposit pool with likelihood chances
-- Each spawned deposit gets random richness by spawn weight
-- Returns fully typed Planet object
-- Unit tests: verify types match spawn weights over 1000 runs (±5%), deposits match planet type pools, feature count within slot limits
 
 ### Story 4.2: Colony Generator 🔧🧪
 **Description**: Initialize a colony from a planet and colony type selection.
-
 **Files**: `src/generators/colony-generator.ts`
-
-**Acceptance Criteria**:
-- Accepts planet + colony type as input
-- Creates colony with population level 1
-- Applies starting infrastructure from colony type definition
-- Calculates initial attributes using attribute formulas
-- Applies colony type passive bonus
-- Returns fully typed Colony object
-- Unit tests: verify starting infra matches colony type, attributes calculate correctly
-- On colony creation, registers planet feature modifiers onto `colony.modifiers` array
-- Registers colony type passive bonus as a modifier onto `colony.modifiers` array
-- Each modifier has correct sourceType and sourceId for traceability
-- Does NOT register any empire-wide bonuses as modifiers
 
 ### Story 4.3: Planet & Colony Stores 🔧
 **Description**: Create Pinia stores for planets and colonies.
-
 **Files**: `src/stores/planet.store.ts`, `src/stores/colony.store.ts`
-
-**Acceptance Criteria**:
-- Planet store: holds discovered planets, actions to add/remove, getter by ID, getter by status (orbit scanned, ground surveyed, colonized, rejected)
-- Colony store: holds all colonies, actions to add/update, getter by ID, getter by sector
-- Colony store initializes Terra Nova on game start using start-conditions data
 
 ### Story 4.4: Colony List View 🖥️
 **Description**: Display all colonies in a list with summary information.
-
 **Files**: `src/views/ColoniesView.vue`, `src/components/colony/ColonyCard.vue`
-
-**Acceptance Criteria**:
-- Lists all colonies showing: name, type, population level, attribute bars, alert icons for shortages
-- Colony cards are clickable, navigate to detail view
-- Shows "1 colony" initially (Terra Nova)
-- Attribute bars use color coding (green/yellow/red)
 
 ### Story 4.5: Colony Detail View 🖥️
 **Description**: Display full colony information: attributes, infrastructure, deposits, features, corporations present.
-
 **Files**: `src/views/ColonyDetailView.vue`, `src/components/colony/InfraPanel.vue`, `src/components/colony/AttributePanel.vue`, `src/components/colony/ResourceFlow.vue`
-
-**Acceptance Criteria**:
-- Shows all 6 attributes with current value, bar visualization, and tooltip explaining formula
-- Infrastructure panel: lists all domains with current level, ownership (public/corporate), cap
-- Resource flow: shows production and consumption per resource for this colony
-- Features list with modifiers shown
-- Deposits list with richness and current extraction level
-- Corporations present (empty initially)
-- "Invest" button per infrastructure domain (disabled until budget system works)
-- Attribute tooltips use `getModifierBreakdown()` to show: "Habitability 9: Base 8 (Continental) + 1 (Temperate Climate)"
-- Each modifier source displayed with name and value
 
 ---
 

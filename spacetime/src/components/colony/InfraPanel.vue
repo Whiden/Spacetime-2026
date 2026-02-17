@@ -2,7 +2,9 @@
 /**
  * InfraPanel — Infrastructure panel showing all 12 domains with levels, ownership, and caps.
  *
- * Each row shows: domain name, total level / cap, public vs corporate breakdown.
+ * Each row shows: domain name, proportional stacked bar (public/corporate/empty), total / cap, ownership.
+ * Public levels are indigo, corporate levels are amber. Empty portion up to cap is dark.
+ * For uncapped domains, the bar shows only the filled portions (public + corporate = 100%).
  * "Invest" button is shown but disabled until budget system is implemented.
  *
  * TODO (Story 5.4): Enable Invest button when budget system is wired.
@@ -33,7 +35,21 @@ const DOMAIN_ORDER: InfraDomain[] = [
   InfraDomain.Military,
 ]
 
-const infraRows = computed(() => {
+interface InfraRow {
+  domain: InfraDomain
+  name: string
+  total: number
+  publicLevels: number
+  corpLevels: number
+  cap: number
+  capDisplay: string
+  /** Percentage widths for the stacked bar. */
+  publicPercent: number
+  corpPercent: number
+  emptyPercent: number
+}
+
+const infraRows = computed<InfraRow[]>(() => {
   return DOMAIN_ORDER.map((domain) => {
     const state = props.colony.infrastructure[domain]
     const def = INFRA_DOMAIN_DEFINITIONS[domain]
@@ -41,7 +57,37 @@ const infraRows = computed(() => {
     const corpLevels = getCorporateLevels(state)
     const publicLevels = state.ownership.publicLevels
     const cap = state.currentCap
-    const capDisplay = cap === Infinity || cap >= 9999 ? '∞' : String(cap)
+    const isUncapped = cap === Infinity || cap >= 9999
+    const capDisplay = isUncapped ? '∞' : String(cap)
+
+    // Calculate proportional widths
+    let publicPercent: number
+    let corpPercent: number
+    let emptyPercent: number
+
+    if (isUncapped) {
+      // Uncapped: public + corporate fill 100% proportionally
+      if (total === 0) {
+        publicPercent = 0
+        corpPercent = 0
+        emptyPercent = 100
+      } else {
+        publicPercent = (publicLevels / total) * 100
+        corpPercent = (corpLevels / total) * 100
+        emptyPercent = 0
+      }
+    } else {
+      // Capped: proportions relative to cap
+      if (cap === 0) {
+        publicPercent = 0
+        corpPercent = 0
+        emptyPercent = 100
+      } else {
+        publicPercent = (publicLevels / cap) * 100
+        corpPercent = (corpLevels / cap) * 100
+        emptyPercent = Math.max(0, 100 - publicPercent - corpPercent)
+      }
+    }
 
     return {
       domain,
@@ -51,9 +97,11 @@ const infraRows = computed(() => {
       corpLevels,
       cap,
       capDisplay,
-      atCap: total >= cap,
+      publicPercent,
+      corpPercent,
+      emptyPercent,
     }
-  }).filter((row) => row.total > 0 || row.cap > 0)
+  }).filter((row) => row.total > 0 || (row.cap > 0 && row.cap !== Infinity))
 })
 </script>
 
@@ -71,23 +119,28 @@ const infraRows = computed(() => {
         <!-- Domain name -->
         <span class="text-xs text-zinc-300 w-28 shrink-0">{{ row.name }}</span>
 
-        <!-- Level bar -->
-        <div class="flex-1 flex items-center gap-2">
-          <div class="flex-1 h-1.5 rounded-full bg-zinc-800 overflow-hidden">
-            <div
-              class="h-full rounded-full bg-indigo-500 transition-all duration-300"
-              :style="{ width: row.cap > 0 && row.cap !== Infinity ? `${Math.min(100, (row.total / row.cap) * 100)}%` : (row.total > 0 ? '100%' : '0%') }"
-            />
-          </div>
+        <!-- Proportional stacked bar -->
+        <div class="flex-1 h-3 rounded bg-zinc-800 overflow-hidden flex">
+          <div
+            v-if="row.publicPercent > 0"
+            class="h-full bg-indigo-500 transition-all duration-300"
+            :style="{ width: `${row.publicPercent}%` }"
+          />
+          <div
+            v-if="row.corpPercent > 0"
+            class="h-full bg-amber-500 transition-all duration-300"
+            :style="{ width: `${row.corpPercent}%` }"
+          />
+          <!-- Empty portion is the remaining bg-zinc-800 background -->
         </div>
 
         <!-- Level / Cap -->
-        <span class="text-xs font-medium text-zinc-300 w-14 text-right">
+        <span class="text-xs font-medium text-zinc-300 w-14 text-right shrink-0">
           {{ row.total }}/{{ row.capDisplay }}
         </span>
 
         <!-- Ownership breakdown -->
-        <span class="text-[10px] text-zinc-500 w-20 text-right">
+        <span class="text-[10px] text-zinc-500 w-20 text-right shrink-0">
           <template v-if="row.corpLevels > 0">
             {{ row.publicLevels }}p + {{ row.corpLevels }}c
           </template>
@@ -99,7 +152,7 @@ const infraRows = computed(() => {
         <!-- Invest button (disabled until budget system) -->
         <button
           disabled
-          class="text-[10px] px-2 py-0.5 rounded bg-zinc-800 text-zinc-600 cursor-not-allowed"
+          class="text-[10px] px-2 py-0.5 rounded bg-zinc-800 text-zinc-600 cursor-not-allowed shrink-0"
           title="Budget system not yet implemented"
         >
           Invest

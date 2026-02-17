@@ -31,18 +31,20 @@ if (colonyStore.colonyCount === 0 && galaxyStore.startingSectorId !== null) {
       </span>
     </div>
 
-    <div v-if="colonyStore.allColonies.length > 0" class="space-y-3">
-      <ColonyCard
-        v-for="colony in colonyStore.allColonies"
-        :key="colony.id"
-        :colony="colony"
+    <div class="max-w-2xl">
+      <div v-if="colonyStore.allColonies.length > 0" class="space-y-3">
+        <ColonyCard
+          v-for="colony in colonyStore.allColonies"
+          :key="colony.id"
+          :colony="colony"
+        />
+      </div>
+
+      <EmptyState
+        v-else
+        message="No colonies yet."
+        description="Terra Nova will appear once the game state is initialized."
       />
     </div>
-
-    <EmptyState
-      v-else
-      message="No colonies yet."
-      description="Terra Nova will appear once the game state is initialized."
-    />
   </div>
 </template>
