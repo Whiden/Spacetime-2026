@@ -43,6 +43,30 @@ Implemented galaxy generation and display (Stories 3.1-3.4). Built sector genera
 
 ## Epic 4: Planets & Colonies — Data Model
 
+### Story 4.4 — Colony List View (2026-02-17)
+
+**What changed:**
+- Created `src/components/colony/ColonyCard.vue` — colony summary card with name, type badge, population level, 5 attribute bars, and growth progress bar
+- Updated `src/views/ColoniesView.vue` — integrated colony store, renders ColonyCard list with colony count, auto-initializes Terra Nova
+
+**Key details:**
+- ColonyCard wraps in `<router-link>` to colony-detail route (clickable navigation)
+- Attribute bars use existing `AttributeBar` component (green/yellow/red color coding)
+- Growth displayed as `ProgressBar` with cyan color, scaled to 0-10 range
+- Colony count shown in header ("1 colony" / "N colonies" pluralization)
+- Auto-initialization: if no colonies exist and galaxy is generated, calls `initializeTerraNova()`
+- Empty state via `EmptyState` component when no colonies exist
+
+**Acceptance criteria met:**
+- Lists all colonies showing: name, type, population level, attribute bars ✓
+- Colony cards are clickable, navigate to detail view ✓
+- Shows "1 colony" initially (Terra Nova) ✓
+- Attribute bars use color coding (green/yellow/red) ✓
+- Shortage alert icons deferred to Story 9.2 (TODO in component) ✓
+- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
+
+---
+
 ### Story 4.3 — Planet & Colony Stores (2026-02-17)
 
 **What changed:**
