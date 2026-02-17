@@ -207,3 +207,36 @@
 - Default route is Dashboard (`/`) ✓
 - Route transitions work without errors (`npm run build` passes) ✓
 - All 74 existing tests still pass ✓
+
+---
+
+### Story 2.2 — App Layout Shell (2026-02-17)
+
+**What changed:**
+- Created `src/components/layout/AppSidebar.vue` — collapsible sidebar with navigation links to all 9 primary screens
+- Created `src/components/layout/AppHeader.vue` — top bar with placeholder turn number, BP balance, income/expenses/net display, and disabled End Turn button
+- Updated `src/App.vue` — assembled layout shell with sidebar + header + scrollable content area
+
+**Layout structure:**
+- Full-height flex layout: sidebar (left) + main area (right)
+- Sidebar: 224px expanded / 64px collapsed, toggle button at bottom, active route highlighted with indigo accent
+- Header: fixed 56px height, turn info (left), budget stats (center), End Turn button (right)
+- Content: flex-1 with overflow scroll and padding
+- Dark theme: zinc-950 background, zinc-900 sidebar/header, zinc-800 borders
+
+**Key decisions:**
+- Sidebar collapse state managed in `App.vue` via `ref`, passed as prop to `AppSidebar`
+- Navigation uses `RouterLink` with active state detection (exact match for `/`, prefix match for others)
+- Text-based icon placeholders (Unicode symbols) — can be replaced with an icon library later
+- Header values are hardcoded placeholders — wired to stores in Story 5.3 and Story 12.5
+- End Turn button disabled until budget system is connected
+- Tailwind CSS only, no custom class names
+
+**Acceptance criteria met:**
+- Sidebar with navigation links to all primary screens, visually indicating active route ✓
+- Header displays: turn number (placeholder), BP balance (placeholder), End Turn button (disabled) ✓
+- Main content area renders current route view ✓
+- Clean, modern aesthetic: dark theme, clear typography, proper spacing ✓
+- Responsive layout (sidebar collapses) ✓
+- Tailwind CSS only ✓
+- `npm run build` passes ✓
