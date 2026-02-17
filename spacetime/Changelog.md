@@ -4,6 +4,32 @@
 
 ## Epic 6: Corporations — Data Model & Lifecycle
 
+### Story 6.4 — Corporations View (2026-02-17)
+
+**What changed:**
+- Created `src/components/corporation/CorpCard.vue` — corp summary card with name, type badge (color-coded), level, capital, tax, infra capacity bar, traits, home planet. Clickable to detail view.
+- Created `src/components/corporation/CorpAssets.vue` — infrastructure holdings display by colony with domain-level breakdowns and total/max summary
+- Created `src/components/corporation/CorpHistory.vue` — contract history placeholder (wired in Story 7.2)
+- Updated `src/views/CorporationsView.vue` — corp list sorted by level (highest first), then name. Shows count header, CorpCard for each corp, empty state guidance
+- Updated `src/views/CorpDetailView.vue` — full detail view: stats panel (type description, abilities, level, capital, tax, home planet), capital breakdown (level up cost, acquisition value, infra capacity bar), personality trait descriptions, CorpAssets, CorpHistory, planets present
+
+**Key details:**
+- Corp type badges color-coded by type (amber=Exploitation, sky=Shipbuilding, violet=Science, etc.)
+- Detail view two-column layout: stats+traits+capital on left, assets+history+planets on right
+- Tax shown as "Exempt" for level 1-2 corps (0 BP tax)
+- Level up cost and acquisition value calculated from growth formulas
+- Empty state: "No corporations yet — Post a contract to kickstart your first corporation"
+
+**Acceptance criteria met:**
+- List view shows all corps: name, type icon/label, level, capital, personality traits, home planet ✓
+- Corps sorted by level (highest first) ✓
+- Detail view shows: full stats, personality trait descriptions, infrastructure owned (list by planet), contract history, capital breakdown ✓
+- Initially empty with "No corporations yet — post a contract to kickstart your first corporation" guidance ✓
+- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
+- `npx vitest run` — 225/225 tests pass ✓
+
+---
+
 ### Story 6.3 — Corporation Capital Formulas (2026-02-17)
 
 **What changed:**

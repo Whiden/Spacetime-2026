@@ -135,41 +135,15 @@
 
 ### Story 5.1: Tax Formulas 🔧🧪
 **Description**: Implement planet tax and corporation tax calculations.
-
 **Files**: `src/engine/formulas/tax.ts`
-
-**Acceptance Criteria**:
-- calculatePlanetTax(popLevel, habitability): implements the planet tax formula from Specs.md Section 3
-- Higher population yields more tax, low habitability reduces it
-- Returns 0 for very low population or very low habitability
-- Verifies: pop 7 hab 9 = 10 BP, pop 5 hab 2 = 0 BP, pop 7 hab 2 = 0 BP- Returns 0 if popLevel < 5
 
 ### Story 5.2: Budget Store 🔧
 **Description**: Create Pinia store for budget state: balance, income, expenses, debt tokens.
-
 **Files**: `src/stores/budget.store.ts`
-
-**Acceptance Criteria**:
-- State: currentBP, income (itemized), expenses (itemized), debtTokens
-- Action: `calculateIncome()` sums all planet taxes + corp taxes
-- Action: `addExpense(source, amount)` tracks expense by source
-- Action: `applyDebt(deficit)` creates debt tokens: `floor(deficit / 3)`, min 1, capped at 10 total
-- Action: `clearDebtToken()` removes 1 token, costs 1 BP
-- Getter: `netBP` returns income - expenses
-- Getter: `stabilityMalus` returns `floor(debtTokens / 2)`
-- Initializes with 10 BP, income from Terra Nova
 
 ### Story 5.3: Budget Display 🖥️
 **Description**: Show budget information in the header and on the dashboard.
-
 **Files**: `src/composables/useBudgetDisplay.ts`, update `AppHeader.vue`, update `DashboardView.vue`
-
-**Acceptance Criteria**:
-- Header shows: current BP (prominent), income/turn, expenses/turn, net/turn
-- BP display color-coded: green (positive net), yellow (near zero), red (deficit)
-- Dashboard shows itemized income breakdown (per colony, per corp)
-- Dashboard shows itemized expense breakdown (per contract, per mission)
-- Debt tokens displayed if any exist, with stability malus warning
 
 ---
 
