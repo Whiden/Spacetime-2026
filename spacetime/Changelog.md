@@ -278,6 +278,36 @@
 
 ## Epic 3: Galaxy Generation & Sectors
 
+### Story 3.3 — Galaxy Store (2026-02-17)
+
+**What changed:**
+- Created `src/stores/galaxy.store.ts` — Pinia store for galaxy state
+- Updated `src/types/sector.ts` — resolved completed TODOs for Stories 3.1-3.3
+
+**Store API:**
+- **State**: `sectors` (Map by ID), `adjacency` (Map of connections), `startingSectorId`
+- **Action**: `generate()` — calls galaxy generator, stores result
+- **Action**: `updateSector(sector)` — updates a sector (e.g., after exploration)
+- **Getter**: `getSector(id)` — returns sector by ID
+- **Getter**: `getAdjacentSectors(id)` — returns adjacent sector IDs
+- **Getter**: `allSectors` — all sectors sorted by name
+- **Getter**: `startingSector` — the starting sector object
+- **Getter**: `explorableSectors` — sectors adjacent to those with player presence, not yet at 100% explored
+
+**Notes:**
+- `explorableSectors` currently uses starting sector as the only presence. Colony and fleet store integration deferred to Stories 4.3 and 15.4 (noted with TODOs).
+
+**Acceptance criteria met:**
+- Holds sectors and adjacency map ✓
+- Action: `generate()` calls galaxy generator, stores result ✓
+- Getter: `getSector(id)` returns sector by ID ✓
+- Getter: `getAdjacentSectors(id)` returns adjacent sector IDs ✓
+- Getter: `explorableSectors` returns sectors adjacent to those with player presence ✓
+- `npm run test:unit` — 101/101 tests pass ✓
+- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
+
+---
+
 ### Story 3.2 — Galaxy Generator (2026-02-17)
 
 **What changed:**
