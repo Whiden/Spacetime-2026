@@ -4,6 +4,37 @@
 
 ## Epic 7: Contract System
 
+### Story 7.2 — Contract Store (2026-02-18)
+
+**What changed:**
+- Created `src/stores/contract.store.ts` — Pinia store for all contracts
+- Updated `src/stores/budget.store.ts` — added `removeContractExpense(contractId)` to clean up BP/turn entries on contract completion/failure
+- Updated `src/components/corporation/CorpHistory.vue` — wired to contract store; shows active (indigo dot) and completed (green dot) contracts per corp
+
+**Store API:**
+- **State**: `contracts` (Map by ID)
+- **Computed**: `activeContracts`, `completedContracts`, `failedContracts`, `totalContractExpenses`
+- **Getters**: `getContract(id)`, `contractsByColony(colonyId)`, `contractsByCorp(corpId)`
+- **Actions**: `createNewContract(params)` calls engine, adds to store, registers BP/turn expense in budget; `advanceContract(id, turn)` decrements turnsRemaining, auto-completes at 0; `completeContract(id, turn)` marks Completed and removes expense; `failContract(id)` marks Failed and removes expense
+
+**Key design decisions:**
+- `createNewContract` delegates all validation to `createContract()` engine action, returning the same success/failure shape to the UI
+- BP/turn expense registered immediately on creation; removed on completion/failure so `totalExpenses` stays accurate in real time
+- `contractsByCorp` returns both active and completed (for history display); `contractsByColony` is active-only
+- Trade route ongoing sentinel (9999 turns) transparent to the store — future cancel action will call `failContract`
+
+**Acceptance criteria met:**
+- Holds active, completed, and failed contracts ✓
+- Action: `createNewContract(params)` calls engine, adds to active list, registers BP/turn in budget ✓
+- Action: `advanceContract(id)` decrements turns remaining, checks completion ✓
+- Action: `completeContract(id)` moves to completed, removes budget expense ✓
+- Getter: `activeContracts`, `contractsByColony(id)`, `contractsByCorp(id)` ✓
+- `CorpHistory.vue` now shows active and completed contracts from the store ✓
+- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
+- `npx vitest run` — 261/261 tests pass ✓
+
+---
+
 ### Story 7.1 — Contract Engine: Creation & Validation (2026-02-18)
 
 **What changed:**

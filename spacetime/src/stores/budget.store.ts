@@ -132,6 +132,18 @@ export const useBudgetStore = defineStore('budget', () => {
   }
 
   /**
+   * Removes a single contract expense entry when a contract completes or fails.
+   * Keeps all other expense entries intact.
+   *
+   * @param contractId - The contract whose expense to remove
+   */
+  function removeContractExpense(contractId: ContractId) {
+    expenseEntries.value = expenseEntries.value.filter(
+      (e) => !(e.type === 'contract' && e.sourceId === contractId),
+    )
+  }
+
+  /**
    * Creates debt tokens from a deficit.
    * Tokens gained = floor(deficit / 3), minimum 1 if any deficit exists.
    * Total tokens capped at MAX_DEBT_TOKENS (10).
@@ -181,6 +193,7 @@ export const useBudgetStore = defineStore('budget', () => {
     calculateIncome,
     addExpense,
     clearExpenses,
+    removeContractExpense,
     applyDebt,
     clearDebtToken,
     adjustBP,
