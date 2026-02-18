@@ -485,30 +485,8 @@ describe('calculateGrowthPerTurn', () => {
 // ─── calculateInfraCap ────────────────────────────────────────────────────────
 
 describe('calculateInfraCap', () => {
-  it('returns Infinity for Civilian domain (always uncapped)', () => {
-    expect(calculateInfraCap(7, InfraDomain.Civilian, zeroCaps(), [])).toBe(Infinity)
-    expect(calculateInfraCap(1, InfraDomain.Civilian, zeroCaps(), [])).toBe(Infinity)
-  })
-
-  it('computes pop × 2 base cap for industry domains', () => {
-    // pop=7 → base=14
-    expect(calculateInfraCap(7, InfraDomain.LowIndustry, zeroCaps(), [])).toBe(14)
-    expect(calculateInfraCap(7, InfraDomain.HeavyIndustry, zeroCaps(), [])).toBe(14)
-    expect(calculateInfraCap(7, InfraDomain.HighTechIndustry, zeroCaps(), [])).toBe(14)
-    expect(calculateInfraCap(7, InfraDomain.SpaceIndustry, zeroCaps(), [])).toBe(14)
-    expect(calculateInfraCap(7, InfraDomain.Transport, zeroCaps(), [])).toBe(14)
-    expect(calculateInfraCap(7, InfraDomain.Science, zeroCaps(), [])).toBe(14)
-    expect(calculateInfraCap(7, InfraDomain.Military, zeroCaps(), [])).toBe(14)
-  })
-
-  it('computes pop × 2 base cap for extraction domains', () => {
-    // Note: deposit richness cap is applied separately in colony-sim.ts
-    // calculateInfraCap only returns the population-derived cap
-    expect(calculateInfraCap(5, InfraDomain.Mining, zeroCaps(), [])).toBe(10)
-    expect(calculateInfraCap(5, InfraDomain.DeepMining, zeroCaps(), [])).toBe(10)
-    expect(calculateInfraCap(5, InfraDomain.GasExtraction, zeroCaps(), [])).toBe(10)
-    expect(calculateInfraCap(5, InfraDomain.Agricultural, zeroCaps(), [])).toBe(10)
-  })
+  // Base formula (Civilian=Infinity, pop×2) is covered in production.test.ts.
+  // These tests focus on empire bonuses and local feature modifiers.
 
   it('adds empire bonus from EmpireInfraCapBonuses', () => {
     const caps: EmpireInfraCapBonuses = { ...zeroCaps(), maxMining: 5 }
@@ -546,13 +524,6 @@ describe('calculateInfraCap', () => {
     const pop = 5
     expect(calculateInfraCap(pop, InfraDomain.Mining, zeroCaps(), mods)).toBe(15)
     expect(calculateInfraCap(pop, InfraDomain.DeepMining, zeroCaps(), mods)).toBe(10)
-  })
-
-  it('cap scales with population level', () => {
-    for (let pop = 1; pop <= 10; pop++) {
-      const expected = pop * 2
-      expect(calculateInfraCap(pop, InfraDomain.LowIndustry, zeroCaps(), [])).toBe(expected)
-    }
   })
 
   it('always returns non-negative integer for non-Civilian domains', () => {

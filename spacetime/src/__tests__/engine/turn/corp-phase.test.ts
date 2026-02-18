@@ -420,38 +420,13 @@ describe('resolveCorpPhase', () => {
   })
 
   // ── Acquisition ──────────────────────────────────────────────────────────
+  //
+  // Acquisition eligibility, capital requirements, and asset merging logic
+  // are tested in corp-ai.test.ts. Here we test orchestration-specific
+  // behaviour: removal from state and skip-if-absorbed.
 
   describe('acquisition', () => {
-    it('removes the acquired corporation from the updated state', () => {
-      // Buyer at level 8, target at level 4 → gap is 4 (>= 3: target cannot refuse).
-      // Buyer capital must be >= target.level × 5 = 4 × 5 = 20.
-      // No market deficits, so the only action is acquisition.
-
-      // Give the target some infra so it's not empty (more attractive target)
-      const targetHoldings = new Map<ColonyId, CorpInfrastructureHoldings>()
-      targetHoldings.set(COLONY_B, { [InfraDomain.Mining]: 3 })
-
-      const buyer  = makeCorp(CORP_HIGH, CorpType.Industrial, 8, 22) // 22 >= 4 × 5
-      const target = makeCorp(CORP_TARGET, CorpType.Industrial, 4, 0, targetHoldings, [PLANET_B])
-
-      const colony = makeColony(COLONY_B, PLANET_B, SECTOR_ID, makeInfra())
-      const planet = makePlanet(PLANET_B, SECTOR_ID)
-
-      const state = makeState({
-        colonies: [colony],
-        planets: [planet],
-        corporations: [buyer, target],
-      })
-
-      const result = resolveCorpPhase(state)
-
-      // Target should be gone
-      expect(result.updatedState.corporations.has(CORP_TARGET)).toBe(false)
-      // Buyer should still be present
-      expect(result.updatedState.corporations.has(CORP_HIGH)).toBe(true)
-    })
-
-    it('merges acquired corp assets into buyer and increments buyer level', () => {
+    it('removes acquired corp, merges assets into buyer, and increments level', () => {
       const targetHoldings = new Map<ColonyId, CorpInfrastructureHoldings>()
       targetHoldings.set(COLONY_B, { [InfraDomain.Mining]: 3 })
 
@@ -468,22 +443,19 @@ describe('resolveCorpPhase', () => {
       })
 
       const result = resolveCorpPhase(state)
+
+      // Target removed, buyer remains
+      expect(result.updatedState.corporations.has(CORP_TARGET)).toBe(false)
+      expect(result.updatedState.corporations.has(CORP_HIGH)).toBe(true)
+
+      // Buyer gains 1 level and inherits target's assets
       const updatedBuyer = result.updatedState.corporations.get(CORP_HIGH)!
-
-      // Buyer gains 1 level (8 → 9)
       expect(updatedBuyer.level).toBe(9)
-
-      // Buyer now owns the target's infrastructure
-      const mergedHoldings = updatedBuyer.assets.infrastructureByColony.get(COLONY_B)
-      expect(mergedHoldings?.[InfraDomain.Mining]).toBe(3)
-
-      // Target's planet is now in buyer's planetsPresent
+      expect(updatedBuyer.assets.infrastructureByColony.get(COLONY_B)?.[InfraDomain.Mining]).toBe(3)
       expect(updatedBuyer.planetsPresent).toContain(PLANET_B)
 
       // Acquisition event generated
-      expect(result.events.length).toBeGreaterThan(0)
-      const acquisitionEvent = result.events.find((e) => e.title.includes('acquired'))
-      expect(acquisitionEvent).toBeDefined()
+      expect(result.events.find((e) => e.title.includes('acquired'))).toBeDefined()
     })
 
     it('skips the absorbed corp if it appears later in the processing queue', () => {

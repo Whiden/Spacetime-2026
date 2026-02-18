@@ -488,9 +488,9 @@ describe('resolveColonyPhase', () => {
 
   // ── Growth tick ───────────────────────────────────────────────────────────
   //
-  // applyGrowthTick adds growthPerTurn to the existing growth accumulator.
-  // colony-phase preserves the existing growth in colony.attributes.growth
-  // before passing to applyGrowthTick.
+  // Boundary conditions for growth accumulation and thresholds are tested in
+  // colony-sim.test.ts (applyGrowthTick unit tests). Here we only verify
+  // integration: growth accumulates through the full phase pipeline.
 
   describe('growth tick', () => {
     it('accumulates growth each turn without a transition', () => {
@@ -506,39 +506,20 @@ describe('resolveColonyPhase', () => {
 
       expect(updated.populationLevel).toBe(3)  // unchanged
       expect(updated.attributes.growth).toBe(6) // 2 + 4
-      // No pop transition events (only attribute warnings or none)
       const popEvents = events.filter((e) => e.title.includes('Population'))
       expect(popEvents).toHaveLength(0)
-    })
-
-    it('does not level up when growth threshold is not reached', () => {
-      // growth = 5 + growthPerTurn ~4 = 9 — just below 10
-      const infra = makeInfra({ [InfraDomain.Civilian]: 10 }) // plenty of civilian infra
-      const colony = makeColony(COLONY_A, PLANET_A, SECTOR_ID, infra, 2, 5)
-      const planet = makePlanet(PLANET_A, SECTOR_ID, [], 8, PlanetSize.Large)
-      const state = makeState({ colonies: [colony], planets: [planet] })
-
-      const { updatedState } = resolveColonyPhase(state)
-      const updated = updatedState.colonies.get(COLONY_A)!
-
-      // growthPerTurn for pop=2: floor((10+10+3)/3) - 3 = 4
-      // newGrowth = 5 + 4 = 9 < 10 → no level up
-      expect(updated.populationLevel).toBe(2)
-      expect(updated.attributes.growth).toBe(9)
     })
   })
 
   // ── Population level-up ───────────────────────────────────────────────────
   //
-  // Planet: Continental, Large (maxPop=9), baseHab=8, no deposits.
-  // Colony: pop=2, growth=7, civilian infra=6 (≥ (2+1)×2=6).
-  // growthPerTurn (hab=8, access=3, qol=10, stab=10):
-  //   = floor((10+10+3)/3) - 3 - 0 = 7 - 3 = 4
-  // newGrowth = 7 + 4 = 11 ≥ 10, civilian ok → level up → pop=3, growth=0.
+  // Boundary conditions (civilian infra check, planet size cap) are covered
+  // in colony-sim.test.ts. Here we verify the phase emits the correct event.
 
   describe('population level-up', () => {
-    it('increments population level when growth ≥ 10 and civilian infra sufficient', () => {
-      const infra = makeInfra({ [InfraDomain.Civilian]: 6 }) // 6 ≥ (2+1)×2 = 6
+    it('increments population and emits Positive event on level-up', () => {
+      // pop=2, growth=7, civilian=6 ≥ (2+1)×2=6; growthPerTurn=4 → 11 ≥ 10
+      const infra = makeInfra({ [InfraDomain.Civilian]: 6 })
       const colony = makeColony(COLONY_A, PLANET_A, SECTOR_ID, infra, 2, 7)
       const planet = makePlanet(PLANET_A, SECTOR_ID, [], 8, PlanetSize.Large)
       const state = makeState({ colonies: [colony], planets: [planet] })
@@ -546,17 +527,8 @@ describe('resolveColonyPhase', () => {
       const { updatedState, events } = resolveColonyPhase(state)
       const updated = updatedState.colonies.get(COLONY_A)!
 
-      expect(updated.populationLevel).toBe(3)     // 2 → 3
-      expect(updated.attributes.growth).toBe(0)   // reset to 0
-    })
-
-    it('emits a Positive population growth event on level-up', () => {
-      const infra = makeInfra({ [InfraDomain.Civilian]: 6 })
-      const colony = makeColony(COLONY_A, PLANET_A, SECTOR_ID, infra, 2, 7)
-      const planet = makePlanet(PLANET_A, SECTOR_ID, [], 8, PlanetSize.Large)
-      const state = makeState({ colonies: [colony], planets: [planet] })
-
-      const { events } = resolveColonyPhase(state)
+      expect(updated.populationLevel).toBe(3)
+      expect(updated.attributes.growth).toBe(0)
 
       const popEvents = events.filter((e) => e.title.includes('Population Growth'))
       expect(popEvents).toHaveLength(1)
@@ -564,85 +536,32 @@ describe('resolveColonyPhase', () => {
       expect(popEvents[0]!.category).toBe('colony')
       expect(popEvents[0]!.relatedEntityIds).toContain(COLONY_A)
     })
-
-    it('does not level up when civilian infra is insufficient', () => {
-      // Need 6 civilian levels for pop 2 → 3, but only have 4
-      const infra = makeInfra({ [InfraDomain.Civilian]: 4 }) // 4 < (2+1)×2=6
-      const colony = makeColony(COLONY_A, PLANET_A, SECTOR_ID, infra, 2, 7)
-      const planet = makePlanet(PLANET_A, SECTOR_ID, [], 8, PlanetSize.Large)
-      const state = makeState({ colonies: [colony], planets: [planet] })
-
-      const { updatedState, events } = resolveColonyPhase(state)
-      const updated = updatedState.colonies.get(COLONY_A)!
-
-      expect(updated.populationLevel).toBe(2)     // no change
-      expect(updated.attributes.growth).toBe(11)  // 7 + 4 — accumulates above 10
-      expect(events.filter((e) => e.title.includes('Population Growth'))).toHaveLength(0)
-    })
-
-    it('does not level up when already at planet size cap', () => {
-      // Tiny planet: maxPopLevel = 4, colony already at 4
-      const infra = makeInfra({ [InfraDomain.Civilian]: 20 })
-      const colony = makeColony(COLONY_A, PLANET_A, SECTOR_ID, infra, 4, 7)
-      const planet = makePlanet(PLANET_A, SECTOR_ID, [], 8, PlanetSize.Tiny)
-      const state = makeState({ colonies: [colony], planets: [planet] })
-
-      const { updatedState, events } = resolveColonyPhase(state)
-      const updated = updatedState.colonies.get(COLONY_A)!
-
-      expect(updated.populationLevel).toBe(4) // capped at planet max
-      expect(events.filter((e) => e.title.includes('Population Growth'))).toHaveLength(0)
-    })
   })
 
   // ── Population level-down ─────────────────────────────────────────────────
   //
-  // Colony: pop=3, growth=-9 (heavy accumulated negative growth).
-  // Planet: Continental, Large, baseHab=8.
-  // growthPerTurn (good conditions) ≈ 4, newGrowth = -9 + 4 = -5 ≤ -1 → level down.
-  // pop 3 > 1 → decline is valid.
+  // Boundary conditions (pop=1 floor) covered in colony-sim.test.ts.
+  // Here we verify the phase emits the correct event.
 
   describe('population level-down', () => {
-    it('decrements population level when growth ≤ -1 and pop > 1', () => {
+    it('decrements population and emits Warning event on level-down', () => {
+      // pop=3, growth=-9, growthPerTurn≈4 → newGrowth=-5 ≤ -1 → pop 3→2
       const infra = makeInfra()
       const colony = makeColony(COLONY_A, PLANET_A, SECTOR_ID, infra, 3, -9)
       const planet = makePlanet(PLANET_A, SECTOR_ID, [], 8, PlanetSize.Large)
       const state = makeState({ colonies: [colony], planets: [planet] })
 
-      const { updatedState } = resolveColonyPhase(state)
+      const { updatedState, events } = resolveColonyPhase(state)
       const updated = updatedState.colonies.get(COLONY_A)!
 
-      expect(updated.populationLevel).toBe(2)    // 3 → 2
-      expect(updated.attributes.growth).toBe(9)  // reset to 9
-    })
-
-    it('emits a Warning population decline event on level-down', () => {
-      const infra = makeInfra()
-      const colony = makeColony(COLONY_A, PLANET_A, SECTOR_ID, infra, 3, -9)
-      const planet = makePlanet(PLANET_A, SECTOR_ID, [], 8, PlanetSize.Large)
-      const state = makeState({ colonies: [colony], planets: [planet] })
-
-      const { events } = resolveColonyPhase(state)
+      expect(updated.populationLevel).toBe(2)
+      expect(updated.attributes.growth).toBe(9)
 
       const popEvents = events.filter((e) => e.title.includes('Population Decline'))
       expect(popEvents).toHaveLength(1)
       expect(popEvents[0]!.priority).toBe(EventPriority.Warning)
       expect(popEvents[0]!.category).toBe('colony')
       expect(popEvents[0]!.relatedEntityIds).toContain(COLONY_A)
-    })
-
-    it('does not level down when pop is already at 1', () => {
-      // pop = 1 — cannot go lower
-      const infra = makeInfra()
-      const colony = makeColony(COLONY_A, PLANET_A, SECTOR_ID, infra, 1, -9)
-      const planet = makePlanet(PLANET_A, SECTOR_ID, [], 8, PlanetSize.Large)
-      const state = makeState({ colonies: [colony], planets: [planet] })
-
-      const { updatedState, events } = resolveColonyPhase(state)
-      const updated = updatedState.colonies.get(COLONY_A)!
-
-      expect(updated.populationLevel).toBe(1) // floor at 1
-      expect(events.filter((e) => e.title.includes('Population Decline'))).toHaveLength(0)
     })
   })
 

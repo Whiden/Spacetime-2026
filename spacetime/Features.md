@@ -145,66 +145,17 @@ Create Pinia store for market state.
 ### Story 9.4: Market View 🖥️
 Display sector market dashboard.
 
----
-
 ## Epic 10: Colony Simulation
-
 > Implement colony attribute calculation, population growth, and organic infrastructure growth. Colonies become living, evolving entities.
 
 ### Story 10.1: Attribute Formulas 🔧🧪
-**Description**: Implement all colony attribute calculations.
-
-**Files**: `src/engine/formulas/attributes.ts`
-
-**Acceptance Criteria**:
-- All attribute functions use `resolveModifiers` for local per-entity bonuses (planet features, colony type)
-- All attribute functions read empire-wide values directly from state (debt tokens, empire bonuses) — not from modifiers
-- `calculateHabitability(basePlanetHab, colonyModifiers)`: resolves base through local modifiers targeting 'habitability'
-- `calculateAccessibility(transportInfra, colonyModifiers)`: resolves `3 + floor(transport/2)` through local modifiers targeting 'accessibility'
-- `calculateStability(...)`: reads `gameState.debtTokens` directly for debt malus, uses local modifiers for everything else
-- `calculateInfraCap(popLevel, domain, empireBonuses, colonyModifiers)`: base is `popLevel × 2 + empireBonuses.infraCaps[domain]`, then resolves through local modifiers for planet feature bonuses (e.g., Mineral Veins +5 max Mining)
-- Formula implementations match Specs.md Section 5
-- Unit tests verify that local modifiers and empire bonuses combine correctly, that debt is read from state not modifiers
-
+Implement all colony attribute calculations.
 ### Story 10.2: Colony Simulation — Growth & Population 🔧🧪
-**Description**: Implement population growth logic and organic infrastructure growth.
-
-**Files**: `src/engine/simulation/colony-sim.ts` (growth section), `src/engine/formulas/growth.ts` (colony section)
-
-**Acceptance Criteria**:
-- Growth accumulates each turn based on growth formula
-- At growth 10 + civilian infra requirement met → pop level +1, growth resets to 0
-- At growth -1 → pop level -1, growth resets to 9
-- Population capped by planet size max
-- Organic infra growth: `dynamism × 5%` chance per turn, +1 to random demand-weighted domain
-- Unit tests: growth accumulation, level up trigger, level down trigger, pop cap, organic growth probability
-
+Implement population growth logic and organic
 ### Story 10.3: Colony Phase — Turn Resolution 🔧🧪
-**Description**: Integrate colony simulation into turn resolution.
-
-**Files**: `src/engine/turn/colony-phase.ts`
-
-**Acceptance Criteria**:
-- Recalculates all attributes for every colony (using current market data, infra, etc.)
-- Applies growth tick
-- Checks population level transitions
-- Checks organic infrastructure growth
-- Returns updated colonies + events (population milestones, attribute warnings)
-- Unit tests: full colony turn with attribute changes, population growth event
-
+Integrate colony simulation into turn resolution.
 ### Story 10.4: Colony UI Updates 🖥️
-**Description**: Update colony views to show live simulation data.
-
-**Files**: Update `ColonyCard.vue`, `ColonyDetailView.vue`, `AttributePanel.vue`
-
-**Acceptance Criteria**:
-- Attribute panel shows current value + trend arrow (up/down/stable compared to last turn)
-- Growth bar shows progress toward next population level
-- Population level shown with progress indicator
-- Tooltips on each attribute explain current value derivation (e.g., "QoL: 10 base, -2 food shortage = 8")
-- Warnings shown for declining attributes
-
----
+Update colony views to show live simulation data.
 
 ## Epic 11: Corporation AI
 

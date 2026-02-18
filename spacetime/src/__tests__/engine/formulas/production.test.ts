@@ -149,68 +149,43 @@ describe('calculateIndustrialInput', () => {
   })
 })
 
-// ─── calculateFoodConsumption ─────────────────────────────────────────────────
+// ─── Population consumption (Food, Consumer Goods, TC) ──────────────────────
+//
+// All three functions share the same formula: popLevel × 1.
+// Tested together to reduce duplication while maintaining full coverage.
 
-describe('calculateFoodConsumption', () => {
+describe.each([
+  { name: 'calculateFoodConsumption', fn: calculateFoodConsumption },
+  { name: 'calculateConsumerGoodsConsumption', fn: calculateConsumerGoodsConsumption },
+  { name: 'calculateTCConsumption', fn: calculateTCConsumption },
+])('$name', ({ fn }) => {
   it('returns 0 for pop level 0 (uninhabited)', () => {
-    expect(calculateFoodConsumption(0)).toBe(0)
+    expect(fn(0)).toBe(0)
   })
 
   it('returns popLevel × 1 (acceptance criterion)', () => {
-    expect(calculateFoodConsumption(1)).toBe(1)
-    expect(calculateFoodConsumption(3)).toBe(3)
-    expect(calculateFoodConsumption(5)).toBe(5)
-    expect(calculateFoodConsumption(7)).toBe(7)
-    expect(calculateFoodConsumption(10)).toBe(10)
+    expect(fn(1)).toBe(1)
+    expect(fn(3)).toBe(3)
+    expect(fn(5)).toBe(5)
+    expect(fn(7)).toBe(7)
+    expect(fn(10)).toBe(10)
   })
 
   it('scales linearly with population level', () => {
     for (let pop = 1; pop <= 10; pop++) {
-      expect(calculateFoodConsumption(pop)).toBe(pop)
+      expect(fn(pop)).toBe(pop)
     }
   })
 })
 
-// ─── calculateConsumerGoodsConsumption ────────────────────────────────────────
-
-describe('calculateConsumerGoodsConsumption', () => {
-  it('returns 0 for pop level 0 (uninhabited)', () => {
-    expect(calculateConsumerGoodsConsumption(0)).toBe(0)
-  })
-
-  it('returns popLevel × 1 (acceptance criterion)', () => {
-    expect(calculateConsumerGoodsConsumption(1)).toBe(1)
-    expect(calculateConsumerGoodsConsumption(3)).toBe(3)
-    expect(calculateConsumerGoodsConsumption(5)).toBe(5)
-    expect(calculateConsumerGoodsConsumption(7)).toBe(7)
-    expect(calculateConsumerGoodsConsumption(10)).toBe(10)
-  })
-
-  it('food and consumer goods consumption are now equal (both popLevel × 1)', () => {
+describe('population consumption contract', () => {
+  it('all three consumption functions return identical values at every pop level', () => {
     for (let pop = 0; pop <= 10; pop++) {
-      expect(calculateConsumerGoodsConsumption(pop)).toBe(calculateFoodConsumption(pop))
-    }
-  })
-})
-
-// ─── calculateTCConsumption ───────────────────────────────────────────────────
-
-describe('calculateTCConsumption', () => {
-  it('returns 0 for pop level 0 (uninhabited)', () => {
-    expect(calculateTCConsumption(0)).toBe(0)
-  })
-
-  it('returns popLevel (acceptance criterion)', () => {
-    expect(calculateTCConsumption(1)).toBe(1)
-    expect(calculateTCConsumption(3)).toBe(3)
-    expect(calculateTCConsumption(5)).toBe(5)
-    expect(calculateTCConsumption(7)).toBe(7)
-    expect(calculateTCConsumption(10)).toBe(10)
-  })
-
-  it('TC consumption equals consumer goods consumption at each level', () => {
-    for (let pop = 0; pop <= 10; pop++) {
-      expect(calculateTCConsumption(pop)).toBe(calculateConsumerGoodsConsumption(pop))
+      const food = calculateFoodConsumption(pop)
+      const cg = calculateConsumerGoodsConsumption(pop)
+      const tc = calculateTCConsumption(pop)
+      expect(cg).toBe(food)
+      expect(tc).toBe(food)
     }
   })
 })

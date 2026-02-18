@@ -37,40 +37,18 @@ describe('generateId', () => {
 })
 
 describe('Typed ID generators', () => {
-  it('generateColonyId returns id starting with col_', () => {
-    expect(generateColonyId().startsWith('col_')).toBe(true)
-  })
-
-  it('generateCorpId returns id starting with corp_', () => {
-    expect(generateCorpId().startsWith('corp_')).toBe(true)
-  })
-
-  it('generateContractId returns id starting with ctr_', () => {
-    expect(generateContractId().startsWith('ctr_')).toBe(true)
-  })
-
-  it('generateShipId returns id starting with ship_', () => {
-    expect(generateShipId().startsWith('ship_')).toBe(true)
-  })
-
-  it('generateMissionId returns id starting with msn_', () => {
-    expect(generateMissionId().startsWith('msn_')).toBe(true)
-  })
-
-  it('generateSectorId returns id starting with sec_', () => {
-    expect(generateSectorId().startsWith('sec_')).toBe(true)
-  })
-
-  it('generatePlanetId returns id starting with pln_', () => {
-    expect(generatePlanetId().startsWith('pln_')).toBe(true)
-  })
-
-  it('generateEventId returns id starting with evt_', () => {
-    expect(generateEventId().startsWith('evt_')).toBe(true)
-  })
-
-  it('generateModifierId returns id starting with mod_', () => {
-    expect(generateModifierId().startsWith('mod_')).toBe(true)
+  it.each([
+    ['generateColonyId', generateColonyId, 'col_'],
+    ['generateCorpId', generateCorpId, 'corp_'],
+    ['generateContractId', generateContractId, 'ctr_'],
+    ['generateShipId', generateShipId, 'ship_'],
+    ['generateMissionId', generateMissionId, 'msn_'],
+    ['generateSectorId', generateSectorId, 'sec_'],
+    ['generatePlanetId', generatePlanetId, 'pln_'],
+    ['generateEventId', generateEventId, 'evt_'],
+    ['generateModifierId', generateModifierId, 'mod_'],
+  ] as const)('%s returns id starting with %s', (_name, fn, prefix) => {
+    expect(fn().startsWith(prefix)).toBe(true)
   })
 
   it('all typed generators produce unique IDs', () => {

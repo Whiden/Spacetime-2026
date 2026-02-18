@@ -277,52 +277,21 @@ describe('calculateEmergenceChance', () => {
 })
 
 describe('determineCorpTypeFromDomain', () => {
-  it('maps Agricultural to Agriculture', () => {
-    expect(determineCorpTypeFromDomain(InfraDomain.Agricultural)).toBe(CorpType.Agriculture)
-  })
-
-  it('maps Mining to Exploitation', () => {
-    expect(determineCorpTypeFromDomain(InfraDomain.Mining)).toBe(CorpType.Exploitation)
-  })
-
-  it('maps DeepMining to Exploitation', () => {
-    expect(determineCorpTypeFromDomain(InfraDomain.DeepMining)).toBe(CorpType.Exploitation)
-  })
-
-  it('maps GasExtraction to Exploitation', () => {
-    expect(determineCorpTypeFromDomain(InfraDomain.GasExtraction)).toBe(CorpType.Exploitation)
-  })
-
-  it('maps Civilian to Construction', () => {
-    expect(determineCorpTypeFromDomain(InfraDomain.Civilian)).toBe(CorpType.Construction)
-  })
-
-  it('maps LowIndustry to Industrial', () => {
-    expect(determineCorpTypeFromDomain(InfraDomain.LowIndustry)).toBe(CorpType.Industrial)
-  })
-
-  it('maps HeavyIndustry to Industrial', () => {
-    expect(determineCorpTypeFromDomain(InfraDomain.HeavyIndustry)).toBe(CorpType.Industrial)
-  })
-
-  it('maps HighTechIndustry to Industrial', () => {
-    expect(determineCorpTypeFromDomain(InfraDomain.HighTechIndustry)).toBe(CorpType.Industrial)
-  })
-
-  it('maps SpaceIndustry to Shipbuilding', () => {
-    expect(determineCorpTypeFromDomain(InfraDomain.SpaceIndustry)).toBe(CorpType.Shipbuilding)
-  })
-
-  it('maps Science to Science', () => {
-    expect(determineCorpTypeFromDomain(InfraDomain.Science)).toBe(CorpType.Science)
-  })
-
-  it('maps Transport to Transport', () => {
-    expect(determineCorpTypeFromDomain(InfraDomain.Transport)).toBe(CorpType.Transport)
-  })
-
-  it('maps Military to Military', () => {
-    expect(determineCorpTypeFromDomain(InfraDomain.Military)).toBe(CorpType.Military)
+  it.each([
+    [InfraDomain.Agricultural, CorpType.Agriculture],
+    [InfraDomain.Mining, CorpType.Exploitation],
+    [InfraDomain.DeepMining, CorpType.Exploitation],
+    [InfraDomain.GasExtraction, CorpType.Exploitation],
+    [InfraDomain.Civilian, CorpType.Construction],
+    [InfraDomain.LowIndustry, CorpType.Industrial],
+    [InfraDomain.HeavyIndustry, CorpType.Industrial],
+    [InfraDomain.HighTechIndustry, CorpType.Industrial],
+    [InfraDomain.SpaceIndustry, CorpType.Shipbuilding],
+    [InfraDomain.Science, CorpType.Science],
+    [InfraDomain.Transport, CorpType.Transport],
+    [InfraDomain.Military, CorpType.Military],
+  ])('maps %s to %s', (domain, expectedType) => {
+    expect(determineCorpTypeFromDomain(domain)).toBe(expectedType)
   })
 })
 
