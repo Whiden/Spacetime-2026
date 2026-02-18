@@ -4,6 +4,33 @@
 
 ## Epic 12: Turn Resolution Pipeline
 
+### Story 12.4 — Game Store & End Turn Flow (2026-02-18)
+
+**What changed:**
+- Created `src/stores/game.store.ts` — master game store that orchestrates turn resolution and state distribution.
+- Created `src/__tests__/stores/game.store.test.ts` — 28 unit tests covering all acceptance criteria.
+
+**Actions implemented:**
+
+- `initializeGame()` — generates galaxy, creates Terra Nova (planet + colony), initializes budget, spawns 4 starting corporations (1 Exploration, 1 Construction, 2 Science each owning 1 Science infra level on Terra Nova), sets turn 1 and player_action phase.
+- `getFullGameState()` — assembles `GameState` from all domain stores (galaxy, colonies, planets, corporations, contracts, budget, market).
+- `endTurn()` — transitions through resolving phase, calls `resolveTurn()`, distributes results back to all domain stores via `$patch` and store actions, increments turn, transitions to reviewing phase.
+- `acknowledgeResults()` — transitions from reviewing → player_action.
+
+**Getters:** `currentTurn`, `gamePhase`
+
+**Test scenarios:**
+- Initial state: turn 1, player_action phase
+- `initializeGame()`: galaxy generated, Terra Nova colony created, budget = 10 BP, 4 corps spawned (correct types, level 1, Science corps own infra)
+- `getFullGameState()`: all entities present in assembled state
+- `endTurn()`: turn increments, phase transitions, no-op when not in player_action
+- `acknowledgeResults()`: reviewing → player_action, no-op otherwise
+- Multi-turn: sequential end-turn cycles work correctly
+
+**Test status**: 754/754 tests passing
+
+---
+
 ### Story 12.3 — Debt Phase (2026-02-18)
 
 **What changed:**

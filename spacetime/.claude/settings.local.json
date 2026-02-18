@@ -3,7 +3,8 @@
     "allow": [
       "Bash(npx vue-tsc:*)",
       "Bash(npx vitest run:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }
