@@ -4,6 +4,46 @@
 
 ## Epic 8: Infrastructure & Production
 
+### Story 8.2 — Colony Resource Flow Calculator (2026-02-18)
+
+**What changed:**
+- Created `src/engine/simulation/colony-sim.ts` — `calculateColonyResourceFlow(colony, deposits)`
+- Created `src/__tests__/engine/simulation/colony-sim.test.ts` — 25 unit tests
+
+**Function implemented:**
+- `calculateColonyResourceFlow(colony: Colony, deposits: Deposit[]): ColonyResourceSummary`
+- Returns a `ResourceFlow` (produced / consumed / surplus / imported / inShortage) for all 9 `ResourceType` values
+
+**Processing order inside the function:**
+1. Resolve extraction output modifiers via `resolveModifiers('miningOutput', ...)` etc.
+2. Extract production: food, common materials, rare materials, volatiles — gated by deposit presence
+3. Tier-1 manufacturing (LowIndustry, HeavyIndustry, HighTechIndustry): compare extracted supply to total demand → set `hasInputs` flag → `calculateManufacturing(level, hasInputs)`
+4. Tier-2 manufacturing (SpaceIndustry): compare tier-1 outputs to space demand → cascade shortage → halved if insufficient
+5. Transport: 1 TC per level (no inputs)
+6. Population consumption: `calculateFoodConsumption / calculateConsumerGoodsConsumption / calculateTCConsumption`
+7. Assemble `ColonyResourceSummary` — `imported=0`, `inShortage=false` until market phase (Story 9.1)
+
+**Key design decisions:**
+- Extraction requires a matching deposit (`hasDepositFor` guard) — defensive even though the generator enforces this
+- Shortage detected at the pooled level: if CommonMaterials supply < LowIndustry + HeavyIndustry demand combined → both industries halved
+- `consumed` tracks full demand (not actual throughput) — `surplus = produced − consumed` exposes the deficit for the market to fill
+- Transport Capacity is produced and consumed locally; `inShortage` for TC set by market-phase.ts (Story 9.2)
+- TODOs added for Story 9.1 (`imported` / `inShortage`) and Story 10.2 (growth section)
+
+**Acceptance criteria met:**
+- Takes colony + infrastructure + deposits as input ✓
+- Returns per-resource: production amount, consumption amount, surplus/deficit ✓
+- Handles extraction (deposit-dependent, with output modifiers) ✓
+- Handles manufacturing (input-dependent, hasInputs flag) ✓
+- Handles shortage cascading: Common Materials shortage → Low Industry halved ✓
+- Cascade to tier-2: HighTech/Heavy shortage → Space Industry halved ✓
+- Returns typed ColonyResourceSummary per colony ✓
+- Unit tests: extraction, population consumption, full chain, shortage cascading, no deposit, modifiers ✓
+- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
+- `npx vitest run` — 337/337 tests pass ✓
+
+---
+
 ### Story 8.1 — Production & Consumption Formulas (2026-02-18)
 
 **What changed:**
