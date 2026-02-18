@@ -4,6 +4,41 @@
 
 ## Epic 7: Contract System
 
+### Story 7.4 — Contract Creation UI: Wizard Flow (2026-02-18)
+
+**What changed:**
+- Created `src/composables/useContractCreation.ts` — composable managing all 4-step wizard state
+- Created `src/components/contract/CorpSelector.vue` — corporation selection list component
+- Created `src/components/contract/ContractWizard.vue` — 4-step modal wizard
+- Updated `src/views/ContractsView.vue` — wired in wizard, shows active contract list with progress bars
+
+**Wizard steps:**
+1. **Type** — grid of 5 contract type cards (name, description, cost badge, color-coded border)
+2. **Target** — context-aware target list by contract type: sectors for Exploration, OrbitScanned/Accepted planets for GroundSurvey, Accepted/GroundSurveyed planets + colony type cards for Colonization, colonies for ShipCommission, adjacent sector pair for TradeRoute
+3. **Corporation** — `CorpSelector` shows eligible corps (sorted by level desc) with quality tier (Base/Improved/Elite), traits, type badge; Kickstart New Corporation button when none exist
+4. **Confirm** — cost summary table (BP/turn, duration, total, net BP impact), error display, Create Contract button
+
+**Key design decisions:**
+- Composable holds all wizard state; components are purely presentational
+- `resolvedTarget` computed guards trade route sector pair assembly and colonization colony-type selection
+- `eligibleCorps` mirrors engine eligibility rules (megacorp ≥6, cross-type ≥3 except specialized)
+- `kickstartCorp` uses first colony's planet as home; `currentTurn` hardcoded to 1 (TODO Story 12.5)
+- Cancel / backdrop click at any step resets and closes without changes
+- ContractsView now shows active contracts with type-colored progress bars; full list deferred to Story 7.5
+
+**Acceptance criteria met:**
+- Step 1: Select contract type grid with descriptions ✓
+- Step 2: Context-aware target selection per contract type ✓
+- Step 3: Corp selector with level, personality, quality tier ✓
+- Kickstart New Corporation option when no eligible corps exist ✓
+- Step 4: Confirm creates contract, registers BP/turn, returns to list ✓
+- Cancel at any step returns without changes ✓
+- Budget preview (net BP/turn) updates at each step ✓
+- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
+- `npx vitest run` — 278/278 tests pass ✓
+
+---
+
 ### Story 7.3 — Contract Phase: Turn Resolution (2026-02-18)
 
 **What changed:**
