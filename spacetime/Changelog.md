@@ -4,6 +4,54 @@
 
 ## Epic 11: Corporation AI
 
+### Story 11.3 — Organic Corporation Emergence (2026-02-18)
+
+**What changed:**
+- Updated `src/engine/turn/corp-phase.ts` — added organic emergence logic as a fourth step in `resolveCorpPhase`, after the existing corp investment/acquisition loop.
+- Created `src/__tests__/engine/turn/corp-phase-emergence.test.ts` — 30 unit tests.
+
+**Functions implemented / exported:**
+
+- `calculateEmergenceChance(dynamism)` — pure formula: `(dynamism - 5) × 10%`; returns 0 for dynamism < 6. Exported for direct testing.
+- `determineCorpTypeFromDomain(domain)` — maps an `InfraDomain` to the matching `CorpType` (e.g., Science → Science, Mining/DeepMining/GasExtraction → Exploitation, Civilian → Construction). Returns `null` for unmapped domains. Exported for direct testing.
+- `findMostProminentPublicDomain(colony)` — scans all infra domains and returns the one with the most `publicLevels`; returns `null` if every domain is at 0. Exported for direct testing.
+- `tryOrganicEmergence(colony, turn)` — internal; checks all four conditions (dynamism threshold, probability roll, public levels exist, domain maps to a corp type), then generates a new level-1 corporation, transfers one public infra level to corporate ownership, and returns the updated colony + new corp + event.
+
+**Organic emergence loop in `resolveCorpPhase`:**
+After all existing corps have acted (investment + acquisition), the phase iterates every colony in `updatedColonies`. For each colony a single call to `tryOrganicEmergence` is made — this enforces the max-one-emergence-per-colony-per-turn constraint naturally.
+
+**Domain → Corp Type mapping:**
+
+| Domains | Corp Type |
+|---|---|
+| Agricultural | Agriculture |
+| Mining, DeepMining, GasExtraction | Exploitation |
+| Civilian | Construction |
+| LowIndustry, HeavyIndustry, HighTechIndustry | Industrial |
+| SpaceIndustry | Shipbuilding |
+| Science | Science |
+| Transport | Transport |
+| Military | Military |
+
+Exploration corps cannot emerge organically (no primary infrastructure domain).
+
+**Key architecture decisions:**
+- Three helper functions are exported from `corp-phase.ts` to allow direct unit testing of the pure logic without needing to call the full phase function.
+- `tryOrganicEmergence` is an internal function (not exported) — it is tested indirectly via `resolveCorpPhase` with `vi.spyOn(Math, 'random').mockReturnValue(0)` to guarantee the probability roll fires.
+- `clearNameRegistry()` is called in `beforeEach` in the test file to prevent the name-uniqueness registry from exhausting across test cases.
+
+**Acceptance criteria met:**
+- Colonies with dynamism ≥ 6 have a chance to spawn a new corp each turn ✓
+- Chance: `(dynamism - 5) × 10%` ✓
+- New corp type determined by colony's most prominent public infrastructure domain ✓
+- New corp receives one public infrastructure level as its first asset (transfers from public to corporate) ✓
+- Max one organic emergence per colony per turn ✓
+- Unit tests: emergence chance calculation ✓, type determination ✓, infrastructure transfer ✓
+- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
+- `npx vitest run` — 650/650 tests pass ✓
+
+---
+
 ### Story 11.2 — Corp Phase: Turn Resolution (2026-02-18)
 
 **What changed:**
