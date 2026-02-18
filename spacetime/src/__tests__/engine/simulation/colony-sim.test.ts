@@ -1,7 +1,7 @@
 /**
- * colony-sim.test.ts — Unit tests for the colony resource flow calculator.
+ * colony-sim.test.ts — Unit tests for the colony simulation subsystem.
  *
- * Covers (Story 8.2 acceptance criteria):
+ * Covers (Story 8.2): Resource flow calculator
  * - Extraction production (deposit-gated, with and without output modifiers)
  * - Manufacturing production (tier-1 and tier-2 with full inputs)
  * - Population consumption (Food × 2, Consumer Goods × 1, TC × 1)
@@ -11,10 +11,27 @@
  * - No deposits → extraction domains produce nothing
  * - Output modifiers from colony modifiers (e.g., Metallic Core +0.5)
  * - Transport Capacity produced locally and not treated as tradeable surplus
+ *
+ * Covers (Story 10.2): Growth tick and organic infrastructure growth
+ * - Growth accumulation (positive and negative deltas)
+ * - Level-up trigger: growth >= 10 + civilian infra requirement met + not at max pop
+ * - Level-up blocked: insufficient civilian infra or at max pop
+ * - Level-down trigger: growth <= -1 and pop > 1
+ * - Level-down blocked: pop already at 1
+ * - Growth reset after transitions (0 on level-up, 9 on level-down)
+ * - Organic growth probability: ~dynamism × 5% trigger rate
+ * - Organic growth domain selection: shortage domains get 3× weight
+ * - Organic growth does not trigger when no infrastructure exists
+ * - Organic growth does not select Civilian domain
+ * - Organic growth does not select domains at cap
  */
 
 import { describe, it, expect } from 'vitest'
-import { calculateColonyResourceFlow } from '../../../engine/simulation/colony-sim'
+import {
+  calculateColonyResourceFlow,
+  applyGrowthTick,
+  applyOrganicInfraGrowth,
+} from '../../../engine/simulation/colony-sim'
 import type { Colony } from '../../../types/colony'
 import type { Deposit } from '../../../types/planet'
 import type { InfraState, ColonyInfrastructure } from '../../../types/infrastructure'
@@ -493,5 +510,340 @@ describe('calculateColonyResourceFlow — output shape', () => {
     expect(result[ResourceType.Food].resource).toBe(ResourceType.Food)
     expect(result[ResourceType.ShipParts].resource).toBe(ResourceType.ShipParts)
     expect(result[ResourceType.TransportCapacity].resource).toBe(ResourceType.TransportCapacity)
+  })
+})
+
+// ─── Growth Tick Helpers ──────────────────────────────────────────────────────
+
+/**
+ * Creates a colony with a specific growth accumulator value.
+ * Spreads on top of the base makeColony fixture.
+ */
+function makeColonyWithGrowth(
+  infra: ColonyInfrastructure,
+  populationLevel: number,
+  growth: number,
+): Colony {
+  const base = makeColony(infra, populationLevel)
+  return { ...base, attributes: { ...base.attributes, growth } }
+}
+
+/**
+ * Creates an InfraState with a specific currentCap (for cap-limit tests).
+ */
+function makeInfraStateCapped(
+  domain: InfraDomain,
+  publicLevels: number,
+  cap: number,
+): InfraState {
+  return {
+    domain,
+    ownership: { publicLevels, corporateLevels: new Map() },
+    currentCap: cap,
+  }
+}
+
+// ─── applyGrowthTick — accumulation ──────────────────────────────────────────
+
+describe('applyGrowthTick — growth accumulation', () => {
+  it('adds positive growthPerTurn to the growth accumulator', () => {
+    const infra = makeInfra({ [InfraDomain.Civilian]: 10 })
+    const colony = makeColonyWithGrowth(infra, 5, 3)
+
+    const { updatedColony, changeType } = applyGrowthTick(colony, 2, 9)
+
+    expect(updatedColony.attributes.growth).toBe(5) // 3 + 2
+    expect(changeType).toBeNull()
+    expect(updatedColony.populationLevel).toBe(5)
+  })
+
+  it('adds negative growthPerTurn (decline scenario)', () => {
+    const infra = makeInfra({ [InfraDomain.Civilian]: 10 })
+    const colony = makeColonyWithGrowth(infra, 5, 5)
+
+    const { updatedColony, changeType } = applyGrowthTick(colony, -2, 9)
+
+    expect(updatedColony.attributes.growth).toBe(3) // 5 - 2
+    expect(changeType).toBeNull()
+  })
+
+  it('does not mutate the original colony', () => {
+    const infra = makeInfra({ [InfraDomain.Civilian]: 10 })
+    const colony = makeColonyWithGrowth(infra, 5, 4)
+
+    applyGrowthTick(colony, 3, 9)
+
+    expect(colony.attributes.growth).toBe(4) // unchanged
+  })
+})
+
+// ─── applyGrowthTick — level up ──────────────────────────────────────────────
+
+describe('applyGrowthTick — level up', () => {
+  it('levels up when growth reaches 10 and civilian infra is sufficient', () => {
+    // nextPop = 6, needs 6×2 = 12 civilian, have 14
+    const infra = makeInfra({ [InfraDomain.Civilian]: 14 })
+    const colony = makeColonyWithGrowth(infra, 5, 9) // +1 tick reaches 10
+
+    const { updatedColony, changeType, populationChanged } = applyGrowthTick(colony, 1, 9)
+
+    expect(changeType).toBe('levelUp')
+    expect(populationChanged).toBe(true)
+    expect(updatedColony.populationLevel).toBe(6)
+    expect(updatedColony.attributes.growth).toBe(0) // resets to 0
+  })
+
+  it('levels up when growth jumps past 10 in one tick', () => {
+    // growth was 7, delta +4 → new growth 11 (≥ 10 triggers level-up)
+    const infra = makeInfra({ [InfraDomain.Civilian]: 14 })
+    const colony = makeColonyWithGrowth(infra, 5, 7)
+
+    const { updatedColony, changeType } = applyGrowthTick(colony, 4, 9)
+
+    expect(changeType).toBe('levelUp')
+    expect(updatedColony.populationLevel).toBe(6)
+    expect(updatedColony.attributes.growth).toBe(0)
+  })
+
+  it('does NOT level up when civilian infra is insufficient (stays at growth ≥ 10)', () => {
+    // nextPop = 6, needs 12 civilian, only have 11
+    const infra = makeInfra({ [InfraDomain.Civilian]: 11 })
+    const colony = makeColonyWithGrowth(infra, 5, 9)
+
+    const { updatedColony, changeType } = applyGrowthTick(colony, 1, 9)
+
+    expect(changeType).toBeNull()
+    expect(updatedColony.populationLevel).toBe(5) // unchanged
+    expect(updatedColony.attributes.growth).toBe(10) // growth stays at 10
+  })
+
+  it('does NOT level up when population is already at the planet size cap', () => {
+    // maxPopLevel = 9, already at 9
+    const infra = makeInfra({ [InfraDomain.Civilian]: 25 })
+    const colony = makeColonyWithGrowth(infra, 9, 9)
+
+    const { updatedColony, changeType } = applyGrowthTick(colony, 1, 9)
+
+    expect(changeType).toBeNull()
+    expect(updatedColony.populationLevel).toBe(9) // capped
+    expect(updatedColony.attributes.growth).toBe(10) // accumulates past 10
+  })
+})
+
+// ─── applyGrowthTick — level down ────────────────────────────────────────────
+
+describe('applyGrowthTick — level down', () => {
+  it('levels down when growth reaches -1', () => {
+    const infra = makeInfra({ [InfraDomain.Civilian]: 10 })
+    const colony = makeColonyWithGrowth(infra, 4, 0) // +(-1) → -1
+
+    const { updatedColony, changeType, populationChanged } = applyGrowthTick(colony, -1, 9)
+
+    expect(changeType).toBe('levelDown')
+    expect(populationChanged).toBe(true)
+    expect(updatedColony.populationLevel).toBe(3)
+    expect(updatedColony.attributes.growth).toBe(9) // resets to 9
+  })
+
+  it('levels down when growth drops below -1 in one tick', () => {
+    const infra = makeInfra({ [InfraDomain.Civilian]: 10 })
+    const colony = makeColonyWithGrowth(infra, 4, 0)
+
+    const { updatedColony, changeType } = applyGrowthTick(colony, -3, 9)
+
+    expect(changeType).toBe('levelDown')
+    expect(updatedColony.populationLevel).toBe(3)
+    expect(updatedColony.attributes.growth).toBe(9)
+  })
+
+  it('does NOT level down when pop is already at minimum (level 1)', () => {
+    const infra = makeInfra({ [InfraDomain.Civilian]: 10 })
+    const colony = makeColonyWithGrowth(infra, 1, 0)
+
+    const { updatedColony, changeType } = applyGrowthTick(colony, -1, 9)
+
+    expect(changeType).toBeNull()
+    expect(updatedColony.populationLevel).toBe(1) // unchanged
+    expect(updatedColony.attributes.growth).toBe(-1) // accumulates negative
+  })
+
+  it('does not level down when growth is exactly 0', () => {
+    const infra = makeInfra({ [InfraDomain.Civilian]: 10 })
+    const colony = makeColonyWithGrowth(infra, 4, 1)
+
+    const { updatedColony, changeType } = applyGrowthTick(colony, -1, 9) // 1-1=0
+
+    expect(changeType).toBeNull()
+    expect(updatedColony.attributes.growth).toBe(0)
+  })
+})
+
+// ─── applyOrganicInfraGrowth — trigger probability ───────────────────────────
+
+describe('applyOrganicInfraGrowth — trigger probability', () => {
+  it('never triggers when dynamism is 0', () => {
+    const infra = makeInfra({ [InfraDomain.Agricultural]: 3 })
+    const colony = makeColony(infra, 5)
+
+    for (let i = 0; i < 100; i++) {
+      // Even with rng() always returning 0 (lowest roll), chance is 0%
+      const result = applyOrganicInfraGrowth(colony, 0, [], () => 0)
+      expect(result.triggered).toBe(false)
+    }
+  })
+
+  it('always triggers when rng returns below chance threshold', () => {
+    // dynamism 10 → 50% chance; rng returning 0.0 → roll = 0.0 * 100 = 0 < 50 → triggers
+    const infra = makeInfra({ [InfraDomain.Agricultural]: 3 })
+    const colony = makeColony(infra, 5)
+
+    // First rng call = trigger roll (0.0 → always triggers), second = domain pick
+    let callIndex = 0
+    const mockRng = () => (callIndex++ === 0 ? 0.0 : 0.5)
+
+    const result = applyOrganicInfraGrowth(colony, 10, [], mockRng)
+    expect(result.triggered).toBe(true)
+  })
+
+  it('never triggers when rng returns at or above chance threshold', () => {
+    // dynamism 10 → 50%; rng() = 0.5 → roll = 50.0, which is NOT < 50 → no trigger
+    const infra = makeInfra({ [InfraDomain.Agricultural]: 3 })
+    const colony = makeColony(infra, 5)
+
+    const result = applyOrganicInfraGrowth(colony, 10, [], () => 0.5)
+    expect(result.triggered).toBe(false)
+  })
+
+  it('triggers approximately dynamism × 5% of the time over 1000 runs', () => {
+    // dynamism 8 → 40% expected; allow ±8% tolerance
+    const infra = makeInfra({ [InfraDomain.Agricultural]: 3 })
+    const colony = makeColony(infra, 5)
+
+    let triggered = 0
+    const RUNS = 1000
+    for (let i = 0; i < RUNS; i++) {
+      if (applyOrganicInfraGrowth(colony, 8, [], Math.random).triggered) triggered++
+    }
+    const rate = triggered / RUNS
+    expect(rate).toBeGreaterThan(0.32)  // 40% - 8%
+    expect(rate).toBeLessThan(0.48)     // 40% + 8%
+  })
+
+  it('never triggers when colony has no infrastructure', () => {
+    const infra = makeInfra() // all zeros
+    const colony = makeColony(infra, 5)
+
+    const result = applyOrganicInfraGrowth(colony, 10, [], () => 0.0)
+    expect(result.triggered).toBe(false)
+    expect(result.domain).toBeNull()
+  })
+})
+
+// ─── applyOrganicInfraGrowth — domain selection ──────────────────────────────
+
+describe('applyOrganicInfraGrowth — domain selection and effects', () => {
+  it('adds +1 public level to the selected domain', () => {
+    const infra = makeInfra({ [InfraDomain.Agricultural]: 3 })
+    const colony = makeColony(infra, 5)
+    let callIndex = 0
+    const mockRng = () => (callIndex++ === 0 ? 0.0 : 0.0) // trigger + pick first domain
+
+    const { triggered, domain, updatedColony } = applyOrganicInfraGrowth(colony, 10, [], mockRng)
+
+    expect(triggered).toBe(true)
+    expect(domain).not.toBeNull()
+    // The selected domain's public level increased by 1
+    const before = infra[domain!].ownership.publicLevels
+    expect(updatedColony.infrastructure[domain!].ownership.publicLevels).toBe(before + 1)
+  })
+
+  it('does not mutate the original colony', () => {
+    const infra = makeInfra({ [InfraDomain.Agricultural]: 3 })
+    const colony = makeColony(infra, 5)
+    let callIndex = 0
+    const mockRng = () => (callIndex++ === 0 ? 0.0 : 0.0)
+
+    applyOrganicInfraGrowth(colony, 10, [], mockRng)
+
+    // Original colony unchanged
+    expect(colony.infrastructure[InfraDomain.Agricultural].ownership.publicLevels).toBe(3)
+  })
+
+  it('never selects Civilian domain', () => {
+    // Only Civilian has levels — no eligible production domains
+    const infra = makeInfra({ [InfraDomain.Civilian]: 10 })
+    const colony = makeColony(infra, 5)
+
+    // Always-trigger rng
+    const result = applyOrganicInfraGrowth(colony, 10, [], () => 0.0)
+
+    // No eligible domains → should not trigger (or trigger=false if no eligible)
+    expect(result.domain).not.toBe(InfraDomain.Civilian)
+    // triggered is false since no eligible non-Civilian domains have infra
+    expect(result.triggered).toBe(false)
+  })
+
+  it('does not grow a domain that is already at its currentCap', () => {
+    // Agricultural has 5 levels and cap is 5 → at cap, ineligible
+    // Mining has 3 levels with Infinity cap → eligible
+    const infraRaw = makeInfra({ [InfraDomain.Agricultural]: 5, [InfraDomain.Mining]: 3 })
+    // Override Agricultural to be at cap
+    const infra: ColonyInfrastructure = {
+      ...infraRaw,
+      [InfraDomain.Agricultural]: makeInfraStateCapped(InfraDomain.Agricultural, 5, 5),
+    }
+    const colony = makeColony(infra, 5)
+
+    // Always triggers, pick first domain alphabetically (whichever it is, not Agricultural)
+    let callIndex = 0
+    const mockRng = () => (callIndex++ === 0 ? 0.0 : 0.0)
+
+    const { triggered, domain } = applyOrganicInfraGrowth(colony, 10, [], mockRng)
+
+    expect(triggered).toBe(true)
+    expect(domain).not.toBe(InfraDomain.Agricultural) // capped domain excluded
+    expect(domain).toBe(InfraDomain.Mining) // only eligible domain
+  })
+
+  it('shortage domains are selected more often than non-shortage domains (statistical)', () => {
+    // Agricultural (Food) and Mining (CommonMaterials) both have 3 levels
+    // Food is in shortage → Agricultural gets 3× weight
+    // Expected: Agricultural ~75% of selections, Mining ~25%
+    const infra = makeInfra({ [InfraDomain.Agricultural]: 3, [InfraDomain.Mining]: 3 })
+    const colony = makeColony(infra, 5)
+    const shortages = [ResourceType.Food] // Agricultural produces Food → 3× weight
+
+    const RUNS = 1000
+    let agriCount = 0
+    let miningCount = 0
+
+    for (let i = 0; i < RUNS; i++) {
+      let callIndex = 0
+      // First call triggers (always), second call picks domain
+      const mockRng = () => (callIndex++ === 0 ? 0.0 : Math.random())
+      const { domain } = applyOrganicInfraGrowth(colony, 10, shortages, mockRng)
+      if (domain === InfraDomain.Agricultural) agriCount++
+      if (domain === InfraDomain.Mining) miningCount++
+    }
+
+    // Agricultural (3× weight) should be selected ~75% of the time
+    // Allow ±8% tolerance
+    const agriRate = agriCount / RUNS
+    expect(agriRate).toBeGreaterThan(0.67)
+    expect(agriRate).toBeLessThan(0.83)
+  })
+
+  it('returns triggered=false when all eligible domains are at cap', () => {
+    // Both Agricultural and Mining are at their caps
+    const infra: ColonyInfrastructure = {
+      ...makeInfra(),
+      [InfraDomain.Agricultural]: makeInfraStateCapped(InfraDomain.Agricultural, 5, 5),
+      [InfraDomain.Mining]: makeInfraStateCapped(InfraDomain.Mining, 4, 4),
+    }
+    const colony = makeColony(infra, 5)
+
+    const result = applyOrganicInfraGrowth(colony, 10, [], () => 0.0)
+    expect(result.triggered).toBe(false)
+    expect(result.domain).toBeNull()
   })
 })

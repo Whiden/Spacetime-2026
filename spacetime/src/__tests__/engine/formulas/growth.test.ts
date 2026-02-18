@@ -1,13 +1,18 @@
 /**
- * growth.test.ts — Unit tests for corporation capital formulas.
+ * growth.test.ts — Unit tests for corporation capital formulas and colony growth formulas.
  *
- * Tests cover all five formulas with boundary values:
+ * Corporation formulas:
  * - calculateCapitalGain
  * - calculateCompletionBonus
  * - calculateLevelUpCost
  * - calculateAcquisitionCost
  * - calculateMaxInfra
  * - getTotalOwnedInfra (helper)
+ *
+ * Colony growth formulas (Story 10.2):
+ * - shouldPopLevelUp
+ * - shouldPopLevelDown
+ * - calculateOrganicInfraChance
  */
 
 import { describe, it, expect } from 'vitest'
@@ -18,6 +23,9 @@ import {
   calculateAcquisitionCost,
   calculateMaxInfra,
   getTotalOwnedInfra,
+  shouldPopLevelUp,
+  shouldPopLevelDown,
+  calculateOrganicInfraChance,
 } from '../../../engine/formulas/growth'
 import type { CorpInfrastructureHoldings } from '../../../types/corporation'
 import { InfraDomain } from '../../../types/common'
@@ -213,6 +221,108 @@ describe('calculateMaxInfra', () => {
   it('scales linearly with corp level', () => {
     for (let level = 1; level <= 10; level++) {
       expect(calculateMaxInfra(level)).toBe(level * 4)
+    }
+  })
+})
+
+// ─── shouldPopLevelUp ────────────────────────────────────────────────────────
+
+describe('shouldPopLevelUp', () => {
+  it('returns false when growth < 10', () => {
+    // Even with all other conditions met, growth must reach 10
+    expect(shouldPopLevelUp(9, 5, 9, 20)).toBe(false)
+    expect(shouldPopLevelUp(0, 5, 9, 20)).toBe(false)
+    expect(shouldPopLevelUp(-1, 5, 9, 20)).toBe(false)
+  })
+
+  it('returns false when population is already at max', () => {
+    // growth=10, civInfra=20, but pop 9 = max 9 (Large planet)
+    expect(shouldPopLevelUp(10, 9, 9, 20)).toBe(false)
+  })
+
+  it('returns false when civilian infra is insufficient for next level', () => {
+    // nextPop = 6, needs 6×2 = 12 civilian infra, only have 11
+    expect(shouldPopLevelUp(10, 5, 9, 11)).toBe(false)
+  })
+
+  it('returns false when civilian infra is 0 and growth is 10', () => {
+    expect(shouldPopLevelUp(10, 5, 9, 0)).toBe(false)
+  })
+
+  it('returns true when all conditions are met at exact boundary', () => {
+    // nextPop = 6, needs 6×2 = 12 civilian infra, have exactly 12
+    expect(shouldPopLevelUp(10, 5, 9, 12)).toBe(true)
+  })
+
+  it('returns true when growth exceeds 10', () => {
+    // growth accumulates beyond 10 if level-up was blocked previously
+    expect(shouldPopLevelUp(15, 5, 9, 12)).toBe(true)
+    expect(shouldPopLevelUp(14, 3, 10, 10)).toBe(true)
+  })
+
+  it('returns true with surplus civilian infra', () => {
+    // nextPop = 4, needs 8 civilian infra, have 20
+    expect(shouldPopLevelUp(10, 3, 10, 20)).toBe(true)
+  })
+
+  it('returns false for pop 1 needing 4 civil infra but only have 3', () => {
+    // nextPop = 2, needs 2×2 = 4, have 3
+    expect(shouldPopLevelUp(10, 1, 10, 3)).toBe(false)
+  })
+
+  it('returns true for pop 1 with exactly 4 civil infra', () => {
+    // nextPop = 2, needs 2×2 = 4, have 4
+    expect(shouldPopLevelUp(10, 1, 10, 4)).toBe(true)
+  })
+})
+
+// ─── shouldPopLevelDown ──────────────────────────────────────────────────────
+
+describe('shouldPopLevelDown', () => {
+  it('returns true when growth = -1 and pop > 1', () => {
+    expect(shouldPopLevelDown(-1, 3)).toBe(true)
+    expect(shouldPopLevelDown(-1, 2)).toBe(true)
+  })
+
+  it('returns true when growth < -1', () => {
+    // Growth can jump below -1 if growthPerTurn is very negative
+    expect(shouldPopLevelDown(-2, 3)).toBe(true)
+    expect(shouldPopLevelDown(-5, 5)).toBe(true)
+  })
+
+  it('returns false when growth = 0', () => {
+    expect(shouldPopLevelDown(0, 3)).toBe(false)
+  })
+
+  it('returns false when growth is positive', () => {
+    expect(shouldPopLevelDown(5, 3)).toBe(false)
+  })
+
+  it('returns false when pop is at minimum (level 1)', () => {
+    // Population cannot fall below 1
+    expect(shouldPopLevelDown(-1, 1)).toBe(false)
+    expect(shouldPopLevelDown(-5, 1)).toBe(false)
+  })
+})
+
+// ─── calculateOrganicInfraChance ─────────────────────────────────────────────
+
+describe('calculateOrganicInfraChance', () => {
+  it('dynamism 0 → 0% chance (never triggers)', () => {
+    expect(calculateOrganicInfraChance(0)).toBe(0)
+  })
+
+  it('dynamism 5 → 25% chance', () => {
+    expect(calculateOrganicInfraChance(5)).toBe(25)
+  })
+
+  it('dynamism 10 → 50% chance (maximum)', () => {
+    expect(calculateOrganicInfraChance(10)).toBe(50)
+  })
+
+  it('scales linearly: dynamism × 5', () => {
+    for (let d = 0; d <= 10; d++) {
+      expect(calculateOrganicInfraChance(d)).toBe(d * 5)
     }
   })
 })

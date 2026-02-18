@@ -11,7 +11,10 @@
  * - Acquisition cost: targetLevel × 5
  * - Max infrastructure: corpLevel × 4
  *
- * TODO (Story 10.2): Colony growth formulas added here.
+ * Colony growth formulas from Specs.md § 5 (added Story 10.2):
+ * - shouldPopLevelUp: checks growth >= 10 AND civilian infra requirement AND not at cap
+ * - shouldPopLevelDown: checks growth <= -1 AND popLevel > 1
+ * - calculateOrganicInfraChance: dynamism × 5 (%)
  */
 
 import { randomInt } from '../../utils/random'
@@ -100,4 +103,68 @@ export function calculateAcquisitionCost(targetLevel: number): number {
  */
 export function calculateMaxInfra(corpLevel: number): number {
   return corpLevel * 4
+}
+
+// ─── Colony Population Growth Formulas ───────────────────────────────────────
+
+/**
+ * Checks whether a colony's population should level up this turn.
+ *
+ * Level-up conditions (all must be true, Specs.md § 5):
+ *   1. growth >= 10 (accumulator has reached the threshold)
+ *   2. populationLevel < maxPopLevel (planet size cap not reached)
+ *   3. civilianInfra >= (popLevel + 1) × 2 (enough civilian infra for the next level)
+ *
+ * If growth >= 10 but civilian infra is insufficient, the growth accumulator stays
+ * where it is — no clamping. Level-up happens as soon as infra catches up.
+ *
+ * @param growth - Current growth accumulator value (not clamped, can exceed 10).
+ * @param popLevel - Current population level (1-10).
+ * @param maxPopLevel - Maximum population level allowed by the planet size.
+ * @param civilianInfra - Total civilian infrastructure levels on the colony.
+ * @returns true if all conditions for a level-up are met.
+ */
+export function shouldPopLevelUp(
+  growth: number,
+  popLevel: number,
+  maxPopLevel: number,
+  civilianInfra: number,
+): boolean {
+  if (growth < 10) return false
+  if (popLevel >= maxPopLevel) return false
+  const nextPop = popLevel + 1
+  return civilianInfra >= nextPop * 2
+}
+
+/**
+ * Checks whether a colony's population should level down this turn.
+ *
+ * Level-down conditions (Specs.md § 5):
+ *   - growth <= -1 (accumulator has gone negative)
+ *   - populationLevel > 1 (population cannot fall below level 1)
+ *
+ * @param growth - Current growth accumulator value.
+ * @param popLevel - Current population level (1-10).
+ * @returns true if the level-down condition is met.
+ */
+export function shouldPopLevelDown(growth: number, popLevel: number): boolean {
+  return growth <= -1 && popLevel > 1
+}
+
+/**
+ * Calculates the percentage chance (0-100) that organic infrastructure growth
+ * triggers this turn for a colony.
+ *
+ * Formula (Specs.md § 6):
+ *   organic_growth_chance = dynamism × 5 (%)
+ *
+ * Examples: dynamism 0 → 0% (never), dynamism 5 → 25%, dynamism 10 → 50% (maximum).
+ * Colonies need at least 1 infrastructure level for organic growth to apply;
+ * the caller enforces that prerequisite.
+ *
+ * @param dynamism - Current colony dynamism (0-10).
+ * @returns Chance as an integer percentage (0-50).
+ */
+export function calculateOrganicInfraChance(dynamism: number): number {
+  return dynamism * 5
 }

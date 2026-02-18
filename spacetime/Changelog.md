@@ -4,6 +4,46 @@
 
 ## Epic 10: Colony Simulation
 
+### Story 10.2 — Colony Simulation: Growth & Population (2026-02-18)
+
+**What changed:**
+- Extended `src/engine/formulas/growth.ts` — added three colony growth formula functions
+- Extended `src/engine/simulation/colony-sim.ts` — added growth tick and organic infra growth functions
+- Extended `src/__tests__/engine/formulas/growth.test.ts` — 24 new tests for colony formulas
+- Extended `src/__tests__/engine/simulation/colony-sim.test.ts` — 22 new tests for growth simulation
+
+**Functions added to `growth.ts`:**
+
+- `shouldPopLevelUp(growth, popLevel, maxPopLevel, civilianInfra)` — returns true when all three level-up conditions are met: `growth >= 10`, pop is below planet size cap, and `civilianInfra >= (popLevel + 1) × 2`
+- `shouldPopLevelDown(growth, popLevel)` — returns true when `growth <= -1` and `popLevel > 1`
+- `calculateOrganicInfraChance(dynamism)` — returns `dynamism × 5` as an integer percentage (0-50)
+
+**Types + functions added to `colony-sim.ts`:**
+
+- `GrowthTickResult` — `{ updatedColony, populationChanged, changeType: 'levelUp' | 'levelDown' | null }`
+- `applyGrowthTick(colony, growthPerTurn, maxPopLevel)` → `GrowthTickResult` — applies one turn of growth accumulation; triggers level-up (pop+1, growth→0) or level-down (pop-1, growth→9) when conditions are met; never mutates input colony
+- `OrganicGrowthResult` — `{ triggered, domain, updatedColony }`
+- `applyOrganicInfraGrowth(colony, dynamism, shortageResources, rng?)` → `OrganicGrowthResult` — rolls `dynamism × 5%` chance; on success picks a demand-weighted eligible domain (shortage domains get 3× weight, Civilian excluded, capped domains excluded) and adds +1 public level; accepts optional `rng` for deterministic testing
+
+**Key architecture decisions:**
+- Growth tick is pure and returns a new colony object — caller (colony-phase.ts, Story 10.3) is responsible for event generation from `changeType`
+- Organic growth uses `colony.infrastructure[domain].currentCap` for cap checks — correctly gated once colony-phase.ts starts populating it (Story 10.3)
+- `shortageResources: ResourceType[]` is a parameter so the caller can pass live market data; the function itself is pure
+- Civilian, Science, and Military are excluded from organic domain selection — Civilian grows via population mechanics; Science/Military do not produce tradeable resources with shortages
+- Science and Military domains with existing levels participate at base weight 1 (could benefit from organic growth even without a resource shortage)
+
+**Acceptance criteria met:**
+- Growth accumulates each turn based on growth formula ✓
+- At growth 10 + civilian infra requirement met → pop level +1, growth resets to 0 ✓
+- At growth -1 → pop level -1, growth resets to 9 ✓
+- Population capped by planet size max ✓
+- Organic infra growth: `dynamism × 5%` chance per turn, +1 to random demand-weighted domain ✓
+- Unit tests: growth accumulation ✓, level up trigger ✓, level down trigger ✓, pop cap ✓, organic growth probability ✓
+- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
+- `npx vitest run` — 551/551 tests pass ✓
+
+---
+
 ### Story 10.1 — Attribute Formulas (2026-02-18)
 
 **What changed:**
