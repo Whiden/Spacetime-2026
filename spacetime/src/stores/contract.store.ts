@@ -5,7 +5,7 @@
  * Calls createContract() from the engine for validation and construction.
  * Deducts BP from budget store when a contract is created.
  *
- * TODO (Story 7.3): contract-phase.ts calls advanceContract() each turn via turn resolver.
+ * contract-phase.ts (Story 7.3): Pure engine phase that advances contracts each turn.
  * TODO (Story 7.4): ContractWizard.vue drives createContract() action from the UI.
  * TODO (Story 12.4): game.store.ts wires contract expenses into expense-phase.ts.
  */

@@ -4,6 +4,42 @@
 
 ## Epic 7: Contract System
 
+### Story 7.3 — Contract Phase: Turn Resolution (2026-02-18)
+
+**What changed:**
+- Created `src/engine/turn/contract-phase.ts` — pure engine phase function
+- Created `src/__tests__/engine/turn/contract-phase.test.ts` — 17 unit tests
+
+**Function implemented:**
+- `resolveContractPhase(state: GameState): PhaseResult` — iterates all active contracts, decrements `turnsRemaining`, completes contracts at 0, returns updated state + events
+
+**Completion effects by type:**
+- `GroundSurvey`: advances planet status from `OrbitScanned` → `GroundSurveyed`, sets `groundSurveyTurn`
+- `Colonization`: calls `generateColony()` to create a new colony, marks planet as `Colonized`
+- `Exploration`: stub — POI generation deferred to Epic 13
+- `ShipCommission`: stub — ship generation deferred to Epic 15
+- `TradeRoute` (sentinel 9999): skipped — never auto-completes; cancelled by player (Story 17.1)
+
+**Key design decisions:**
+- Pure function: no store imports, returns new Maps (does not mutate input state)
+- Trade routes filtered out before processing — the 9999 sentinel is transparent to the phase
+- Completion events: `EventPriority.Positive`, category `'contract'`, linked to contract ID + corp ID
+- `resolveGroundSurveyCompletion` guards against double-promotion (only advances `OrbitScanned`)
+
+**Acceptance criteria met:**
+- Iterates all active contracts, decrements turnsRemaining ✓
+- When turnsRemaining hits 0, marks as completed and generates completion event ✓
+- Colonization contracts: on completion, calls colony generator, creates new colony ✓
+- Exploration contracts: stub with TODO referencing Epic 13 ✓
+- Ship commission: stub with TODO referencing Epic 15 ✓
+- TradeRoute: never auto-completed (ongoing sentinel) ✓
+- Returns updated contract list + events generated ✓
+- Unit tests: contract advances correctly, completion triggers effects ✓
+- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
+- `npx vitest run` — 278/278 tests pass ✓
+
+---
+
 ### Story 7.2 — Contract Store (2026-02-18)
 
 **What changed:**
