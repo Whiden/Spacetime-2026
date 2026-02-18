@@ -5,6 +5,7 @@
  *   - Per-sector: production totals, consumption totals, surpluses, deficits.
  *   - Per-colony: shortage flags (which resources are in shortage after market resolution).
  *   - Per-colony: export bonuses (which resources the colony successfully exported).
+ *   - Per-colony: resource flows (produced, consumed, surplus, imported) for the market view.
  *
  * This store is updated by `resolveMarkets()` which calls `resolveMarketPhase()`
  * from the engine and distributes the results back into the store's reactive state.
@@ -14,7 +15,6 @@
  * for UI consumption and provides the resolveMarkets action for direct use until
  * the full turn resolver is wired.
  *
- * TODO (Story 9.4): MarketView.vue reads getSectorMarket() and getColonyShortages().
  * TODO (Story 12.4): game.store.ts calls resolveMarkets() as part of endTurn() pipeline.
  * TODO (Story 17.2): inboundFlows / outboundFlows on SectorMarketState populated by
  *   cross-sector trade route resolution.
@@ -24,9 +24,10 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { SectorId, ColonyId, ResourceType } from '../types/common'
 import type { SectorMarketState } from '../types/trade'
-import type { Shortage, ExportBonus } from '../types/resource'
+import type { Shortage, ExportBonus, ColonyResourceSummary } from '../types/resource'
 import type { GameState } from '../types/game'
 import { resolveMarketPhase } from '../engine/turn/market-phase'
+import { resolveMarket } from '../engine/simulation/market-resolver'
 
 export const useMarketStore = defineStore('market', () => {
   // ─── State ───────────────────────────────────────────────────────────────────
@@ -50,6 +51,14 @@ export const useMarketStore = defineStore('market', () => {
    * will appear here.
    */
   const colonyExportBonuses = ref<Map<ColonyId, ExportBonus[]>>(new Map())
+
+  /**
+   * Per-colony resource flow snapshot from the last market resolution.
+   * Includes produced, consumed, surplus, imported, and inShortage per resource.
+   * Used by MarketView to display the per-colony breakdown table.
+   * Keyed by ColonyId string.
+   */
+  const colonyFlows = ref<Map<ColonyId, ColonyResourceSummary>>(new Map())
 
   // ─── Getters ─────────────────────────────────────────────────────────────────
 
@@ -91,6 +100,14 @@ export const useMarketStore = defineStore('market', () => {
   function colonyHasResourceShortage(colonyId: ColonyId, resource: ResourceType): boolean {
     const shortages = colonyShortages.value.get(colonyId) ?? []
     return shortages.some((s) => s.resource === resource)
+  }
+
+  /**
+   * Returns the resource flow summary for a colony after the last market resolution.
+   * Returns undefined if the colony has not been through market resolution yet.
+   */
+  function getColonyFlows(colonyId: ColonyId): ColonyResourceSummary | undefined {
+    return colonyFlows.value.get(colonyId)
   }
 
   /**
@@ -203,6 +220,29 @@ export const useMarketStore = defineStore('market', () => {
     colonyShortages.value = newColonyShortages
     colonyExportBonuses.value = newColonyExportBonuses
 
+    // Compute per-colony resource flows for MarketView by re-running the resolver
+    // per sector (using the pre-phase state so flows match what was resolved).
+    // The flows include produced, consumed, surplus, and imported amounts per resource.
+    const newColonyFlows = new Map<ColonyId, ColonyResourceSummary>()
+    for (const [sectorId] of gameState.galaxy.sectors) {
+      const sectorColonies = [...gameState.colonies.values()].filter(
+        (c) => c.sectorId === sectorId,
+      )
+      if (sectorColonies.length === 0) continue
+
+      const depositsMap = new Map<string, import('../types/planet').Deposit[]>()
+      for (const colony of sectorColonies) {
+        const planet = gameState.planets.get(colony.planetId)
+        depositsMap.set(colony.id, planet?.deposits ?? [])
+      }
+
+      const marketResult = resolveMarket(sectorId, sectorColonies, depositsMap)
+      for (const [colonyId, flows] of marketResult.colonyFlows) {
+        newColonyFlows.set(colonyId as ColonyId, flows)
+      }
+    }
+    colonyFlows.value = newColonyFlows
+
     return result
   }
 
@@ -213,6 +253,7 @@ export const useMarketStore = defineStore('market', () => {
     sectorMarkets.value = new Map()
     colonyShortages.value = new Map()
     colonyExportBonuses.value = new Map()
+    colonyFlows.value = new Map()
   }
 
   // ─── Expose ──────────────────────────────────────────────────────────────────
@@ -222,10 +263,12 @@ export const useMarketStore = defineStore('market', () => {
     sectorMarkets,
     colonyShortages,
     colonyExportBonuses,
+    colonyFlows,
     // Getters
     getSectorMarket,
     getColonyShortages,
     getColonyExportBonuses,
+    getColonyFlows,
     colonyHasShortage,
     colonyHasResourceShortage,
     sectorsWithShortages,

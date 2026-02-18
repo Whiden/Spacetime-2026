@@ -4,6 +4,53 @@
 
 ## Epic 9: Sector Market & Trade
 
+### Story 9.4 — Market View (2026-02-18)
+
+**What changed:**
+- Replaced `src/views/MarketView.vue` placeholder with a full sector market dashboard
+- Created `src/components/market/ResourceRow.vue` — single resource row for the market table
+- Created `src/components/market/MarketSummary.vue` — per-colony resource flow breakdown
+- Extended `src/stores/market.store.ts` to cache per-colony `colonyFlows` (produced, consumed, surplus, imported per resource) and expose `getColonyFlows()` getter
+
+**MarketView:**
+- Sector selector tabs — one tab per sector that has colonies; shortage indicator dot on tabs with active shortages
+- Shortage alert banner at the top of the sector panel when any colony in the sector has a shortage
+- Animated red badge in the page header showing total active shortage count
+- Resource overview table: per-resource production/consumption/net surplus for the whole sector
+- "No market data yet" state for sectors before the first turn resolves
+
+**ResourceRow:**
+- Displays one tradeable resource per row with: production total, consumption total, net surplus
+- Color coding: emerald for surplus, red for deficit, zinc for balanced
+- Category badge (Extracted / Manufactured / Service)
+- Prominent SHORTAGE badge and red dot indicator when any colony has a shortage for that resource
+- Rows with zero activity are hidden to keep the table readable
+
+**MarketSummary:**
+- Per-colony breakdown table: rows = colonies (sorted by dynamism descending, matching market resolution priority), columns = active resources
+- Each cell shows: produced (+N, emerald), consumed (−N, zinc), imported (↓N, sky) stacked vertically
+- `⚠ shortage` label in red when that colony×resource combination is in shortage
+- `↑ export` label in emerald when the colony earned an export bonus for that resource
+- Colony rows show a red dot if any shortage is present; a grey dot otherwise
+- Empty states for no colonies / no resource activity
+
+**market.store.ts extension:**
+- Added `colonyFlows: Map<ColonyId, ColonyResourceSummary>` state
+- Populated by re-running `resolveMarket()` per sector during `resolveMarkets()` action (same input data — efficient, no double turn resolution)
+- Added `getColonyFlows(colonyId)` getter
+- `reset()` now clears `colonyFlows` as well
+
+**Acceptance criteria met:**
+- Sector selector (tabs) to switch between sectors ✓
+- Per resource: production total, consumption total, surplus/deficit with color coding ✓
+- Planet-by-planet breakdown: which colony produces/consumes what ✓
+- Shortage warnings prominent (header badge, tab dots, alert banner, row indicators) ✓
+- Export bonus indicators shown per colony ✓
+- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
+- `npx vitest run` — 444/444 tests pass ✓
+
+---
+
 ### Story 9.3 — Market Store (2026-02-18)
 
 **What changed:**
