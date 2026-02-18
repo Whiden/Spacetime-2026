@@ -184,11 +184,11 @@ describe('calculateColonyResourceFlow — extraction', () => {
 // ─── Population Consumption ───────────────────────────────────────────────────
 
 describe('calculateColonyResourceFlow — population consumption', () => {
-  it('consumes food = popLevel × 2', () => {
+  it('consumes food = popLevel × 1', () => {
     const colony = makeColony(makeInfra(), 5)
     const result = calculateColonyResourceFlow(colony, [])
 
-    expect(result[ResourceType.Food].consumed).toBe(10) // 5 × 2
+    expect(result[ResourceType.Food].consumed).toBe(5) // 5 × 1
   })
 
   it('consumes consumer goods = popLevel × 1', () => {
@@ -425,23 +425,23 @@ describe('calculateColonyResourceFlow — shortage cascading', () => {
 
 describe('calculateColonyResourceFlow — surplus and deficit', () => {
   it('food surplus when production exceeds population consumption', () => {
-    // Agricultural 10 → 10 food; pop 3 → consumes 6; surplus = +4
+    // Agricultural 10 → 10 food; pop 3 → consumes 3; surplus = +7
     const infra = makeInfra({ [InfraDomain.Agricultural]: 10 })
     const colony = makeColony(infra, 3)
     const result = calculateColonyResourceFlow(colony, [makeFoodDeposit()])
 
     expect(result[ResourceType.Food].produced).toBe(10)
-    expect(result[ResourceType.Food].consumed).toBe(6)
-    expect(result[ResourceType.Food].surplus).toBe(4)
+    expect(result[ResourceType.Food].consumed).toBe(3)
+    expect(result[ResourceType.Food].surplus).toBe(7)
   })
 
   it('food deficit when population exceeds production', () => {
-    // Agricultural 2 → 2 food; pop 5 → consumes 10; deficit = -8
+    // Agricultural 2 → 2 food; pop 5 → consumes 5; deficit = -3
     const infra = makeInfra({ [InfraDomain.Agricultural]: 2 })
     const colony = makeColony(infra, 5)
     const result = calculateColonyResourceFlow(colony, [makeFoodDeposit()])
 
-    expect(result[ResourceType.Food].surplus).toBe(-8)
+    expect(result[ResourceType.Food].surplus).toBe(-3)
   })
 
   it('surplus = produced - consumed (contract)', () => {

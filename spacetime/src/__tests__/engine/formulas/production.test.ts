@@ -156,17 +156,17 @@ describe('calculateFoodConsumption', () => {
     expect(calculateFoodConsumption(0)).toBe(0)
   })
 
-  it('returns popLevel × 2 (acceptance criterion)', () => {
-    expect(calculateFoodConsumption(1)).toBe(2)
-    expect(calculateFoodConsumption(3)).toBe(6)
-    expect(calculateFoodConsumption(5)).toBe(10)
-    expect(calculateFoodConsumption(7)).toBe(14)
-    expect(calculateFoodConsumption(10)).toBe(20)
+  it('returns popLevel × 1 (acceptance criterion)', () => {
+    expect(calculateFoodConsumption(1)).toBe(1)
+    expect(calculateFoodConsumption(3)).toBe(3)
+    expect(calculateFoodConsumption(5)).toBe(5)
+    expect(calculateFoodConsumption(7)).toBe(7)
+    expect(calculateFoodConsumption(10)).toBe(10)
   })
 
   it('scales linearly with population level', () => {
     for (let pop = 1; pop <= 10; pop++) {
-      expect(calculateFoodConsumption(pop)).toBe(pop * 2)
+      expect(calculateFoodConsumption(pop)).toBe(pop)
     }
   })
 })
@@ -186,9 +186,9 @@ describe('calculateConsumerGoodsConsumption', () => {
     expect(calculateConsumerGoodsConsumption(10)).toBe(10)
   })
 
-  it('consumer goods consumption is always half of food consumption', () => {
+  it('food and consumer goods consumption are now equal (both popLevel × 1)', () => {
     for (let pop = 0; pop <= 10; pop++) {
-      expect(calculateConsumerGoodsConsumption(pop)).toBe(calculateFoodConsumption(pop) / 2)
+      expect(calculateConsumerGoodsConsumption(pop)).toBe(calculateFoodConsumption(pop))
     }
   })
 })

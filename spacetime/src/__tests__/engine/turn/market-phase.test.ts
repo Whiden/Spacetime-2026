@@ -253,18 +253,18 @@ describe('resolveMarketPhase', () => {
   // ── Scenario: Food shortage → -2 QoL modifier ────────────────────────────
   //
   // Colony A: pop 2, no agricultural infra, no deposit.
-  // Food consumed = pop × 2 = 4, food produced = 0 → food shortage.
+  // Food consumed = pop × 1 = 2, food produced = 0 → food shortage.
   // Expected: 'qualityOfLife' -2 modifier added with sourceType 'shortage'.
   // Event: Critical (food shortage triggers Critical priority).
 
   describe('food shortage — qualityOfLife -2 modifier', () => {
-    // Pop 2 → food demand = 4; no production → full shortage
+    // Pop 2 → food demand = 2; no production → full shortage
     const colony = makeColony(
       COLONY_A,
       PLANET_A,
       SECTOR_ID,
       makeInfra({ [InfraDomain.Agricultural]: 0 }), // no food production
-      2,  // pop 2 → food demand = 4
+      2,  // pop 2 → food demand = 2
       5,
     )
     const planet = makePlanet(PLANET_A, SECTOR_ID, []) // no deposits
@@ -299,12 +299,12 @@ describe('resolveMarketPhase', () => {
 
   // ── Scenario: ConsumerGoods shortage → -1 QoL modifier ────────────────────
   //
-  // Colony: pop 1, food balanced (agri 2, fertile deposit → 2 produced, 2 consumed),
+  // Colony: pop 1, food in surplus (agri 2, fertile deposit → 2 produced, consumes 1),
   //         no low-industry → CG consumed = 1, produced = 0 → CG shortage.
   // Expected: 'qualityOfLife' -1 modifier added, Warning event (not Critical).
 
   describe('consumer goods shortage — qualityOfLife -1 modifier', () => {
-    // Food balanced: agri 2 × 1.0 = 2 produced, pop 1 × 2 = 2 consumed.
+    // Food surplus: agri 2 × 1.0 = 2 produced, pop 1 × 1 = 1 consumed → +1 surplus.
     // CG: lowIndustry 0 → 0 produced, consumed 1 → CG shortage.
     const colony = makeColony(
       COLONY_A,
@@ -416,9 +416,9 @@ describe('resolveMarketPhase', () => {
   // ── Scenario: Export bonus applied ───────────────────────────────────────
   //
   // Colony A (exporter): agri 4, fertile deposit, pop 1.
-  //   food produced = 4, consumed = 2, surplus = 2 → exports to market.
+  //   food produced = 4, consumed = 1, surplus = 3 → exports to market.
   // Colony B (importer): no food, pop 1.
-  //   food consumed = 2, deficit = 2 → draws from market.
+  //   food consumed = 1, deficit = 1 → draws from market.
   //   Colony B has higher dynamism → gets first pick.
   //
   // Colony A should receive a 'dynamism' +1 export bonus modifier because
@@ -430,8 +430,8 @@ describe('resolveMarketPhase', () => {
       COLONY_A,
       PLANET_A,
       SECTOR_ID,
-      makeInfra({ [InfraDomain.Agricultural]: 4 }), // 4 food produced, 2 consumed → surplus 2
-      1,  // pop 1 → food consumed = 2
+      makeInfra({ [InfraDomain.Agricultural]: 4 }), // 4 food produced, 1 consumed → surplus 3
+      1,  // pop 1 → food consumed = 1
       3,  // lower dynamism than B
     )
     const colonyB = makeColony(
@@ -439,7 +439,7 @@ describe('resolveMarketPhase', () => {
       PLANET_B,
       SECTOR_ID,
       makeInfra({ [InfraDomain.Agricultural]: 0 }), // no food production
-      1,  // pop 1 → food consumed = 2 → imports 2 from market
+      1,  // pop 1 → food consumed = 1 → imports 1 from market
       8,  // higher dynamism → gets first pick from market
     )
     const planetA = makePlanet(PLANET_A, SECTOR_ID, [FERTILE_DEPOSIT]) // food deposit
@@ -693,23 +693,18 @@ describe('resolveMarketPhase', () => {
   // Expected: no shortage modifiers, no events.
 
   describe('self-sufficient colony — no shortage modifiers or events', () => {
-    // Pop 1: food 2 produced = 2 consumed, CG demand 1 (no LowIndustry → shortage).
-    // Make fully covered: agri 2 (food balanced), transport 1 (TC balanced).
-    // Accept that CG shortage may still occur — test specifically that no events are
-    // generated for a colony whose food and TC are covered, only CG may shortage.
-    // Actually, let's just test a truly self-sufficient colony with no population demand
-    // that could cause shortages. But pop = 0 doesn't exist. Instead test:
-    // agri 2, transport 1, lowIndustry: CG... This still requires dealing with CG.
+    // Pop 1: food 1 produced = 1 consumed (agri 1), TC 1 produced = 1 consumed (transport 1).
+    // CG demand = 1 (no LowIndustry → CG shortage). Test verifies that food/TC are
+    // not in shortage when exactly balanced.
 
-    // The simplest fully self-sufficient colony in the current model: pop 0 doesn't exist.
-    // Instead: just verify that no food/TC shortage modifier is present on a colony that
-    // has exactly balanced food+TC production.
+    // Colony: agri 1 (1 food produced, pop 1 × 1 = 1 consumed — balanced),
+    //         transport 1 (1 TC produced, pop 1 = 1 consumed — balanced).
     const colony = makeColony(
       COLONY_A,
       PLANET_A,
       SECTOR_ID,
       makeInfra({
-        [InfraDomain.Agricultural]: 2,  // 2 food produced, 2 consumed (pop 1 × 2) — balanced
+        [InfraDomain.Agricultural]: 1,  // 1 food produced, 1 consumed (pop 1 × 1) — balanced
         [InfraDomain.Transport]:    1,  // 1 TC produced, 1 consumed (pop 1) — balanced
       }),
       1,

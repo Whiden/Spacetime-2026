@@ -112,14 +112,14 @@ describe('resolveMarket', () => {
   // Expected: no imports, no shortages, no export bonuses.
 
   describe('single colony — self-sufficient, no trade', () => {
-    // Colony A: pop 2, produces 4 food (agri 2 × 2 mod), consumes 4 food (pop 2 × 2).
+    // Colony A: pop 2, produces 2 food (agri 2 × mod 1.0), consumes 2 food (pop 2 × 1).
     // Exactly balanced. No surplus, no deficit.
 
     const colony = makeColony(
       COLONY_A,
       PLANET_A,
-      makeInfra({ [InfraDomain.Agricultural]: 4 }), // 4 agri levels → 4 food (mod 1.0)
-      2, // pop 2 → food consumed = 4
+      makeInfra({ [InfraDomain.Agricultural]: 2 }), // 2 agri levels → 2 food (mod 1.0)
+      2, // pop 2 → food consumed = 2
       5,
     )
     const deposits = [FERTILE_DEPOSIT]
@@ -132,10 +132,9 @@ describe('resolveMarket', () => {
       expect(flow[ResourceType.Food].inShortage).toBe(false)
     })
 
-    it('produces no food shortage (the one resource this colony produces and consumes equally)', () => {
+    it('produces no food shortage (agri 2 → 2 food, pop 2 → consumes 2 food, balanced)', () => {
       const result = resolveMarket(SECTOR_ID, [colony], depositsMap)
-      // Colony is self-sufficient for food (agri 4 → 4 food, pop 2 → consumes 4 food).
-      // Consumer goods and TC are in deficit (no infra for them), but food is balanced.
+      // Colony is self-sufficient for food. CG and TC are in deficit (no infra), but food is balanced.
       const foodShortages = result.sectorSummary.shortages.filter(
         (s) => s.resource === ResourceType.Food,
       )
@@ -150,8 +149,8 @@ describe('resolveMarket', () => {
     it('sector summary matches colony production', () => {
       const result = resolveMarket(SECTOR_ID, [colony], depositsMap)
       const summary = result.sectorSummary
-      expect(summary.totalProduction[ResourceType.Food]).toBe(4)
-      expect(summary.totalConsumption[ResourceType.Food]).toBe(4)
+      expect(summary.totalProduction[ResourceType.Food]).toBe(2)
+      expect(summary.totalConsumption[ResourceType.Food]).toBe(2)
       expect(summary.netSurplus[ResourceType.Food]).toBe(0)
     })
   })
@@ -164,8 +163,8 @@ describe('resolveMarket', () => {
 
   describe('two colonies — complementary production, mutual trade', () => {
     // Colony A:
-    //   - pop 2 → needs 4 food, 2 consumer goods
-    //   - agri 6 → produces 6 food (mod 1.0) → 2 surplus food
+    //   - pop 2 → needs 2 food, 2 consumer goods
+    //   - agri 6 → produces 6 food (mod 1.0) → 4 surplus food
     //   - no Low Industry → 0 consumer goods → deficit 2
     const colonyA = makeColony(
       COLONY_A,
@@ -176,8 +175,8 @@ describe('resolveMarket', () => {
     )
 
     // Colony B:
-    //   - pop 2 → needs 4 food, 2 consumer goods
-    //   - no agri → 0 food → deficit 4
+    //   - pop 2 → needs 2 food, 2 consumer goods
+    //   - no agri → 0 food → deficit 2
     //   - Low Industry 4, Mining 6 → 4 consumer goods produced, 4 common materials
     //     (low industry needs 4 common input; mining produces 6 common; so no shortage)
     //     Consumer goods produced = 4, consumed = 2 → 2 surplus
@@ -205,13 +204,12 @@ describe('resolveMarket', () => {
       expect(flowA[ResourceType.ConsumerGoods].inShortage).toBe(false)
     })
 
-    it('Colony B receives Food from market', () => {
+    it('Colony B receives Food from market and is fully resolved', () => {
       const result = resolveMarket(SECTOR_ID, [colonyA, colonyB], depositsMapAB)
       const flowB = result.colonyFlows.get(COLONY_B)!
-      // Colony B deficit = 4 food; Colony A surplus = 2 food → partially resolved
+      // Colony B deficit = 2 food; Colony A surplus = 4 food → fully resolved
       expect(flowB[ResourceType.Food].imported).toBe(2)
-      // 4 needed - 2 imported = 2 remaining deficit → shortage
-      expect(flowB[ResourceType.Food].inShortage).toBe(true)
+      expect(flowB[ResourceType.Food].inShortage).toBe(false)
     })
 
     it('Colony A earns export bonus for Food', () => {
@@ -236,10 +234,10 @@ describe('resolveMarket', () => {
     it('sector summary shows correct totals', () => {
       const result = resolveMarket(SECTOR_ID, [colonyA, colonyB], depositsMapAB)
       const s = result.sectorSummary
-      // Food: A produces 6, B produces 0; A consumes 4, B consumes 4 → total consumption = 8
+      // Food: A produces 6, B produces 0; A consumes 2, B consumes 2 → total consumption = 4
       expect(s.totalProduction[ResourceType.Food]).toBe(6)
-      expect(s.totalConsumption[ResourceType.Food]).toBe(8) // both pop-2 colonies need 4 food each
-      expect(s.netSurplus[ResourceType.Food]).toBe(-2)      // 6 produced - 8 consumed = -2
+      expect(s.totalConsumption[ResourceType.Food]).toBe(4) // both pop-2 colonies need 2 food each
+      expect(s.netSurplus[ResourceType.Food]).toBe(2)       // 6 produced - 4 consumed = +2
     })
   })
 
@@ -249,21 +247,21 @@ describe('resolveMarket', () => {
   // Expected: food shortage recorded for both colonies.
 
   describe('shortage scenario — pool exhausted, deficits remain', () => {
-    // Colony A: pop 3 → needs 6 food. Agri 2 → produces 2 food. Deficit 4.
+    // Colony A: pop 3 → needs 3 food. Agri 2 → produces 2 food. Deficit 1.
     const colonyA = makeColony(
       COLONY_A,
       PLANET_A,
       makeInfra({ [InfraDomain.Agricultural]: 2 }),
-      3, // pop 3 → food consumed = 6
+      3, // pop 3 → food consumed = 3
       7,
     )
 
-    // Colony B: pop 3 → needs 6 food. No agri → 0 food. Deficit 6.
+    // Colony B: pop 3 → needs 3 food. No agri → 0 food. Deficit 3.
     const colonyB = makeColony(
       COLONY_B,
       PLANET_A,
       makeInfra({}),
-      3, // pop 3 → food consumed = 6
+      3, // pop 3 → food consumed = 3
       3,
     )
 
@@ -275,7 +273,7 @@ describe('resolveMarket', () => {
     it('Colony A is in food shortage', () => {
       const result = resolveMarket(SECTOR_ID, [colonyA, colonyB], depositsMap)
       const flowA = result.colonyFlows.get(COLONY_A)!
-      // A produces 2, needs 6 → surplus = -4 → shortage of 4
+      // A produces 2, needs 3 → surplus = -1 → shortage of 1
       expect(flowA[ResourceType.Food].inShortage).toBe(true)
       expect(flowA[ResourceType.Food].imported).toBe(0) // nothing to import (A has deficit too)
     })
@@ -296,15 +294,15 @@ describe('resolveMarket', () => {
 
     it('no export bonuses when pool is empty (no surplus to trade)', () => {
       const result = resolveMarket(SECTOR_ID, [colonyA, colonyB], depositsMap)
-      // Colony A has surplus = -4 (deficit), Colony B has surplus = -6 (deficit)
+      // Colony A has surplus = -1 (deficit), Colony B has surplus = -3 (deficit)
       // No colony contributes to the pool → no export bonuses
       expect(result.exportBonuses).toHaveLength(0)
     })
 
     it('sector summary shows negative net surplus (sector deficit)', () => {
       const result = resolveMarket(SECTOR_ID, [colonyA, colonyB], depositsMap)
-      // Total food produced = 2, total consumed = 12 → net = -10
-      expect(result.sectorSummary.netSurplus[ResourceType.Food]).toBe(-10)
+      // Total food produced = 2, total consumed = 6 → net = -4
+      expect(result.sectorSummary.netSurplus[ResourceType.Food]).toBe(-4)
     })
   })
 
@@ -315,41 +313,41 @@ describe('resolveMarket', () => {
   // Expected: C fully satisfied, A partially satisfied, B in shortage.
 
   describe('dynamism priority — high dynamism gets first access', () => {
-    // Producer: Colony P produces 4 food surplus (pop 1, agri 5 → 5 food, consumes 2)
+    // Producer: Colony P, pop 1, agri 5 → 5 food produced, consumes 1 → surplus 4.
     const colonyP = makeColony(
       'col_producer' as ColonyId,
       PLANET_A,
       makeInfra({ [InfraDomain.Agricultural]: 5 }),
-      1, // pop 1 → food consumed = 2; surplus = 3
+      1, // pop 1 → food consumed = 1; surplus = 4
       6,
     )
 
-    // Colony C (dynamism 9): pop 1, no agri → deficit 2. Gets first pick → fully resolved.
+    // Colony C (dynamism 9): pop 2, no agri → deficit 2. Gets first pick → fully resolved.
     const colonyC = makeColony(
       COLONY_C,
       PLANET_A,
       makeInfra({}),
-      1, // deficit = 2
+      2, // pop 2 → deficit = 2
       9,
     )
 
-    // Colony A (dynamism 5): pop 1, no agri → deficit 2. Gets second pick.
-    // Pool after C = 3 - 2 = 1 → receives 1, remaining deficit = 1 → shortage.
+    // Colony A (dynamism 5): pop 2, no agri → deficit 2. Gets second pick.
+    // Pool after C = 4 - 2 = 2 → receives 2, fully resolved.
     const colonyA = makeColony(
       COLONY_A,
       PLANET_A,
       makeInfra({}),
-      1, // deficit = 2
+      2, // pop 2 → deficit = 2
       5,
     )
 
-    // Colony B (dynamism 3): pop 1, no agri → deficit 2. Gets last pick.
+    // Colony B (dynamism 3): pop 2, no agri → deficit 2. Gets last pick.
     // Pool after A = 0 → receives nothing → shortage of 2.
     const colonyB = makeColony(
       COLONY_B,
       PLANET_A,
       makeInfra({}),
-      1, // deficit = 2
+      2, // pop 2 → deficit = 2
       3,
     )
 
@@ -369,18 +367,18 @@ describe('resolveMarket', () => {
       expect(flowC[ResourceType.Food].inShortage).toBe(false)
     })
 
-    it('Colony A (middle dynamism) receives partial food import', () => {
+    it('Colony A (middle dynamism) receives full food import', () => {
       const result = resolveMarket(SECTOR_ID, colonies, depositsMap)
       const flowA = result.colonyFlows.get(COLONY_A)!
-      // Pool started at 3 (producer surplus). C took 2 → 1 left. A needs 2 → gets 1.
-      expect(flowA[ResourceType.Food].imported).toBe(1)
-      expect(flowA[ResourceType.Food].inShortage).toBe(true)
+      // Pool started at 4. C took 2 → 2 left. A needs 2 → gets 2. No shortage.
+      expect(flowA[ResourceType.Food].imported).toBe(2)
+      expect(flowA[ResourceType.Food].inShortage).toBe(false)
     })
 
-    it('Colony B (lowest dynamism) receives no food import', () => {
+    it('Colony B (lowest dynamism) receives no food import (pool exhausted)', () => {
       const result = resolveMarket(SECTOR_ID, colonies, depositsMap)
       const flowB = result.colonyFlows.get(COLONY_B)!
-      // Pool = 0 after C and A drew. B gets nothing.
+      // Pool = 0 after C and A drew. B gets nothing → shortage.
       expect(flowB[ResourceType.Food].imported).toBe(0)
       expect(flowB[ResourceType.Food].inShortage).toBe(true)
     })
@@ -393,15 +391,16 @@ describe('resolveMarket', () => {
       expect(bonus).toBeDefined()
     })
 
-    it('shortages recorded for A and B only', () => {
+    it('shortage recorded for B only (C and A are fully satisfied)', () => {
+      // Pool = 4 (producer surplus). C takes 2 → pool = 2. A takes 2 → pool = 0. B gets 0.
       const result = resolveMarket(SECTOR_ID, colonies, depositsMap)
       const foodShortages = result.sectorSummary.shortages.filter(
         (s) => s.resource === ResourceType.Food,
       )
       const shortageIds = foodShortages.map((s) => s.colonyId)
-      expect(shortageIds).toContain(COLONY_A)
       expect(shortageIds).toContain(COLONY_B)
       expect(shortageIds).not.toContain(COLONY_C)
+      expect(shortageIds).not.toContain(COLONY_A)
     })
   })
 
@@ -507,8 +506,8 @@ describe('resolveMarket', () => {
         (s) => s.resource === ResourceType.Food && s.colonyId === COLONY_A,
       )
       expect(foodShortage).toBeDefined()
-      // pop 3 → needs 6 food; 0 produced, 0 imported → deficit = 6
-      expect(foodShortage!.deficitAmount).toBe(6)
+      // pop 3 → needs 3 food (pop × 1); 0 produced, 0 imported → deficit = 3
+      expect(foodShortage!.deficitAmount).toBe(3)
     })
   })
 })

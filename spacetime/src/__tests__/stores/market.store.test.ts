@@ -239,7 +239,7 @@ describe('useMarketStore', () => {
   // ── 2. resolveMarkets — no shortage scenario ──────────────────────────────
   //
   // Colony A: pop 2, agricultural infra 5, transport infra 5, Rich FertileGround deposit.
-  // Food produced = 5 × 1.0 = 5. Food consumed = pop × 2 = 4.
+  // Food produced = 5 × 1.0 = 5. Food consumed = pop × 1 = 2.
   // TC produced = 5. TC consumed = pop × 1 = 2. No shortages.
   // Sector market should be populated.
 
@@ -308,7 +308,7 @@ describe('useMarketStore', () => {
   // ── 3. resolveMarkets — food shortage scenario ────────────────────────────
   //
   // Colony A: pop 2, no agricultural infra, no deposit.
-  // Food consumed = 4, food produced = 0 → food shortage.
+  // Food consumed = 2, food produced = 0 → food shortage.
   // Expected: colonyShortages contains a Food entry for COLONY_A_ID.
 
   describe('resolveMarkets — food shortage scenario', () => {

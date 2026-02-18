@@ -321,9 +321,9 @@ Nine resource types circulate through the empire (see Data.md for full definitio
 
 | Resource | Consumption per Turn |
 |---|---|
-| Food | population_level × 2 |
+| Food | population_level × 1 |
 | Consumer Goods | population_level × 1 |
-| Transport Capacity | population_level (consumed locally, not traded) |
+| Transport Capacity | population_level x 1 |
 
 ### Sector Market Resolution
 

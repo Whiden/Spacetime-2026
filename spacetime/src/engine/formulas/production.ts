@@ -99,17 +99,14 @@ export function calculateIndustrialInput(infraLevel: number): number {
 /**
  * Calculates how much Food a colony consumes per turn based on population level.
  *
- * Formula: popLevel × 2
+ * Formula: popLevel × 1
  * (See Specs.md § 7 Consumption by Population)
- *
- * Note: Data.md § 7 lists Food at population_level — the spec formula takes
- * precedence here. This will be reconciled during playtesting balance pass.
  *
  * @param popLevel  Current colony population level (1-10).
  * @returns Food units consumed per turn.
  */
 export function calculateFoodConsumption(popLevel: number): number {
-  return popLevel * 2
+  return popLevel
 }
 
 /**

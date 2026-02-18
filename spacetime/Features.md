@@ -201,58 +201,19 @@
 
 ### Story 8.1: Production & Consumption Formulas 🔧🧪
 **Description**: Implement all resource production and consumption calculations.
-
 **Files**: `src/engine/formulas/production.ts`
-
-**Acceptance Criteria**:
-- `calculateExtraction(infraLevel, richnessModifier)`: returns `infraLevel × richnessModifier`
-- `calculateManufacturing(infraLevel, hasInputs)`: returns `infraLevel` if inputs available, `floor(infraLevel / 2)` if shortage
-- `calculateFoodConsumption(popLevel)`: returns `popLevel × 2`
-- `calculateConsumerGoodsConsumption(popLevel)`: returns `popLevel × 1`
-- `calculateTCConsumption(popLevel)`: returns `popLevel`
-- `calculateIndustrialInput(infraLevel)`: returns `infraLevel` (1 per level per input type)
-- `calculateInfraCap(popLevel, domain)`: returns `popLevel × 2` for non-civilian, uncapped for civilian
-- `calculateExtractionCap(richness)`: returns cap from richness level (5/10/15/20)
-- All functions have unit tests with boundary values
 
 ### Story 8.2: Colony Resource Flow Calculator 🔧🧪
 **Description**: Calculate complete production and consumption for a single colony.
-
 **Files**: `src/engine/simulation/colony-sim.ts` (production section)
-
-**Acceptance Criteria**:
-- Takes colony + infrastructure + deposits as input
-- Returns per-resource: production amount, consumption amount, surplus/deficit
-- Handles extraction (deposit-dependent) and manufacturing (input-dependent)
-- Handles shortage cascading: if Common Materials shortage → Low Industry output halved
-- Returns typed ResourceFlow object per colony
-- Unit tests: full production chain from extraction through manufacturing, shortage cascading
 
 ### Story 8.3: Player Investment Action 🔧🧪
 **Description**: Implement direct BP investment in colony infrastructure.
-
 **Files**: `src/engine/actions/invest-planet.ts`
-
-**Acceptance Criteria**:
-- Validates: target colony exists, domain is valid, infra not at cap
-- Cost: 3 BP for +1 infrastructure level (public-owned)
-- Validates player has sufficient BP
-- For extraction domains: validates matching deposit exists and not at deposit cap
-- Returns updated colony infrastructure or validation error
-- Unit tests: valid investment, at cap, no deposit, insufficient BP
 
 ### Story 8.4: Infrastructure UI Updates 🖥️
 **Description**: Update colony detail view with functional infrastructure investment.
-
 **Files**: Update `src/components/colony/InfraPanel.vue`, `src/components/colony/ResourceFlow.vue`
-
-**Acceptance Criteria**:
-- Each infrastructure domain shows: current level, cap, ownership breakdown (public/corporate)
-- "Invest" button per domain: enabled when below cap and player has 3+ BP
-- Clicking Invest deducts 3 BP, adds +1 public infrastructure, UI updates immediately
-- Resource flow panel shows live production/consumption per resource
-- Surplus shown in green, deficit in red
-- Tooltip on each resource shows calculation breakdown
 
 ---
 
