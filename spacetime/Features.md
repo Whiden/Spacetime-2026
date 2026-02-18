@@ -223,53 +223,19 @@
 
 ### Story 9.1: Market Resolver 🔧🧪
 **Description**: Implement full sector market resolution logic.
-
 **Files**: `src/engine/simulation/market-resolver.ts`
-
-**Acceptance Criteria**:
-- Phase 1: Collects production from all colonies in sector
-- Phase 2: Each colony consumes own production first (internal consumption)
-- Phase 3: Remaining production goes to sector market pool
-- Phase 4: Colonies sorted by dynamism (highest first) attempt to fill deficits from pool
-- Phase 5: Remaining deficits become shortages with appropriate maluses
-- Returns per-colony: resources received, shortages, export bonuses
-- Returns per-sector: total production, consumption, surplus, deficit per resource
-- Unit tests: single colony (no trade needed), two colonies with complementary production, shortage scenario, dynamism priority ordering
 
 ### Story 9.2: Market Phase — Turn Resolution 🔧🧪
 **Description**: Integrate market resolver into turn resolution pipeline.
-
 **Files**: `src/engine/turn/market-phase.ts`
-
-**Acceptance Criteria**:
-- Calls market resolver for each sector
-- Applies shortage maluses to colony attributes (food shortage → -2 QoL, etc.)
-- Applies export bonuses to colony attributes
-- Returns updated colony states + market summary events
-- Unit tests: shortage maluses applied correctly, export bonuses applied
 
 ### Story 9.3: Market Store 🔧
 **Description**: Create Pinia store for market state.
-
 **Files**: `src/stores/market.store.ts`
-
-**Acceptance Criteria**:
-- Holds per-sector market state: production totals, consumption totals, surpluses, deficits
-- Holds per-colony: shortage flags, export bonuses
-- Action: `resolveMarkets(gameState)` runs market phase, updates state
-- Getter: `getSectorMarket(sectorId)`, `getColonyShortages(colonyId)`
 
 ### Story 9.4: Market View 🖥️
 **Description**: Display sector market dashboard.
-
 **Files**: `src/views/MarketView.vue`, `src/components/market/ResourceRow.vue`, `src/components/market/MarketSummary.vue`
-
-**Acceptance Criteria**:
-- Sector selector (dropdown or tabs) to switch between sectors
-- Per resource: production total, consumption total, surplus/deficit with color coding
-- Planet-by-planet breakdown: which colony produces/consumes what
-- Shortage warnings prominent
-- Export bonus indicators shown per colony
 
 ---
 

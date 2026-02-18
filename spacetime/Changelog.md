@@ -2,173 +2,57 @@
 
 ---
 
-## Epic 9: Sector Market & Trade
+## Epic 10: Colony Simulation
 
-### Story 9.4 — Market View (2026-02-18)
-
-**What changed:**
-- Replaced `src/views/MarketView.vue` placeholder with a full sector market dashboard
-- Created `src/components/market/ResourceRow.vue` — single resource row for the market table
-- Created `src/components/market/MarketSummary.vue` — per-colony resource flow breakdown
-- Extended `src/stores/market.store.ts` to cache per-colony `colonyFlows` (produced, consumed, surplus, imported per resource) and expose `getColonyFlows()` getter
-
-**MarketView:**
-- Sector selector tabs — one tab per sector that has colonies; shortage indicator dot on tabs with active shortages
-- Shortage alert banner at the top of the sector panel when any colony in the sector has a shortage
-- Animated red badge in the page header showing total active shortage count
-- Resource overview table: per-resource production/consumption/net surplus for the whole sector
-- "No market data yet" state for sectors before the first turn resolves
-
-**ResourceRow:**
-- Displays one tradeable resource per row with: production total, consumption total, net surplus
-- Color coding: emerald for surplus, red for deficit, zinc for balanced
-- Category badge (Extracted / Manufactured / Service)
-- Prominent SHORTAGE badge and red dot indicator when any colony has a shortage for that resource
-- Rows with zero activity are hidden to keep the table readable
-
-**MarketSummary:**
-- Per-colony breakdown table: rows = colonies (sorted by dynamism descending, matching market resolution priority), columns = active resources
-- Each cell shows: produced (+N, emerald), consumed (−N, zinc), imported (↓N, sky) stacked vertically
-- `⚠ shortage` label in red when that colony×resource combination is in shortage
-- `↑ export` label in emerald when the colony earned an export bonus for that resource
-- Colony rows show a red dot if any shortage is present; a grey dot otherwise
-- Empty states for no colonies / no resource activity
-
-**market.store.ts extension:**
-- Added `colonyFlows: Map<ColonyId, ColonyResourceSummary>` state
-- Populated by re-running `resolveMarket()` per sector during `resolveMarkets()` action (same input data — efficient, no double turn resolution)
-- Added `getColonyFlows(colonyId)` getter
-- `reset()` now clears `colonyFlows` as well
-
-**Acceptance criteria met:**
-- Sector selector (tabs) to switch between sectors ✓
-- Per resource: production total, consumption total, surplus/deficit with color coding ✓
-- Planet-by-planet breakdown: which colony produces/consumes what ✓
-- Shortage warnings prominent (header badge, tab dots, alert banner, row indicators) ✓
-- Export bonus indicators shown per colony ✓
-- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
-- `npx vitest run` — 444/444 tests pass ✓
-
----
-
-### Story 9.3 — Market Store (2026-02-18)
+### Story 10.1 — Attribute Formulas (2026-02-18)
 
 **What changed:**
-- Created `src/stores/market.store.ts` — Pinia store for sector market state
-- Created `src/__tests__/stores/market.store.test.ts` — 30 unit tests
+- Created `src/engine/formulas/attributes.ts` — all six colony attribute calculation functions
+- Created `src/__tests__/engine/formulas/attributes.test.ts` — 67 unit tests
 
-**Store state:**
-- `sectorMarkets: Map<SectorId, SectorMarketState>` — per-sector market snapshot (production, consumption, net surplus, trade flows) after each market resolution
-- `colonyShortages: Map<ColonyId, Shortage[]>` — per-colony shortage index derived from colony modifiers; queried without scanning all modifiers
-- `colonyExportBonuses: Map<ColonyId, ExportBonus[]>` — per-colony export bonus index derived from colony modifiers
+**Functions implemented:**
 
-**Getters:**
-- `getSectorMarket(sectorId)` — returns `SectorMarketState | undefined` for a sector
-- `getColonyShortages(colonyId)` — returns `Shortage[]` (empty array if no shortages)
-- `getColonyExportBonuses(colonyId)` — returns `ExportBonus[]`
-- `colonyHasShortage(colonyId)` — boolean convenience getter
-- `colonyHasResourceShortage(colonyId, resource)` — per-resource shortage check
-- `sectorsWithShortages` — computed list of sector IDs that have market data
-
-**Actions:**
-- `resolveMarkets(gameState)` — calls `resolveMarketPhase()` engine function, updates all three state maps, returns `PhaseResult` for caller chaining through the turn pipeline
-- `reset()` — clears all state (for new game)
-
-**Key design decisions:**
-- Shortage and export bonus data are re-derived from colony modifiers (sourceType `'shortage'`, sourceId prefixed `shortage_` or `export_`) rather than stored separately in the engine result — single source of truth stays on the colony, store provides indexed access for UI
-- Store does NOT call `resolveMarketPhase` on its own initiative — it wraps the engine call and distributes results; game.store.ts (Story 12.4) will orchestrate the full turn pipeline
-- `deficitAmount` is set to 0 in the shortage index (modifier doesn't carry amount); callers needing the exact deficit use `getSectorMarket()` → shortages list
-
-**Acceptance criteria met:**
-- Holds per-sector market state (production totals, consumption totals, surpluses, deficits) ✓
-- Holds per-colony shortage flags ✓
-- Action `resolveMarkets(gameState)` runs market phase and updates state ✓
-- Getter `getSectorMarket(sectorId)` ✓
-- Getter `getColonyShortages(colonyId)` ✓
-- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
-- `npx vitest run` — 444/444 tests pass ✓
-
----
-
-### Story 9.2 — Market Phase — Turn Resolution (2026-02-18)
-
-**What changed:**
-- Created `src/engine/turn/market-phase.ts` — `resolveMarketPhase(state: GameState): PhaseResult` pure engine function
-- Created `src/__tests__/engine/turn/market-phase.test.ts` — 26 unit tests
-
-**Function implemented:**
-- `resolveMarketPhase(state): PhaseResult`
-- Returns `{ updatedState, events }` with updated colony modifiers and shortage events
-
-**Phase logic:**
-1. Clears all transient market-phase modifiers (`sourceType === 'shortage'`) from every colony — this removes last turn's shortage maluses and export bonuses so they don't stack
-2. For each sector in `state.galaxy.sectors`, collects colonies and builds the deposits map from `state.planets`
-3. Calls `resolveMarket()` from `market-resolver.ts` for each sector
-4. Applies shortage malus modifiers onto affected colonies (additive, `sourceType: 'shortage'`):
-   - Food shortage → `qualityOfLife` −2
-   - ConsumerGoods shortage → `qualityOfLife` −1
-   - TransportCapacity shortage → `accessibility` −1
-   - (Industrial input shortages affect production output via colony-sim, not colony attributes)
-5. Applies export bonus modifiers onto exporting colonies (`dynamism` +1 per exported resource type, `sourceType: 'shortage'` for uniform transient clearing)
-6. Updates `state.sectorMarkets` with a `SectorMarketState` per sector (trade flows empty until Story 17.2)
-7. Generates `GameEvent`s for shortage colonies: Critical priority if food shortage, Warning otherwise; one event per colony
+- `calculateHabitability(basePlanetHab, colonyModifiers)` — resolves base planet habitability through local 'habitability' modifiers (planet features); clamped 0–10
+- `calculateAccessibility(transportInfra, colonyModifiers)` — `3 + floor(transport/2)` resolved through local 'accessibility' modifiers; clamped 0–10
+- `calculateDynamism(accessibility, populationLevel, totalCorporateInfra, colonyModifiers)` — `floor((access+pop)/2) + min(3, floor(corpInfra/10))` resolved through local 'dynamism' modifiers; clamped 0–10
+- `calculateQualityOfLife(habitability, colonyModifiers)` — `10 - floor(max(0,10-hab)/3)` resolved through local 'qualityOfLife' modifiers (shortage maluses from market-phase already on colony); clamped 0–10
+- `calculateStability(qualityOfLife, militaryInfra, debtTokens, colonyModifiers)` — reads `debtTokens` **directly** from the caller (not from modifiers); `10 - max(0,5-qol) - floor(debt/2) + min(3,floor(military/3))` resolved through local 'stability' modifiers; clamped 0–10
+- `calculateGrowthPerTurn(qualityOfLife, stability, accessibility, habitability, colonyModifiers)` — `floor((qol+stab+access)/3) - 3 - floor(max(0,10-hab)/3)` resolved through local 'growth' modifiers; **not clamped** (accumulator transitions at −1/+10)
+- `calculateInfraCap(popLevel, domain, empireBonuses, colonyModifiers)` — `popLevel×2 + empireBonuses.infraCaps[domain]` resolved through local 'max{Domain}' modifiers (e.g., Mineral Veins → 'maxMining'); returns Infinity for Civilian; floor + max(0) for all others
 
 **Key architecture decisions:**
-- Shortage and export-bonus modifiers both use `sourceType: 'shortage'` so they are cleared atomically at the start of each market phase — no stale values persist
-- Food shortage events are Critical (population decline risk per Specs.md § 7); all others are Warning
-- Events are generated per colony (not per resource) to avoid event spam
-- Industrial input shortages (CommonMaterials, RareMaterials, etc.) do NOT create attribute modifiers — they halve manufacturing output in colony-sim
-- `sectorMarkets` stores `inboundFlows: []` / `outboundFlows: []` until Story 17.2
+- All attribute functions use `resolveModifiers()` for local per-entity bonuses — no inline bonus hardcoding
+- `debtTokens` is read directly from the passed-in state value, never expressed as a per-colony modifier (empire-wide value, applies uniformly — see Structure.md § Empire Bonuses vs Local Modifiers)
+- Empire infra cap bonuses are plain numbers from `EmpireInfraCapBonuses`, combined before resolveModifiers, not stored as modifiers
+- `calculateInfraCap` returns the pop-derived cap only; the tighter deposit richness cap (from `calculateExtractionCap` in production.ts) is the caller's responsibility to enforce in colony-sim.ts
+- Growth is intentionally unclamped — it is a progress accumulator, not an attribute; transitions are handled by colony-sim.ts (Story 10.2)
 
 **Acceptance criteria met:**
-- Calls market resolver for each sector ✓
-- Applies shortage maluses to colony attributes (food → -2 QoL, CG → -1 QoL, TC → -1 Accessibility) ✓
-- Applies export bonuses to colony attributes (+1 Dynamism per exported resource type) ✓
-- Returns updated colony states + market summary events ✓
-- Unit tests: shortage maluses applied correctly ✓
-- Unit tests: export bonuses applied ✓
+- All attribute functions use `resolveModifiers` for local per-entity bonuses ✓
+- All attribute functions read empire-wide values directly from state (debt tokens, empire bonuses) — not from modifiers ✓
+- `calculateHabitability(basePlanetHab, colonyModifiers)` ✓
+- `calculateAccessibility(transportInfra, colonyModifiers)` — base is `3 + floor(transport/2)` ✓
+- `calculateStability(...)` reads `gameState.debtTokens` directly for debt malus, uses local modifiers for everything else ✓
+- `calculateInfraCap(popLevel, domain, empireBonuses, colonyModifiers)` — base is `popLevel×2 + empireBonuses.infraCaps[domain]`, then resolves through local modifiers ✓
+- Formula implementations match Specs.md Section 5 ✓
+- Unit tests verify local modifiers and empire bonuses combine correctly ✓
+- Unit tests verify debt is read from state not modifiers ✓
 - `npx vue-tsc --noEmit` — zero TypeScript errors ✓
-- `npx vitest run` — 407/407 tests pass ✓
+- `npx vitest run` — 511/511 tests pass ✓
 
 ---
 
-### Story 9.1 — Market Resolver (2026-02-18)
+## Epic 9: Sector Market & Trade (Completed 2026-02-18)
 
-**What changed:**
-- Created `src/engine/simulation/market-resolver.ts` — `resolveMarket(sectorId, colonies, depositsMap)` pure engine function
-- Created `src/__tests__/engine/simulation/market-resolver.test.ts` — 24 unit tests
+Implemented the full sector market resolution system and UI (Stories 9.1–9.4). Built five-phase market resolver (`resolveMarket` — production pooling, internal consumption, dynamism-priority purchasing, shortage detection, export bonuses; TC is local-only). Built market turn phase (`resolveMarketPhase` — clears transient shortage modifiers, runs resolver per sector, applies shortage maluses to colony attributes: food→−2 QoL, CG→−1 QoL, TC→−1 Accessibility; export bonus →+1 Dynamism; generates Critical/Warning events per colony). Created market Pinia store (per-sector `SectorMarketState`, per-colony shortage/export-bonus indexes, `resolveMarkets(gameState)` action, `colonyFlows` cache for UI). Built MarketView with sector tabs (shortage dot indicators), per-resource production/consumption/net table (ResourceRow — color-coded, SHORTAGE badge), and per-colony resource breakdown (MarketSummary — sorted by dynamism, stacked cell format, export indicators).
 
-**Function implemented:**
-- `resolveMarket(sectorId, colonies, depositsMap): MarketResolverResult`
-- Returns `{ colonyFlows, sectorSummary, exportBonuses }`
+**Key architecture decisions:**
+- Shortage and export-bonus modifiers both use `sourceType: 'shortage'` — cleared atomically at the start of each market phase, never stale
+- TC never enters the market pool — local shortage only
+- Events generated per colony (not per resource) to avoid spam
+- Store re-derives shortage/export data from colony modifiers; single source of truth stays on the colony
 
-**Five-phase resolution (Specs.md § 7):**
-1. Phase 1: `calculateColonyResourceFlow` called for every colony in the sector
-2. Phase 2+3: Internal consumption already embedded in `colony-sim` output (`surplus = produced − consumed`); positive surpluses pool to the sector market
-3. Phase 4: Colonies sorted by dynamism (descending), each draws `min(deficit, pool)` from the market pool
-4. Phase 5: Remaining deficits become `Shortage` records with `deficitAmount`
-5. Export bonuses: colony earns `+1 dynamism` for each resource type it contributed to the pool that was consumed by another colony
-
-**Transport Capacity special case:**
-- TC is local-only — never enters the market pool
-- TC shortage detected immediately when `produced < consumed`
-
-**Export bonus design:**
-- `attributeTarget: 'dynamism'`, `bonusAmount: 1` per exported resource type
-- Bonus only granted if pool[resource] actually decreased (i.e., another colony consumed from it)
-- TODO (Story 9.4 / Market View): Define a proper export bonus table in Data.md
-
-**Acceptance criteria met:**
-- Phase 1: Collects production from all colonies in sector ✓
-- Phase 2: Each colony consumes own production first (internal consumption) ✓
-- Phase 3: Remaining production goes to sector market pool ✓
-- Phase 4: Colonies sorted by dynamism (highest first) attempt to fill deficits from pool ✓
-- Phase 5: Remaining deficits become shortages with appropriate deficit amounts ✓
-- Returns per-colony: resources received (`imported`), shortage flags, export bonuses ✓
-- Returns per-sector: total production, consumption, surplus, deficit per resource ✓
-- Unit tests: single colony (no trade needed), two colonies complementary production, shortage scenario, dynamism priority ordering ✓
-- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
-- `npx vitest run` — 381/381 tests pass ✓
+**Tests:** 444 passing (market-resolver: 24, market-phase: 26, market-store: 30, prior: 364)
 
 ---
 
