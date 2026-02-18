@@ -4,6 +4,45 @@
 
 ## Epic 9: Sector Market & Trade
 
+### Story 9.3 — Market Store (2026-02-18)
+
+**What changed:**
+- Created `src/stores/market.store.ts` — Pinia store for sector market state
+- Created `src/__tests__/stores/market.store.test.ts` — 30 unit tests
+
+**Store state:**
+- `sectorMarkets: Map<SectorId, SectorMarketState>` — per-sector market snapshot (production, consumption, net surplus, trade flows) after each market resolution
+- `colonyShortages: Map<ColonyId, Shortage[]>` — per-colony shortage index derived from colony modifiers; queried without scanning all modifiers
+- `colonyExportBonuses: Map<ColonyId, ExportBonus[]>` — per-colony export bonus index derived from colony modifiers
+
+**Getters:**
+- `getSectorMarket(sectorId)` — returns `SectorMarketState | undefined` for a sector
+- `getColonyShortages(colonyId)` — returns `Shortage[]` (empty array if no shortages)
+- `getColonyExportBonuses(colonyId)` — returns `ExportBonus[]`
+- `colonyHasShortage(colonyId)` — boolean convenience getter
+- `colonyHasResourceShortage(colonyId, resource)` — per-resource shortage check
+- `sectorsWithShortages` — computed list of sector IDs that have market data
+
+**Actions:**
+- `resolveMarkets(gameState)` — calls `resolveMarketPhase()` engine function, updates all three state maps, returns `PhaseResult` for caller chaining through the turn pipeline
+- `reset()` — clears all state (for new game)
+
+**Key design decisions:**
+- Shortage and export bonus data are re-derived from colony modifiers (sourceType `'shortage'`, sourceId prefixed `shortage_` or `export_`) rather than stored separately in the engine result — single source of truth stays on the colony, store provides indexed access for UI
+- Store does NOT call `resolveMarketPhase` on its own initiative — it wraps the engine call and distributes results; game.store.ts (Story 12.4) will orchestrate the full turn pipeline
+- `deficitAmount` is set to 0 in the shortage index (modifier doesn't carry amount); callers needing the exact deficit use `getSectorMarket()` → shortages list
+
+**Acceptance criteria met:**
+- Holds per-sector market state (production totals, consumption totals, surpluses, deficits) ✓
+- Holds per-colony shortage flags ✓
+- Action `resolveMarkets(gameState)` runs market phase and updates state ✓
+- Getter `getSectorMarket(sectorId)` ✓
+- Getter `getColonyShortages(colonyId)` ✓
+- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
+- `npx vitest run` — 444/444 tests pass ✓
+
+---
+
 ### Story 9.2 — Market Phase — Turn Resolution (2026-02-18)
 
 **What changed:**
