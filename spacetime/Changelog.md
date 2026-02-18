@@ -4,6 +4,41 @@
 
 ## Epic 10: Colony Simulation
 
+### Story 10.3 — Colony Phase: Turn Resolution (2026-02-18)
+
+**What changed:**
+- Created `src/engine/turn/colony-phase.ts` — full colony simulation turn phase
+- Created `src/__tests__/engine/turn/colony-phase.test.ts` — 33 unit tests
+
+**Function implemented:**
+
+- `resolveColonyPhase(state)` → `PhaseResult` — processes every colony once per turn:
+  1. **Infrastructure cap recalculation** — for each domain, calls `calculateInfraCap()` from `attributes.ts`; extraction domains get `min(pop_cap, richness_cap)`; extraction domains with no matching deposit get cap = 0; Civilian = Infinity
+  2. **Attribute recalculation** — calls all six attribute formulas from `attributes.ts` in cascade order (hab → access → dynamism → QoL → stability → growthPerTurn); shortage modifiers from market-phase are already on `colony.modifiers` and flow through naturally
+  3. **Growth tick** — preserves the existing growth accumulator, delegates to `applyGrowthTick()` from `colony-sim.ts` which adds `growthPerTurn` and checks transitions
+  4. **Population events** — level-up emits `EventPriority.Positive`; level-down emits `EventPriority.Warning`
+  5. **Organic infrastructure growth** — delegates to `applyOrganicInfraGrowth()` with shortage resources derived from `state.sectorMarkets[colony.sectorId].netSurplus`
+  6. **Attribute warning events** — emits `Warning` events for stability ≤ 2 or qualityOfLife ≤ 2
+
+**Key architecture decisions:**
+- Shortage resources for organic growth are derived from `state.sectorMarkets` (previous turn's data) because colony-phase (#8) runs before market-phase (#9) in the turn order
+- Infra caps are recalculated before attribute calculation so `currentCap` values are accurate for organic growth cap checks
+- The growth accumulator in `colony.attributes.growth` is intentionally preserved when building `colonyWithAttrs` — `applyGrowthTick` owns the responsibility of adding `growthPerTurn` and triggering transitions
+- Attribute warnings (stability/QoL ≤ 2) are structural issues (debt, habitability, features) distinct from shortage warnings already emitted by market-phase
+- Colonies with no matching planet in `state.planets` are silently skipped (orphan guard)
+
+**Acceptance criteria met:**
+- Recalculates all attributes for every colony (using current market data, infra, etc.) ✓
+- Applies growth tick ✓
+- Checks population level transitions ✓
+- Checks organic infrastructure growth ✓
+- Returns updated colonies + events (population milestones, attribute warnings) ✓
+- Unit tests: full colony turn with attribute changes ✓, population growth event ✓, population decline event ✓, infra cap recalculation ✓, organic growth check ✓, shortage resource derivation ✓, attribute warnings ✓, multiple colonies ✓, state immutability ✓
+- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
+- `npx vitest run` — 584/584 tests pass ✓
+
+---
+
 ### Story 10.2 — Colony Simulation: Growth & Population (2026-02-18)
 
 **What changed:**
