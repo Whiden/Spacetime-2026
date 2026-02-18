@@ -19,9 +19,9 @@
  *
  * Pure TypeScript — no Vue or Pinia imports.
  *
- * TODO (Story 12.2): Expand with dedicated unit tests and full itemised
- *   expense breakdowns. Also add direct_invest expense type for player
- *   infrastructure purchases made during the player-action phase.
+ * Story 12.2: Dedicated unit tests in expense-phase.test.ts.
+ * TODO (Story 12.5): direct_invest expense entries could be added during player-action phase
+ *   (investments trigger immediately via investPlanet — not tracked per turn here).
  */
 
 import type { GameState, PhaseResult } from '../../types/game'

@@ -19,8 +19,7 @@
  *
  * Pure TypeScript — no Vue or Pinia imports.
  *
- * TODO (Story 12.2): Expand with dedicated unit tests and full itemised
- *   income-source breakdowns with per-source attribution.
+ * Story 12.2: Dedicated unit tests in income-phase.test.ts.
  */
 
 import type { GameState, PhaseResult } from '../../types/game'

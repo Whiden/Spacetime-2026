@@ -4,6 +4,61 @@
 
 ## Epic 12: Turn Resolution Pipeline
 
+### Story 12.2 — Income & Expense Phases (2026-02-18)
+
+**What changed:**
+- Created `src/__tests__/engine/turn/income-phase.test.ts` — 26 unit tests for income phase.
+- Created `src/__tests__/engine/turn/expense-phase.test.ts` — 33 unit tests for expense phase.
+- Removed Story 12.2 TODO comments from `income-phase.ts` and `expense-phase.ts` (stubs were already complete from Story 12.1).
+
+**Functions covered by tests:**
+
+- `resolveIncomePhase(state: GameState): PhaseResult` — Phase #2 of turn resolution:
+  - Iterates all colonies: calculates planet tax via `calculatePlanetTax`; skips colonies with pop < 5 or zero tax result.
+  - Iterates all corporations: calculates corp tax via `calculateCorpTax`; skips level 1-2 startups (tax = 0).
+  - Produces itemized `IncomeSource[]` with per-source attribution (type, sourceId, sourceName, amount).
+  - Credits `totalIncome` to `state.currentBP`.
+  - Updates `budget.incomeSources`, `budget.totalIncome`, and `budget.calculatedTurn`.
+  - Emits no events.
+
+- `resolveExpensePhase(state: GameState): PhaseResult` — Phase #3 of turn resolution:
+  - Iterates all contracts: adds `contract` expense entry for each with `status === Active`; skips Completed contracts.
+  - Iterates all missions: adds `mission` expense entry for each with `completedTurn === null`; skips finished missions.
+  - Produces itemized `ExpenseEntry[]` with per-source attribution.
+  - Deducts `totalExpenses` from `state.currentBP`.
+  - Deficit handling: if `newBP < 0`, gains `max(1, floor(deficit / 3))` debt tokens, capped at 10 total.
+  - Updates `budget.expenseEntries`, `budget.totalExpenses`, `budget.currentBP`, `budget.netBP`, `budget.debtTokens`, `budget.stabilityMalus`, `budget.calculatedTurn`.
+  - Emits no events.
+
+**Test scenarios:**
+
+Income phase:
+- Zero income: no colonies or corps → empty incomeSources, BP unchanged, totalIncome = 0
+- Planet tax: pop ≥ 5 taxable; pop < 5 exempt; low habitability increases hab_cost reducing tax to 0; full tax amount verified at pop 7/hab 8; hab 10 zero cost; colony name attribution
+- Corp tax: level 3+ taxable; level 1 exempt; level 2 exempt; level 5 and level 10 amounts verified; corp name attribution
+- Multiple sources: two colonies summed; two corps summed; combined planet + corp income; mixed taxable/non-taxable sources; totalIncome as aggregate sum
+- BP balance: income credited; no-income BP unchanged; income added on top of existing BP
+- Budget state: totalIncome updated; expenseEntries untouched; calculatedTurn stamped
+
+Expense phase:
+- Zero expenses: no contracts or missions → empty expenseEntries, BP unchanged, totalExpenses = 0, no debt tokens
+- Contract expenses: single active contract deducted; sourceId attribution; completed contracts skipped; multiple active contracts summed
+- Mission expenses: single active mission deducted; sourceId attribution; completed missions skipped; multiple active missions summed
+- Multiple types: combined contract + mission in expenseEntries; totalExpenses as aggregate; combined deduction from BP
+- BP deduction: contract cost subtracted; mission cost subtracted; BP allowed to go negative
+- Debt tokens: deficit triggers tokens; minimum 1 token for any deficit; floor(deficit/3) formula; accumulates on existing tokens; capped at 10; exactly-zero BP no tokens; surplus no tokens
+- Budget state: totalExpenses updated; budget.currentBP matches state.currentBP; debtTokens reflected; stabilityMalus = floor(debtTokens/2); netBP = totalIncome - totalExpenses; incomeSources preserved
+
+**Acceptance criteria met:**
+- Income phase: sums all planet taxes + corp taxes, returns itemized income ✓
+- Expense phase: sums all active contract costs + mission costs, returns itemized expenses ✓
+- Both return typed result objects with per-source breakdowns ✓
+- Unit tests: multiple income sources ✓, multiple expense types ✓, zero income scenario ✓
+- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
+- `npx vitest run` — 706/706 tests pass ✓
+
+---
+
 ### Story 12.1 — Turn Resolver (2026-02-18)
 
 **What changed:**
