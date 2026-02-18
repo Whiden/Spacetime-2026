@@ -2,6 +2,60 @@
 
 ---
 
+## Epic 12: Turn Resolution Pipeline
+
+### Story 12.1 — Turn Resolver (2026-02-18)
+
+**What changed:**
+- Created `src/engine/turn/turn-resolver.ts` — master turn resolution function.
+- Created stub phases for all phases not yet fully implemented:
+  - `src/engine/turn/debt-phase.ts` — clears 1 debt token per turn, deducts 1 BP
+  - `src/engine/turn/income-phase.ts` — sums planet taxes + corp taxes, credits BP
+  - `src/engine/turn/expense-phase.ts` — deducts contract/mission costs, handles deficit → debt tokens
+  - `src/engine/turn/mission-phase.ts` — stub (deferred to Story 16.3)
+  - `src/engine/turn/science-phase.ts` — stub (deferred to Story 14.4)
+  - `src/engine/turn/event-phase.ts` — placeholder (deferred to post-prototype)
+- Created `src/__tests__/engine/turn/turn-resolver.test.ts` — 24 unit tests.
+
+**Functions implemented / exported:**
+
+- `resolveTurn(state: GameState): TurnResult` — calls all 10 phases in exact order:
+  1. `resolveDebtPhase` — clear 1 token, deduct 1 BP
+  2. `resolveIncomePhase` — planet taxes + corp taxes → BP
+  3. `resolveExpensePhase` — contract + mission costs deducted; deficit → new debt tokens
+  4. `resolveContractPhase` — advance contracts (existing, Story 7.3)
+  5. `resolveMissionPhase` — stub passthrough
+  6. `resolveSciencePhase` — stub passthrough
+  7. `resolveCorpPhase` — corp investment AI + organic emergence (existing, Stories 11.2–11.3)
+  8. `resolveColonyPhase` — attribute recalculation + growth (existing, Story 10.3)
+  9. `resolveMarketPhase` — sector market resolution (existing, Story 9.2)
+  10. `resolveEventPhase` — placeholder passthrough
+  - Increments turn number after all phases complete.
+  - Appends new turn events to `state.events` history.
+  - Returns `TurnResult { updatedState, events, completedTurn }`.
+
+**Stub phases (functional but minimal):**
+
+- `resolveDebtPhase`: clears 1 token if any exist, deducts 1 BP, emits debt event.
+- `resolveIncomePhase`: iterates colonies/corps, applies planet/corp tax formulas, credits BP.
+- `resolveExpensePhase`: iterates active contracts/missions, deducts BP costs, creates debt tokens on deficit (`floor(deficit/3)`, min 1, cap 10).
+- `resolveMissionPhase`: passthrough stub with TODO (Story 16.3).
+- `resolveSciencePhase`: passthrough stub with TODO (Story 14.4).
+- `resolveEventPhase`: passthrough stub with TODO (post-prototype).
+
+**Acceptance criteria met:**
+- Calls phases in exact order: debt → income → expense → contract → mission → science → corp → colony → market → event ✓
+- Each phase receives current state accumulated from previous phases ✓
+- Collects events from all phases into unified event list (phase order preserved) ✓
+- Returns complete updated GameState + all events ✓
+- Increments turn number ✓
+- Pure function: no side effects, no store access ✓
+- Unit tests: phase order verification ✓, state flow between phases ✓, turn number increment ✓
+- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
+- `npx vitest run` — 670/670 tests pass ✓
+
+---
+
 ## Epic 11: Corporation AI
 
 ### Story 11.3 — Organic Corporation Emergence (2026-02-18)
