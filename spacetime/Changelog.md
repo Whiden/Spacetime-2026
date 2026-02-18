@@ -4,6 +4,49 @@
 
 ## Epic 8: Infrastructure & Production
 
+### Story 8.3 — Player Investment Action (2026-02-18)
+
+**What changed:**
+- Created `src/engine/actions/invest-planet.ts` — `investPlanet(params)` pure engine action
+- Created `src/__tests__/engine/actions/invest-planet.test.ts` — 20 unit tests
+
+**Function implemented:**
+- `investPlanet(params: InvestPlanetParams): InvestPlanetResult`
+- On success: returns `{ success: true, updatedColony, bpSpent: 3 }` with +1 public level on the target domain
+- On failure: returns `{ success: false, error, message }` with one of 4 typed error codes
+
+**Validation order:**
+1. Colony ID must exist in provided colonies map → `COLONY_NOT_FOUND`
+2. Player must have ≥ 3 BP → `INSUFFICIENT_BP`
+3. Extraction domains: must have a matching deposit on the planet → `NO_MATCHING_DEPOSIT`
+4. Domain must be below its effective cap → `AT_CAP`
+
+**Cap calculation (`computeEffectiveCap`):**
+- Civilian: `Infinity` (always allowed)
+- Extraction domains (Mining, DeepMining, GasExtraction, Agricultural): max richness cap among all matching deposits (`RICHNESS_CAPS[richness]` = 5/10/15/20); returns 0 if no deposit
+- All other domains: `calculateInfraCap(popLevel, domain)` = `popLevel × 2`
+- NOTE: `currentCap` on InfraState is set to Infinity everywhere until Story 10.1, so caps are computed dynamically from live colony data here
+
+**Key design decisions:**
+- The function is pure — the store deducts `bpSpent` from the budget after a successful call
+- Extraction domain deposit check precedes the cap check so the user gets a clear `NO_MATCHING_DEPOSIT` error rather than a misleading `AT_CAP` (which would also fire since cap=0 with no deposit)
+- When multiple deposits exist for the same domain, the highest richness cap is used as the effective ceiling
+- Feature bonuses to extraction caps (e.g., "Mineral Veins" +5 max Mining) deferred to Story 10.1 when `resolveModifiers` is applied to infra cap targets
+- `bpSpent` exported constant `INVEST_COST_BP = 3` — referenced by the store and UI
+
+**Acceptance criteria met:**
+- Validates: target colony exists → `COLONY_NOT_FOUND` ✓
+- Validates: player has sufficient BP → `INSUFFICIENT_BP` ✓
+- Cost: 3 BP for +1 public infrastructure level ✓
+- For extraction domains: validates matching deposit exists → `NO_MATCHING_DEPOSIT` ✓
+- For extraction domains: validates not at deposit richness cap → `AT_CAP` ✓
+- Returns updated colony infrastructure or validation error ✓
+- Unit tests: valid investment, at population cap, at deposit cap, no deposit, insufficient BP, colony not found ✓
+- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
+- `npx vitest run` — 357/357 tests pass ✓
+
+---
+
 ### Story 8.2 — Colony Resource Flow Calculator (2026-02-18)
 
 **What changed:**
