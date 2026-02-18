@@ -15,10 +15,6 @@
  *
  * Pure TypeScript — no Vue or Pinia imports.
  *
- * TODO (Story 12.3): Full debt-phase implementation with dedicated unit tests.
- *   This stub satisfies Story 12.1's requirement that debt-phase exists and can
- *   be called by the turn resolver. Story 12.3 will add dedicated tests for the
- *   full clearing / token-gain logic.
  */
 
 import type { GameState, PhaseResult } from '../../types/game'

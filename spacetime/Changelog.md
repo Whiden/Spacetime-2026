@@ -4,6 +4,40 @@
 
 ## Epic 12: Turn Resolution Pipeline
 
+### Story 12.3 — Debt Phase (2026-02-18)
+
+**What changed:**
+- Created `src/__tests__/engine/turn/debt-phase.test.ts` — 20 unit tests for the debt phase.
+- Removed Story 12.3 TODO comment from `src/engine/turn/debt-phase.ts` (implementation was already complete from Story 12.1).
+
+**Functions covered by tests:**
+
+- `resolveDebtPhase(state: GameState): PhaseResult` — Phase #1 of turn resolution:
+  - If `debtTokens === 0`: returns state unchanged with no events.
+  - If `debtTokens > 0`: decrements `debtTokens` by 1, deducts 1 BP from `currentBP`.
+  - Keeps `budget.debtTokens`, `budget.currentBP`, and `budget.stabilityMalus` in sync.
+  - Emits a `Positive` event when the last token is cleared; `Info` event while tokens remain.
+  - BP can go negative (debt payment is unconditional).
+
+**Test scenarios:**
+
+- No tokens: state returned unchanged, same reference, no events emitted
+- Token clearing: 1 token cleared, 1 BP deducted, 1 event emitted with correct category
+- Event priority: `Positive` when last token cleared, `Info` when tokens remain
+- Many tokens: exactly 1 cleared regardless of count (5 or 10 tokens)
+- BP edge cases: BP allowed to go negative; BP 1→0 when clearing last token
+- Budget sync: `budget.debtTokens`, `budget.currentBP`, `budget.stabilityMalus` match state
+- Immutability: input state not mutated
+
+**Acceptance criteria met:**
+- If debt tokens > 0: clear 1 token, deduct 1 BP from income ✓
+- Returns updated debt token count and BP adjustment ✓
+- Unit tests: token clearing ✓, no tokens scenario ✓, many tokens scenario ✓
+- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
+- `npx vitest run` — 726/726 tests pass ✓
+
+---
+
 ### Story 12.2 — Income & Expense Phases (2026-02-18)
 
 **What changed:**
