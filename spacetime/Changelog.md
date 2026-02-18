@@ -4,6 +4,48 @@
 
 ## Epic 9: Sector Market & Trade
 
+### Story 9.2 — Market Phase — Turn Resolution (2026-02-18)
+
+**What changed:**
+- Created `src/engine/turn/market-phase.ts` — `resolveMarketPhase(state: GameState): PhaseResult` pure engine function
+- Created `src/__tests__/engine/turn/market-phase.test.ts` — 26 unit tests
+
+**Function implemented:**
+- `resolveMarketPhase(state): PhaseResult`
+- Returns `{ updatedState, events }` with updated colony modifiers and shortage events
+
+**Phase logic:**
+1. Clears all transient market-phase modifiers (`sourceType === 'shortage'`) from every colony — this removes last turn's shortage maluses and export bonuses so they don't stack
+2. For each sector in `state.galaxy.sectors`, collects colonies and builds the deposits map from `state.planets`
+3. Calls `resolveMarket()` from `market-resolver.ts` for each sector
+4. Applies shortage malus modifiers onto affected colonies (additive, `sourceType: 'shortage'`):
+   - Food shortage → `qualityOfLife` −2
+   - ConsumerGoods shortage → `qualityOfLife` −1
+   - TransportCapacity shortage → `accessibility` −1
+   - (Industrial input shortages affect production output via colony-sim, not colony attributes)
+5. Applies export bonus modifiers onto exporting colonies (`dynamism` +1 per exported resource type, `sourceType: 'shortage'` for uniform transient clearing)
+6. Updates `state.sectorMarkets` with a `SectorMarketState` per sector (trade flows empty until Story 17.2)
+7. Generates `GameEvent`s for shortage colonies: Critical priority if food shortage, Warning otherwise; one event per colony
+
+**Key architecture decisions:**
+- Shortage and export-bonus modifiers both use `sourceType: 'shortage'` so they are cleared atomically at the start of each market phase — no stale values persist
+- Food shortage events are Critical (population decline risk per Specs.md § 7); all others are Warning
+- Events are generated per colony (not per resource) to avoid event spam
+- Industrial input shortages (CommonMaterials, RareMaterials, etc.) do NOT create attribute modifiers — they halve manufacturing output in colony-sim
+- `sectorMarkets` stores `inboundFlows: []` / `outboundFlows: []` until Story 17.2
+
+**Acceptance criteria met:**
+- Calls market resolver for each sector ✓
+- Applies shortage maluses to colony attributes (food → -2 QoL, CG → -1 QoL, TC → -1 Accessibility) ✓
+- Applies export bonuses to colony attributes (+1 Dynamism per exported resource type) ✓
+- Returns updated colony states + market summary events ✓
+- Unit tests: shortage maluses applied correctly ✓
+- Unit tests: export bonuses applied ✓
+- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
+- `npx vitest run` — 407/407 tests pass ✓
+
+---
+
 ### Story 9.1 — Market Resolver (2026-02-18)
 
 **What changed:**
