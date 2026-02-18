@@ -1,17 +1,30 @@
 <script setup lang="ts">
 /**
- * ContractsView — Displays active contracts and opens the creation wizard.
+ * ContractsView — Active and completed contracts, grouped by status.
  *
- * TODO (Story 7.5): Full contract list with progress bars and completed contracts.
+ * Shows:
+ * - Summary stats bar (active count, total BP/turn, completed count)
+ * - Active contracts section with ContractCard components
+ * - Completed contracts section (collapsible, collapsed by default)
+ * - Prominent "New Contract" button always accessible in the header
+ * - Empty state with inline create button when no active contracts
  */
 import { ref, computed } from 'vue'
 import { useContractStore } from '../stores/contract.store'
+import ContractCard from '../components/contract/ContractCard.vue'
 import ContractWizard from '../components/contract/ContractWizard.vue'
 
 const contractStore = useContractStore()
 const showWizard = ref(false)
+const showCompleted = ref(false)
 
 const activeContracts = computed(() => contractStore.activeContracts)
+const completedContracts = computed(() => contractStore.completedContracts)
+const totalBpPerTurn = computed(() => contractStore.totalContractExpenses)
+
+const hasAny = computed(
+  () => activeContracts.value.length > 0 || completedContracts.value.length > 0,
+)
 
 function openWizard() {
   showWizard.value = true
@@ -19,24 +32,6 @@ function openWizard() {
 
 function closeWizard() {
   showWizard.value = false
-}
-
-/** Human-readable label for contract type. */
-const TYPE_LABELS: Record<string, string> = {
-  Exploration: 'Exploration',
-  GroundSurvey: 'Ground Survey',
-  Colonization: 'Colonization',
-  ShipCommission: 'Ship Commission',
-  TradeRoute: 'Trade Route',
-}
-
-/** Color accent by contract type for progress bars. */
-const TYPE_COLORS: Record<string, string> = {
-  Exploration: 'bg-emerald-500',
-  GroundSurvey: 'bg-teal-500',
-  Colonization: 'bg-amber-500',
-  ShipCommission: 'bg-sky-500',
-  TradeRoute: 'bg-violet-500',
 }
 </script>
 
@@ -53,44 +48,43 @@ const TYPE_COLORS: Record<string, string> = {
       </button>
     </div>
 
-    <!-- Active contracts -->
-    <div v-if="activeContracts.length > 0" class="space-y-2">
-      <div
-        v-for="contract in activeContracts"
-        :key="contract.id"
-        class="rounded-lg border border-zinc-700 bg-zinc-900/80 px-4 py-3"
-      >
-        <div class="flex items-center justify-between mb-2">
-          <div class="flex items-center gap-2">
-            <span class="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0" />
-            <span class="text-sm font-medium text-white">
-              {{ TYPE_LABELS[contract.type] ?? contract.type }}
-            </span>
-          </div>
-          <span class="text-xs text-zinc-500">{{ contract.bpPerTurn }} BP/turn</span>
-        </div>
-
-        <!-- Progress bar -->
-        <div class="h-1 rounded-full bg-zinc-800 overflow-hidden">
-          <div
-            class="h-full rounded-full transition-all"
-            :class="TYPE_COLORS[contract.type] ?? 'bg-indigo-500'"
-            :style="{
-              width: `${Math.round(((contract.durationTurns - contract.turnsRemaining) / contract.durationTurns) * 100)}%`,
-            }"
-          />
-        </div>
-        <div class="flex items-center justify-between mt-1">
-          <span class="text-[10px] text-zinc-600">{{ contract.turnsRemaining }} turns remaining</span>
-          <span class="text-[10px] text-zinc-600">{{ contract.durationTurns }} total</span>
-        </div>
+    <!-- Summary bar -->
+    <div
+      v-if="hasAny"
+      class="flex items-center gap-6 mb-4 px-4 py-2.5 rounded-lg bg-zinc-900/60 border border-zinc-800"
+    >
+      <div class="flex items-center gap-1.5">
+        <span class="text-xs text-zinc-500">Active</span>
+        <span class="text-sm font-semibold text-white">{{ activeContracts.length }}</span>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <span class="text-xs text-zinc-500">Completed</span>
+        <span class="text-sm font-medium text-zinc-300">{{ completedContracts.length }}</span>
+      </div>
+      <div v-if="totalBpPerTurn > 0" class="flex items-center gap-1.5 ml-auto">
+        <span class="text-xs text-zinc-500">Total cost</span>
+        <span class="text-sm font-medium text-amber-400">{{ totalBpPerTurn }} BP/turn</span>
       </div>
     </div>
 
-    <!-- Empty state -->
+    <!-- Active contracts section -->
+    <template v-if="activeContracts.length > 0">
+      <p class="text-[10px] font-semibold text-zinc-500 uppercase tracking-wide mb-2">
+        Active ({{ activeContracts.length }})
+      </p>
+      <div class="space-y-2 mb-6">
+        <ContractCard
+          v-for="contract in activeContracts"
+          :key="contract.id"
+          :contract="contract"
+        />
+      </div>
+    </template>
+
+    <!-- Empty state when no active contracts -->
     <div
       v-else
-      class="flex flex-col items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900/50 py-16 px-8"
+      class="flex flex-col items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900/50 py-12 px-8 mb-6"
     >
       <p class="text-zinc-400 text-sm mb-1">No active contracts.</p>
       <p class="text-zinc-500 text-xs mb-5">
@@ -103,6 +97,25 @@ const TYPE_COLORS: Record<string, string> = {
         + New Contract
       </button>
     </div>
+
+    <!-- Completed contracts section (collapsible) -->
+    <template v-if="completedContracts.length > 0">
+      <button
+        class="flex items-center gap-2 text-[10px] font-semibold text-zinc-500 uppercase tracking-wide mb-2 hover:text-zinc-300 transition-colors"
+        @click="showCompleted = !showCompleted"
+      >
+        <span>Completed ({{ completedContracts.length }})</span>
+        <span class="text-zinc-600">{{ showCompleted ? '▲' : '▼' }}</span>
+      </button>
+
+      <div v-if="showCompleted" class="space-y-2">
+        <ContractCard
+          v-for="contract in completedContracts"
+          :key="contract.id"
+          :contract="contract"
+        />
+      </div>
+    </template>
 
     <!-- Contract creation wizard (modal) -->
     <ContractWizard v-if="showWizard" @close="closeWizard" />

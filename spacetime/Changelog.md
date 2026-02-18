@@ -4,6 +4,34 @@
 
 ## Epic 7: Contract System
 
+### Story 7.5 — Contracts View (2026-02-18)
+
+**What changed:**
+- Created `src/components/contract/ContractCard.vue` — expandable contract card
+- Updated `src/views/ContractsView.vue` — full grouped view with summary bar
+
+**ContractCard:**
+- Active: type badge (color-coded), resolved target name, corp name + level, BP/turn, progress bar, turns remaining
+- Completed: same header, outcome summary (e.g. "Frontier Colony founded."), completion turn
+- Click anywhere to expand/collapse full details: status, corp, BP/turn, progress, start/completion turns, colony type or ship params
+
+**ContractsView:**
+- Summary stats bar: Active count, Completed count, Total BP/turn cost
+- Active section with `ContractCard` list; empty state with inline "Create Contract" button
+- Completed section collapsible (collapsed by default)
+- "+ New Contract" always visible in page header
+
+**Acceptance criteria met:**
+- Active contracts show type, target, corp, BP/turn, progress bar, turns remaining ✓
+- Completed contracts show type, target, corp, outcome summary ✓
+- "Create Contract" prominent on empty state, always accessible in header ✓
+- Contracts grouped by status (Active / Completed) ✓
+- Contract card click expands to full details ✓
+- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
+- `npx vitest run` — 278/278 tests pass ✓
+
+---
+
 ### Story 7.4 — Contract Creation UI: Wizard Flow (2026-02-18)
 
 **What changed:**
