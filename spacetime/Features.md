@@ -153,55 +153,19 @@
 
 ### Story 6.1: Corporation Generator 🔧🧪
 **Description**: Generate corporations with name, type, personality traits, and starting stats.
-
 **Files**: `src/generators/corp-generator.ts`, `src/generators/name-generator.ts`
-
-**Acceptance Criteria**:
-- Generates unique name from name pools (prefix + suffix or pattern)
-- Assigns type (from parameter or random)
-- Assigns 1 trait (70%) or 2 traits (30%), excluding conflicting pairs
-- Sets level 1, capital 0, home planet from parameter
-- Returns typed Corporation object
-- Unit tests: name uniqueness over 100 generations, trait conflict exclusion, valid type assignment
 
 ### Story 6.2: Corporation Store 🔧
 **Description**: Create Pinia store for all corporations.
-
 **Files**: `src/stores/corporation.store.ts`
-
-**Acceptance Criteria**:
-- Holds all corporations in a map by ID
-- Action: `addCorporation(corp)` adds to store
-- Action: `kickstartCorp(type, homePlanet)` generates and adds a new level 1 corp
-- Action: `addCapital(corpId, amount)` increases corp capital
-- Action: `spendCapital(corpId, amount)` decreases corp capital, validates sufficient funds
-- Action: `levelUp(corpId)` increases level if capital sufficient (cost = level × 3)
-- Getter: `getCorp(id)`, `getCorpsByType(type)`, `getCorpsByPlanet(planetId)`
-- Getter: `getCorpTax(id)` returns calculated tax for corp
 
 ### Story 6.3: Corporation Capital Formulas 🔧🧪
 **Description**: Implement capital gain calculations.
-
 **Files**: `src/engine/formulas/growth.ts` (corp section)
-
-**Acceptance Criteria**:
-- `calculateCapitalGain(corp)`: returns `random(0,1) + floor(totalInfra / 10)`
-- `calculateCompletionBonus(contractBPPerTurn, duration)`: returns `floor((bpPerTurn × duration) / 5)`
-- `calculateLevelUpCost(currentLevel)`: returns `currentLevel × 3`
-- `calculateAcquisitionCost(targetLevel)`: returns `targetLevel × 5`
-- `calculateMaxInfra(corpLevel)`: returns `corpLevel × 4`
-- Unit tests for all functions with boundary values
 
 ### Story 6.4: Corporations View 🖥️
 **Description**: Display corporation list and detail views.
-
 **Files**: `src/views/CorporationsView.vue`, `src/views/CorpDetailView.vue`, `src/components/corporation/CorpCard.vue`, `src/components/corporation/CorpAssets.vue`, `src/components/corporation/CorpHistory.vue`
-
-**Acceptance Criteria**:
-- List view shows all corps: name, type icon/label, level, capital, personality traits, home planet
-- Corps sorted by level (highest first)
-- Detail view shows: full stats, personality trait descriptions, infrastructure owned (list by planet), contract history, capital breakdown
-- Initially empty with "No corporations yet — post a contract to kickstart your first corporation" guidance
 
 ---
 
@@ -211,70 +175,23 @@
 
 ### Story 7.1: Contract Engine — Creation & Validation 🔧🧪
 **Description**: Implement contract creation logic: validate inputs, calculate costs, check eligibility.
-
 **Files**: `src/engine/actions/create-contract.ts`
-
-**Acceptance Criteria**:
-- Validates contract type + target combination (e.g., can't explore a colony)
-- Calculates BP/turn and duration based on contract type and corp level
-- Validates player has sufficient BP for at least first turn
-- Validates corp eligibility (correct type or level 3+ for cross-type)
-- Returns new Contract object or validation error
-- Unit tests: valid creation, invalid target, insufficient BP, ineligible corp
 
 ### Story 7.2: Contract Store 🔧
 **Description**: Create Pinia store for contracts.
-
 **Files**: `src/stores/contract.store.ts`
-
-**Acceptance Criteria**:
-- Holds active, completed, and failed contracts
-- Action: `createContract(params)` calls engine, adds to active list, deducts from budget
-- Action: `advanceContract(id)` decrements turns remaining, checks completion
-- Action: `completeContract(id)` moves to completed, triggers completion effects
-- Getter: `activeContracts`, `contractsByColony(id)`, `contractsByCorp(id)`
 
 ### Story 7.3: Contract Phase — Turn Resolution 🔧🧪
 **Description**: Implement contract advancement during turn resolution.
-
 **Files**: `src/engine/turn/contract-phase.ts`
-
-**Acceptance Criteria**:
-- Iterates all active contracts, decrements turnsRemaining
-- When turnsRemaining hits 0, marks as completed and generates completion event
-- Colonization contracts: on completion, calls colony generator, creates new colony
-- Infrastructure contracts: on completion, adds infrastructure levels to target colony
-- Exploration contracts: on completion, generates POIs (see Epic 13)
-- Ship commission: on completion, generates ship using ship stat generator with role, variant, corp schematics, and empire tech bonuses (see Epic 15)
-- Returns updated contract list + events generated
-- Unit tests: contract advances correctly, completion triggers effects
 
 ### Story 7.4: Contract Creation UI — Wizard Flow 🖥️
 **Description**: Build the multi-step contract creation interface.
-
 **Files**: `src/components/contract/ContractWizard.vue`, `src/components/contract/CorpSelector.vue`, `src/composables/useContractCreation.ts`
-
-**Acceptance Criteria**:
-- Step 1: Select contract type (grid of type cards with descriptions)
-- Step 2: Select target (planet/colony/sector depending on type)
-- Step 3: Review cost (BP/turn, duration, total cost) and select corporation
-- Corp selector shows eligible corps with level, personality, estimated quality
-- Option to "Kickstart New Corporation" if no suitable corp exists (creates startup)
-- Step 4: Confirm — creates contract, deducts BP, returns to contract list
-- Cancel at any step returns without changes
-- Budget preview updates at each step showing impact on net BP
 
 ### Story 7.5: Contracts View 🖥️
 **Description**: Display active and completed contracts.
-
 **Files**: `src/views/ContractsView.vue`, `src/components/contract/ContractCard.vue`
-
-**Acceptance Criteria**:
-- Active contracts: shows type, target, assigned corp, BP/turn cost, progress bar (turns remaining / total), status
-- Completed contracts: shows type, target, corp, outcome summary
-- "Create Contract" button prominent when no active contracts, accessible always
-- Contracts grouped by status (Active, Completed)
-- Contract card click expands to show full details
 
 ---
 

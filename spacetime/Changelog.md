@@ -2,171 +2,55 @@
 
 ---
 
-## Epic 7: Contract System
+## Epic 8: Infrastructure & Production
 
-### Story 7.5 — Contracts View (2026-02-18)
-
-**What changed:**
-- Created `src/components/contract/ContractCard.vue` — expandable contract card
-- Updated `src/views/ContractsView.vue` — full grouped view with summary bar
-
-**ContractCard:**
-- Active: type badge (color-coded), resolved target name, corp name + level, BP/turn, progress bar, turns remaining
-- Completed: same header, outcome summary (e.g. "Frontier Colony founded."), completion turn
-- Click anywhere to expand/collapse full details: status, corp, BP/turn, progress, start/completion turns, colony type or ship params
-
-**ContractsView:**
-- Summary stats bar: Active count, Completed count, Total BP/turn cost
-- Active section with `ContractCard` list; empty state with inline "Create Contract" button
-- Completed section collapsible (collapsed by default)
-- "+ New Contract" always visible in page header
-
-**Acceptance criteria met:**
-- Active contracts show type, target, corp, BP/turn, progress bar, turns remaining ✓
-- Completed contracts show type, target, corp, outcome summary ✓
-- "Create Contract" prominent on empty state, always accessible in header ✓
-- Contracts grouped by status (Active / Completed) ✓
-- Contract card click expands to full details ✓
-- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
-- `npx vitest run` — 278/278 tests pass ✓
-
----
-
-### Story 7.4 — Contract Creation UI: Wizard Flow (2026-02-18)
+### Story 8.1 — Production & Consumption Formulas (2026-02-18)
 
 **What changed:**
-- Created `src/composables/useContractCreation.ts` — composable managing all 4-step wizard state
-- Created `src/components/contract/CorpSelector.vue` — corporation selection list component
-- Created `src/components/contract/ContractWizard.vue` — 4-step modal wizard
-- Updated `src/views/ContractsView.vue` — wired in wizard, shows active contract list with progress bars
-
-**Wizard steps:**
-1. **Type** — grid of 5 contract type cards (name, description, cost badge, color-coded border)
-2. **Target** — context-aware target list by contract type: sectors for Exploration, OrbitScanned/Accepted planets for GroundSurvey, Accepted/GroundSurveyed planets + colony type cards for Colonization, colonies for ShipCommission, adjacent sector pair for TradeRoute
-3. **Corporation** — `CorpSelector` shows eligible corps (sorted by level desc) with quality tier (Base/Improved/Elite), traits, type badge; Kickstart New Corporation button when none exist
-4. **Confirm** — cost summary table (BP/turn, duration, total, net BP impact), error display, Create Contract button
-
-**Key design decisions:**
-- Composable holds all wizard state; components are purely presentational
-- `resolvedTarget` computed guards trade route sector pair assembly and colonization colony-type selection
-- `eligibleCorps` mirrors engine eligibility rules (megacorp ≥6, cross-type ≥3 except specialized)
-- `kickstartCorp` uses first colony's planet as home; `currentTurn` hardcoded to 1 (TODO Story 12.5)
-- Cancel / backdrop click at any step resets and closes without changes
-- ContractsView now shows active contracts with type-colored progress bars; full list deferred to Story 7.5
-
-**Acceptance criteria met:**
-- Step 1: Select contract type grid with descriptions ✓
-- Step 2: Context-aware target selection per contract type ✓
-- Step 3: Corp selector with level, personality, quality tier ✓
-- Kickstart New Corporation option when no eligible corps exist ✓
-- Step 4: Confirm creates contract, registers BP/turn, returns to list ✓
-- Cancel at any step returns without changes ✓
-- Budget preview (net BP/turn) updates at each step ✓
-- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
-- `npx vitest run` — 278/278 tests pass ✓
-
----
-
-### Story 7.3 — Contract Phase: Turn Resolution (2026-02-18)
-
-**What changed:**
-- Created `src/engine/turn/contract-phase.ts` — pure engine phase function
-- Created `src/__tests__/engine/turn/contract-phase.test.ts` — 17 unit tests
-
-**Function implemented:**
-- `resolveContractPhase(state: GameState): PhaseResult` — iterates all active contracts, decrements `turnsRemaining`, completes contracts at 0, returns updated state + events
-
-**Completion effects by type:**
-- `GroundSurvey`: advances planet status from `OrbitScanned` → `GroundSurveyed`, sets `groundSurveyTurn`
-- `Colonization`: calls `generateColony()` to create a new colony, marks planet as `Colonized`
-- `Exploration`: stub — POI generation deferred to Epic 13
-- `ShipCommission`: stub — ship generation deferred to Epic 15
-- `TradeRoute` (sentinel 9999): skipped — never auto-completes; cancelled by player (Story 17.1)
-
-**Key design decisions:**
-- Pure function: no store imports, returns new Maps (does not mutate input state)
-- Trade routes filtered out before processing — the 9999 sentinel is transparent to the phase
-- Completion events: `EventPriority.Positive`, category `'contract'`, linked to contract ID + corp ID
-- `resolveGroundSurveyCompletion` guards against double-promotion (only advances `OrbitScanned`)
-
-**Acceptance criteria met:**
-- Iterates all active contracts, decrements turnsRemaining ✓
-- When turnsRemaining hits 0, marks as completed and generates completion event ✓
-- Colonization contracts: on completion, calls colony generator, creates new colony ✓
-- Exploration contracts: stub with TODO referencing Epic 13 ✓
-- Ship commission: stub with TODO referencing Epic 15 ✓
-- TradeRoute: never auto-completed (ongoing sentinel) ✓
-- Returns updated contract list + events generated ✓
-- Unit tests: contract advances correctly, completion triggers effects ✓
-- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
-- `npx vitest run` — 278/278 tests pass ✓
-
----
-
-### Story 7.2 — Contract Store (2026-02-18)
-
-**What changed:**
-- Created `src/stores/contract.store.ts` — Pinia store for all contracts
-- Updated `src/stores/budget.store.ts` — added `removeContractExpense(contractId)` to clean up BP/turn entries on contract completion/failure
-- Updated `src/components/corporation/CorpHistory.vue` — wired to contract store; shows active (indigo dot) and completed (green dot) contracts per corp
-
-**Store API:**
-- **State**: `contracts` (Map by ID)
-- **Computed**: `activeContracts`, `completedContracts`, `failedContracts`, `totalContractExpenses`
-- **Getters**: `getContract(id)`, `contractsByColony(colonyId)`, `contractsByCorp(corpId)`
-- **Actions**: `createNewContract(params)` calls engine, adds to store, registers BP/turn expense in budget; `advanceContract(id, turn)` decrements turnsRemaining, auto-completes at 0; `completeContract(id, turn)` marks Completed and removes expense; `failContract(id)` marks Failed and removes expense
-
-**Key design decisions:**
-- `createNewContract` delegates all validation to `createContract()` engine action, returning the same success/failure shape to the UI
-- BP/turn expense registered immediately on creation; removed on completion/failure so `totalExpenses` stays accurate in real time
-- `contractsByCorp` returns both active and completed (for history display); `contractsByColony` is active-only
-- Trade route ongoing sentinel (9999 turns) transparent to the store — future cancel action will call `failContract`
-
-**Acceptance criteria met:**
-- Holds active, completed, and failed contracts ✓
-- Action: `createNewContract(params)` calls engine, adds to active list, registers BP/turn in budget ✓
-- Action: `advanceContract(id)` decrements turns remaining, checks completion ✓
-- Action: `completeContract(id)` moves to completed, removes budget expense ✓
-- Getter: `activeContracts`, `contractsByColony(id)`, `contractsByCorp(id)` ✓
-- `CorpHistory.vue` now shows active and completed contracts from the store ✓
-- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
-- `npx vitest run` — 261/261 tests pass ✓
-
----
-
-### Story 7.1 — Contract Engine: Creation & Validation (2026-02-18)
-
-**What changed:**
-- Created `src/engine/actions/create-contract.ts` — pure engine function for contract creation and validation
-- Created `src/__tests__/engine/actions/create-contract.test.ts` — 36 unit tests
+- Created `src/engine/formulas/production.ts` — 8 pure production/consumption formula functions
+- Created `src/__tests__/engine/formulas/production.test.ts` — 34 unit tests with boundary values
 
 **Functions implemented:**
-- `createContract(params)`: validates all inputs and returns a new `Contract` object or a typed validation error
-- `isCorpEligible(corp, contractType)`: checks corp type eligibility; cross-type allowed at level 3+ except specialized contracts; megacorp (level 6+) unrestricted
-- `validateTarget(params)`: validates target type matches contract type, entity exists, and entity status is valid
-- `calculateBpPerTurn(params)`: returns cost from contract definition; colonization defers to colony type definition
-- `calculateDuration(params, corp)`: exploration scales with corp level (max(2, 4−floor(level/2))); colonization uses colony type duration; trade route sentinel 9999
-
-**Validation error codes:**
-- `CORP_NOT_FOUND`, `INVALID_TARGET_TYPE`, `TARGET_NOT_FOUND`, `INVALID_PLANET_STATUS`, `SECTORS_NOT_ADJACENT`, `CORP_NOT_ELIGIBLE`, `INSUFFICIENT_BP`, `MISSING_COLONY_TYPE`, `MISSING_SHIP_PARAMS`
+- `calculateExtraction(infraLevel, richnessModifier)` — `infraLevel × richnessModifier`; richnessModifier is the resolved colony output modifier (default 1.0, increased by planet features like Metallic Core +0.5)
+- `calculateExtractionCap(richness)` — maps `RichnessLevel` to cap: Poor=5, Moderate=10, Rich=15, Exceptional=20 (reads from `RICHNESS_CAPS` in planet-deposits data)
+- `calculateManufacturing(infraLevel, hasInputs)` — returns `infraLevel` when inputs available, `floor(infraLevel / 2)` on shortage
+- `calculateIndustrialInput(infraLevel)` — returns `infraLevel` (1 unit consumed per level per input type)
+- `calculateFoodConsumption(popLevel)` — returns `popLevel × 2`
+- `calculateConsumerGoodsConsumption(popLevel)` — returns `popLevel × 1`
+- `calculateTCConsumption(popLevel)` — returns `popLevel` (TC consumed locally, not traded)
+- `calculateInfraCap(popLevel, domain)` — Civilian → `Infinity`; all other domains → `popLevel × 2`
 
 **Key design decisions:**
-- Colonization requires Accepted or GroundSurveyed status (not OrbitScanned)
-- Ground survey accepts OrbitScanned or Accepted planets
-- Cross-type (level 3+) does NOT apply to Colonization, ShipCommission, or TradeRoute — specialized only
-- `sectorAdjacency` passed separately (Galaxy.adjacency map) since Sector itself has no adjacency field
-- Trade route duration uses sentinel 9999 — contract store handles "ongoing until cancelled" (Story 17.1)
-- Ship commission cost/duration are placeholders — full calculation deferred to Story 15.2
+- `richnessModifier` in `calculateExtraction` is the resolved modifier (not the richness level directly) — callers pass the output of `resolveModifiers()` on `miningOutput` / `agriculturalOutput` etc.
+- Extraction domains pass through `calculateInfraCap` returning `popLevel × 2` as a population-based baseline; caller takes `min(extractionCap, populationCap)` for the effective cap
+- `calculateInfraCap` returns `Infinity` for Civilian to express "uncapped" cleanly; callers guard with `isFinite()` checks
+- TODOs added referencing Story 8.2 (colony flow assembler) and Story 10.1 (attribute version with empire bonuses + local modifiers)
 
 **Acceptance criteria met:**
-- Validates contract type + target combination ✓
-- Calculates BP/turn and duration based on contract type and corp level ✓
-- Validates player has sufficient BP for at least first turn ✓
-- Validates corp eligibility (correct type or level 3+ cross-type, level 6+ megacorp) ✓
-- Returns new Contract object or validation error ✓
-- Unit tests: valid creation, invalid target, insufficient BP, ineligible corp ✓
+- `calculateExtraction(infraLevel, richnessModifier)` returns `infraLevel × richnessModifier` ✓
+- `calculateManufacturing(infraLevel, hasInputs)` returns `infraLevel` / `floor(infraLevel/2)` ✓
+- `calculateFoodConsumption(popLevel)` returns `popLevel × 2` ✓
+- `calculateConsumerGoodsConsumption(popLevel)` returns `popLevel × 1` ✓
+- `calculateTCConsumption(popLevel)` returns `popLevel` ✓
+- `calculateIndustrialInput(infraLevel)` returns `infraLevel` ✓
+- `calculateInfraCap(popLevel, domain)` returns `popLevel × 2` for non-civilian, uncapped for civilian ✓
+- `calculateExtractionCap(richness)` returns 5/10/15/20 per richness level ✓
+- All functions have unit tests with boundary values ✓
 - `npx vue-tsc --noEmit` — zero TypeScript errors ✓
-- `npx vitest run` — 261/261 tests pass ✓
+- `npx vitest run` — 312/312 tests pass ✓
+
+---
+
+## Epic 7: Contract System (Completed 2026-02-18)
+
+Implemented the full contract system (Stories 7.1–7.5). Built contract engine (`create-contract.ts` — validates type/target/eligibility/BP, calculates BP/turn and duration, returns Contract or typed error; 9 error codes; exploration scales with corp level, trade route uses sentinel 9999). Created contract Pinia store (Map by ID; actions: `createNewContract`, `advanceContract`, `completeContract`, `failContract`; computed: `activeContracts`, `completedContracts`; BP/turn expense registered on creation, removed on completion/failure). Built contract turn phase (`resolveContractPhase` — decrements turnsRemaining, completes at 0; GroundSurvey advances planet status, Colonization calls colony generator, Exploration/ShipCommission stubs with Epic 13/15 TODOs, TradeRoute sentinel skipped). Built 4-step ContractWizard (Type → Target → Corp → Confirm); CorpSelector shows level/quality tier/traits; `useContractCreation` composable holds all wizard state; corp eligibility mirrors engine rules. Built ContractsView with grouped Active/Completed sections, summary stats bar, expandable ContractCard with type badge/progress bar/turns remaining/outcome summary. Wired CorpHistory.vue to contract store.
+
+**Key architecture decisions:**
+- Trade route "ongoing" expressed via sentinel duration 9999 — cancel action (Story 17.1) will call `failContract`
+- Cross-type investment (level 3+) not applied to Colonization, ShipCommission, TradeRoute — specialized only
+- `currentTurn` hardcoded to 1 in kickstart path (wired in Story 12.5)
+
+**Tests:** 278 passing (contract-phase: 17, create-contract: 36, prior: 225)
 
 ---
 
