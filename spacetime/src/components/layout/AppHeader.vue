@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { useBudgetDisplay } from '../../composables/useBudgetDisplay'
-
-// TODO: Story 12.5 — Wire End Turn button to game store (useTurnActions composable)
-// TODO: Story 12.5 — Wire turn number from game store
+import { useTurnActions } from '../../composables/useTurnActions'
+import ConfirmDialog from '../shared/ConfirmDialog.vue'
 
 const {
   currentBP,
@@ -12,6 +11,20 @@ const {
   bpColorClass,
   netColorClass,
 } = useBudgetDisplay()
+
+const {
+  showConfirm,
+  canEndTurn,
+  isResolving,
+  currentTurn,
+  income,
+  expenses,
+  net,
+  willCreateDebt,
+  requestEndTurn,
+  cancelEndTurn,
+  confirmEndTurn,
+} = useTurnActions()
 </script>
 
 <template>
@@ -20,8 +33,7 @@ const {
     <div class="flex items-center gap-6">
       <div class="flex items-center gap-2">
         <span class="text-xs font-medium text-zinc-500 uppercase tracking-wider">Turn</span>
-        <!-- TODO: Story 12.5 — Wire to game store turn number -->
-        <span class="text-sm font-semibold text-white">1</span>
+        <span class="text-sm font-semibold text-white">{{ currentTurn }}</span>
       </div>
     </div>
 
@@ -46,12 +58,25 @@ const {
     </div>
 
     <!-- Right: End Turn -->
-    <!-- TODO: Story 12.5 — Enable button and wire to game store -->
     <button
-      disabled
-      class="px-4 py-1.5 rounded-lg text-sm font-medium bg-indigo-600/50 text-indigo-300 cursor-not-allowed opacity-50"
+      :disabled="!canEndTurn"
+      :class="canEndTurn
+        ? 'bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer'
+        : 'bg-indigo-600/50 text-indigo-300 cursor-not-allowed opacity-50'"
+      class="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
+      @click="requestEndTurn"
     >
-      End Turn
+      {{ isResolving ? 'Resolving...' : 'End Turn' }}
     </button>
+
+    <!-- Confirmation Dialog -->
+    <ConfirmDialog
+      v-if="showConfirm"
+      title="End Turn?"
+      :message="`Budget: +${income} income − ${expenses} expenses = ${net > 0 ? '+' : ''}${net} BP net${willCreateDebt ? '\n\nDeficit detected — debt tokens will be created.' : ''}`"
+      confirm-label="End Turn"
+      @confirm="confirmEndTurn"
+      @cancel="cancelEndTurn"
+    />
   </header>
 </template>

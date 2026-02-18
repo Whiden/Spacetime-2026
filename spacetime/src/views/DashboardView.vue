@@ -2,10 +2,12 @@
 /**
  * DashboardView — Home screen with budget summary, debt warning, and event feed.
  *
- * TODO (Story 19.3): Full dashboard with event feed, empire summary cards, quick actions.
+ * TODO (Story 19.3): Full dashboard with empire summary cards, quick actions.
  */
 import { useBudgetDisplay } from '../composables/useBudgetDisplay'
+import { useTurnActions } from '../composables/useTurnActions'
 import StatCard from '../components/shared/StatCard.vue'
+import EventCard from '../components/shared/EventCard.vue'
 
 const {
   currentBP,
@@ -19,11 +21,38 @@ const {
   stabilityMalus,
   hasDebt,
 } = useBudgetDisplay()
+
+const {
+  isReviewing,
+  sortedEvents,
+  acknowledgeResults,
+} = useTurnActions()
 </script>
 
 <template>
   <div>
     <h1 class="text-2xl font-semibold text-white mb-6">Dashboard</h1>
+
+    <!-- Turn Events Panel (shown during reviewing phase) -->
+    <div
+      v-if="isReviewing && sortedEvents.length > 0"
+      class="rounded-xl border border-indigo-700/50 bg-indigo-950/30 p-4 mb-6"
+    >
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-medium text-indigo-300 uppercase tracking-wider">
+          Turn Events ({{ sortedEvents.length }})
+        </h2>
+        <button
+          class="px-3 py-1 rounded-lg text-xs font-medium text-indigo-300 bg-indigo-800/50 hover:bg-indigo-700/50 transition-colors"
+          @click="acknowledgeResults"
+        >
+          Acknowledge
+        </button>
+      </div>
+      <div class="space-y-2">
+        <EventCard v-for="event in sortedEvents" :key="event.id" :event="event" />
+      </div>
+    </div>
 
     <!-- Budget Summary Cards -->
     <div class="grid grid-cols-4 gap-4 mb-6">

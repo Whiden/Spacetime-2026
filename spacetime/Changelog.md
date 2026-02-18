@@ -4,6 +4,33 @@
 
 ## Epic 12: Turn Resolution Pipeline
 
+### Story 12.5 — End Turn UI Flow (2026-02-19)
+
+**What changed:**
+- Created `src/composables/useTurnActions.ts` — composable encapsulating end turn button state and actions.
+- Updated `src/stores/game.store.ts` — added `lastTurnEvents` state populated by `endTurn()`.
+- Updated `src/components/layout/AppHeader.vue` — wired turn number, enabled End Turn button, added confirmation dialog.
+- Updated `src/views/DashboardView.vue` — added turn events panel shown during reviewing phase.
+
+**Features implemented:**
+
+- `useTurnActions` composable: `canEndTurn` (enabled during player_action), `isResolving`, `isReviewing`, `currentTurn`, `income/expenses/net` for dialog summary, `willCreateDebt` flag, `sortedEvents` (priority-sorted), `requestEndTurn`, `cancelEndTurn`, `confirmEndTurn`, `acknowledgeResults`.
+- `AppHeader.vue`: Turn number now live from game store. End Turn button enabled/disabled by game phase. Shows "Resolving..." label during resolve. Clicking opens `ConfirmDialog` with budget summary (income − expenses = net). Deficit shows debt warning in dialog message.
+- `DashboardView.vue`: Turn Events panel appears at top during reviewing phase, showing all events from the resolved turn via `EventCard` components (priority-sorted, Critical first). Acknowledge button returns to player_action.
+- `game.store.ts`: `lastTurnEvents` ref stores events from `resolveTurn()` result; exposed in store return object.
+
+**Acceptance criteria met:**
+- End Turn button enabled during player_action phase ✓
+- Confirmation dialog with budget summary (income − expenses = net) ✓
+- Deficit warning shown if net < 0 ✓
+- Button shows "Resolving..." state during resolution ✓
+- Turn number increments after resolution ✓
+- New turn events appear as priority-sorted notification cards on dashboard ✓
+- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
+- `npx vitest run` — 754/754 tests pass ✓
+
+---
+
 ### Story 12.4 — Game Store & End Turn Flow (2026-02-18)
 
 **What changed:**
