@@ -218,7 +218,7 @@ function netBpClass(net: number): string {
             </p>
             <div class="space-y-1 mb-4">
               <button
-                v-for="opt in wizard.targetOptions"
+                v-for="opt in wizard.targetOptions.value"
                 :key="opt.id"
                 class="w-full text-left flex items-center justify-between px-3 py-2 rounded-lg border transition-colors"
                 :class="
@@ -239,9 +239,9 @@ function netBpClass(net: number): string {
               <p class="text-[10px] text-zinc-600 uppercase tracking-wide font-semibold mb-2">
                 Sector B (must be adjacent)
               </p>
-              <div v-if="wizard.sectorBOptions.length > 0" class="space-y-1">
+              <div v-if="wizard.sectorBOptions.value.length > 0" class="space-y-1">
                 <button
-                  v-for="opt in wizard.sectorBOptions"
+                  v-for="opt in wizard.sectorBOptions.value"
                   :key="opt.id"
                   class="w-full text-left flex items-center justify-between px-3 py-2 rounded-lg border transition-colors"
                   :class="
@@ -266,7 +266,7 @@ function netBpClass(net: number): string {
             <!-- Planet -->
             <div class="space-y-1 mb-4">
               <button
-                v-for="opt in wizard.targetOptions"
+                v-for="opt in wizard.targetOptions.value"
                 :key="opt.id"
                 class="w-full text-left flex items-center justify-between px-3 py-2 rounded-lg border transition-colors"
                 :class="
@@ -280,7 +280,7 @@ function netBpClass(net: number): string {
                 <span class="text-sm text-white">{{ opt.label }}</span>
                 <span class="text-[10px] text-zinc-500">{{ opt.sublabel }}</span>
               </button>
-              <p v-if="wizard.targetOptions.length === 0" class="text-xs text-zinc-500 italic py-2">
+              <p v-if="wizard.targetOptions.value.length === 0" class="text-xs text-zinc-500 italic py-2">
                 No suitable planets available. Explore and accept planets first.
               </p>
             </div>
@@ -316,7 +316,7 @@ function netBpClass(net: number): string {
           <template v-else>
             <div class="space-y-1">
               <button
-                v-for="opt in wizard.targetOptions"
+                v-for="opt in wizard.targetOptions.value"
                 :key="opt.id"
                 class="w-full text-left flex items-center justify-between px-3 py-2 rounded-lg border transition-colors"
                 :class="
@@ -331,7 +331,7 @@ function netBpClass(net: number): string {
                 <span class="text-sm text-white">{{ opt.label }}</span>
                 <span class="text-[10px] text-zinc-500">{{ opt.sublabel }}</span>
               </button>
-              <p v-if="wizard.targetOptions.length === 0" class="text-xs text-zinc-500 italic py-2">
+              <p v-if="wizard.targetOptions.value.length === 0" class="text-xs text-zinc-500 italic py-2">
                 No targets available for this contract type.
               </p>
             </div>
@@ -344,7 +344,7 @@ function netBpClass(net: number): string {
             Choose an eligible corporation to assign this contract.
           </p>
           <CorpSelector
-            :corps="wizard.eligibleCorps"
+            :corps="wizard.eligibleCorps.value"
             :selected-corp-id="wizard.selectedCorpId.value"
             :can-kickstart="true"
             @select="wizard.selectCorp"
