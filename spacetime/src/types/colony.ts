@@ -69,6 +69,13 @@ export interface Colony {
   /** Current colony attributes. Recalculated each turn. */
   attributes: ColonyAttributes
 
+  /**
+   * Colony attributes from the previous turn. Set by colony-phase.ts before recalculating.
+   * Undefined on turn 0 (no previous turn exists yet).
+   * Used by UI to display trend arrows (up/down/stable).
+   */
+  previousAttributes?: ColonyAttributes
+
   /** Infrastructure state per domain. */
   infrastructure: ColonyInfrastructure
 

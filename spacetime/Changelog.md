@@ -4,6 +4,39 @@
 
 ## Epic 10: Colony Simulation
 
+### Story 10.4 — Colony UI Updates (2026-02-18)
+
+**What changed:**
+- Extended `src/types/colony.ts` — added optional `previousAttributes?: ColonyAttributes` field to `Colony`
+- Extended `src/engine/turn/colony-phase.ts` — snapshots `colony.attributes` into `previousAttributes` before recalculating each turn
+- Rewrote `src/components/colony/AttributePanel.vue` — trend arrows, improved derivation tooltips, warning highlights
+- Rewrote `src/components/colony/ColonyCard.vue` — trend arrows on attribute bars, warning border on card
+- Updated `src/views/ColonyDetailView.vue` — growth progress bar in header
+
+**Features implemented:**
+
+- **Trend arrows (▲/▼/–)**: `AttributePanel` and `ColonyCard` compare `colony.attributes` against `colony.previousAttributes` (set by colony-phase). Stable shown as `–` (gray), up as `▲` (green), down as `▼` (red). No arrows on turn 0 (no previous turn yet).
+- **Warning highlights**: Attributes declining vs last turn show a red ring around the bar in `AttributePanel`; the whole card gets a red border in `ColonyCard` when any attribute is declining.
+- **Improved tooltips**: `AttributePanel` tooltips now show the full derivation line (e.g., "Base 10 − 2 habitability penalty = 8", "floor((6 access + 3 pop) ÷ 2) = 4") plus all modifiers, plus delta vs last turn ("−1 vs last turn").
+- **Growth bar**: Maps `growth/10` to 0–100% progress; negative growth clamps to 0%. Label shows `N/10 toward next level`.
+- **Population progress**: `ColonyDetailView` header now shows a growth progress bar next to population level.
+
+**Key architecture decisions:**
+- `previousAttributes` is optional (`?`) on `Colony` — undefined on turn 0, no generator changes needed
+- Trend logic lives entirely in the Vue components (UI layer), reading the data already stored on colony
+- `getTotalTransport()` uses the typed `InfraDomain.Transport` key and `getTotalLevels()` helper from `infrastructure.ts`
+
+**Acceptance criteria met:**
+- Attribute panel shows current value + trend arrow (up/down/stable compared to last turn) ✓
+- Growth bar shows progress toward next population level ✓
+- Population level shown with progress indicator ✓
+- Tooltips on each attribute explain current value derivation ✓
+- Warnings shown for declining attributes ✓
+- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
+- `npx vitest run` — 584/584 tests pass ✓
+
+---
+
 ### Story 10.3 — Colony Phase: Turn Resolution (2026-02-18)
 
 **What changed:**

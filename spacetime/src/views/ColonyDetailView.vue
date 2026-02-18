@@ -4,9 +4,9 @@
  *
  * Shows: attributes with modifier breakdown tooltips, infrastructure panel,
  * resource flow, features list, deposits list, corporations present.
+ * Story 10.4: Population progress indicator added; trend arrows are in AttributePanel.
  *
  * TODO (Story 9.2): Shortage alert icons.
- * TODO (Story 10.4): Trend arrows on attributes.
  */
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -21,6 +21,7 @@ import AttributePanel from '../components/colony/AttributePanel.vue'
 import InfraPanel from '../components/colony/InfraPanel.vue'
 import ResourceFlow from '../components/colony/ResourceFlow.vue'
 import EmptyState from '../components/shared/EmptyState.vue'
+import ProgressBar from '../components/shared/ProgressBar.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -97,6 +98,15 @@ function goBack() {
         <div class="flex items-center gap-1.5">
           <span class="text-xs text-zinc-500">Pop</span>
           <span class="text-sm font-medium text-white">{{ colony.populationLevel }}</span>
+        </div>
+        <!-- Growth progress toward next population level -->
+        <div class="flex items-center gap-2 w-28">
+          <span class="text-xs text-zinc-500 shrink-0">Growth</span>
+          <ProgressBar
+            :value="Math.max(0, Math.min(100, (colony.attributes.growth / 10) * 100))"
+            color="bg-cyan-500"
+            :label="`${colony.attributes.growth}/10`"
+          />
         </div>
         <div class="flex items-center gap-1.5">
           <span class="text-xs text-zinc-500">Founded</span>

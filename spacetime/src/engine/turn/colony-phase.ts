@@ -192,11 +192,14 @@ function processColony(
   const growthPerTurn  = calculateGrowthPerTurn(qualityOfLife, stability, accessibility, habitability, colony.modifiers)
 
   // ── Step 4: Build colony with fresh attributes ───────────────────────────
+  // Snapshot current attributes as previousAttributes before overwriting them.
+  // This lets the UI show trend arrows (up/down/stable) by comparing turns.
   // The growth field is a turn-accumulator — we preserve the existing value here
   // and let applyGrowthTick handle adding growthPerTurn and checking transitions.
   const colonyWithAttrs: Colony = {
     ...colony,
     infrastructure: updatedInfra,
+    previousAttributes: colony.attributes,
     attributes: {
       habitability,
       accessibility,
