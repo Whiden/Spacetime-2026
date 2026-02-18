@@ -5,19 +5,34 @@
  * Each row shows: domain name, proportional stacked bar (public/corporate/empty), total / cap, ownership.
  * Public levels are indigo, corporate levels are amber. Empty portion up to cap is dark.
  * For uncapped domains, the bar shows only the filled portions (public + corporate = 100%).
- * "Invest" button is shown but disabled until budget system is implemented.
+ * "Invest" button costs 3 BP for +1 public level. Enabled when below cap and player has ≥ 3 BP.
  *
- * TODO (Story 5.4): Enable Invest button when budget system is wired.
+ * Cap computation (mirrors invest-planet.ts logic, see Specs.md § 6):
+ *   - Civilian: uncapped (Infinity)
+ *   - Extraction domains: max richness cap among matching deposits (0 if no deposit)
+ *   - All others: populationLevel × 2
  */
 import { computed } from 'vue'
 import type { Colony } from '../../types/colony'
+import type { Deposit } from '../../types/planet'
 import { InfraDomain } from '../../types/common'
+import type { BPAmount } from '../../types/common'
 import { getTotalLevels, getCorporateLevels } from '../../types/infrastructure'
-import { INFRA_DOMAIN_DEFINITIONS } from '../../data/infrastructure'
+import { INFRA_DOMAIN_DEFINITIONS, EXTRACTION_DOMAINS } from '../../data/infrastructure'
+import { DEPOSIT_DEFINITIONS, RICHNESS_CAPS } from '../../data/planet-deposits'
+import { useColonyStore } from '../../stores/colony.store'
+import { useBudgetStore } from '../../stores/budget.store'
+
+/** Cost in BP for +1 public infrastructure level. Mirrors INVEST_COST_BP in invest-planet.ts. */
+const INVEST_COST = 3
 
 const props = defineProps<{
   colony: Colony
+  deposits: Deposit[]
 }>()
+
+const colonyStore = useColonyStore()
+const budgetStore = useBudgetStore()
 
 /** Ordered list of all 12 domains for display. */
 const DOMAIN_ORDER: InfraDomain[] = [
@@ -41,26 +56,57 @@ interface InfraRow {
   total: number
   publicLevels: number
   corpLevels: number
-  cap: number
+  effectiveCap: number
   capDisplay: string
+  canInvest: boolean
+  disabledReason: string
   /** Percentage widths for the stacked bar. */
   publicPercent: number
   corpPercent: number
   emptyPercent: number
 }
 
+/**
+ * Computes the effective infrastructure cap for a domain on this colony.
+ * Mirrors computeEffectiveCap() in invest-planet.ts (see Specs.md § 6).
+ * - Civilian → Infinity
+ * - Extraction domains → max richness cap of matching deposits (0 if none)
+ * - Others → populationLevel × 2
+ */
+function computeEffectiveCap(domain: InfraDomain): number {
+  if (domain === InfraDomain.Civilian) return Infinity
+  if (EXTRACTION_DOMAINS.includes(domain)) {
+    const matching = props.deposits.filter(
+      (d) => DEPOSIT_DEFINITIONS[d.type].extractedBy === domain,
+    )
+    if (matching.length === 0) return 0
+    return Math.max(...matching.map((d) => RICHNESS_CAPS[d.richness]))
+  }
+  return props.colony.populationLevel * 2
+}
+
 const infraRows = computed<InfraRow[]>(() => {
+  const currentBP = budgetStore.currentBP
+
   return DOMAIN_ORDER.map((domain) => {
     const state = props.colony.infrastructure[domain]
     const def = INFRA_DOMAIN_DEFINITIONS[domain]
     const total = getTotalLevels(state)
     const corpLevels = getCorporateLevels(state)
     const publicLevels = state.ownership.publicLevels
-    const cap = state.currentCap
-    const isUncapped = cap === Infinity || cap >= 9999
-    const capDisplay = isUncapped ? '∞' : String(cap)
+    const effectiveCap = computeEffectiveCap(domain)
+    const isUncapped = effectiveCap === Infinity || effectiveCap >= 9999
+    const capDisplay = isUncapped ? '∞' : String(effectiveCap)
 
-    // Calculate proportional widths
+    // Button state
+    const atCap = total >= effectiveCap
+    const hasEnoughBP = currentBP >= INVEST_COST
+    const canInvest = !atCap && hasEnoughBP
+    let disabledReason = ''
+    if (atCap) disabledReason = 'At infrastructure cap'
+    else if (!hasEnoughBP) disabledReason = `Need ${INVEST_COST} BP (have ${currentBP})`
+
+    // Calculate proportional bar widths
     let publicPercent: number
     let corpPercent: number
     let emptyPercent: number
@@ -78,13 +124,13 @@ const infraRows = computed<InfraRow[]>(() => {
       }
     } else {
       // Capped: proportions relative to cap
-      if (cap === 0) {
+      if (effectiveCap === 0) {
         publicPercent = 0
         corpPercent = 0
         emptyPercent = 100
       } else {
-        publicPercent = (publicLevels / cap) * 100
-        corpPercent = (corpLevels / cap) * 100
+        publicPercent = (publicLevels / effectiveCap) * 100
+        corpPercent = (corpLevels / effectiveCap) * 100
         emptyPercent = Math.max(0, 100 - publicPercent - corpPercent)
       }
     }
@@ -95,14 +141,31 @@ const infraRows = computed<InfraRow[]>(() => {
       total,
       publicLevels,
       corpLevels,
-      cap,
+      effectiveCap,
       capDisplay,
+      canInvest,
+      disabledReason,
       publicPercent,
       corpPercent,
       emptyPercent,
     }
-  }).filter((row) => row.total > 0 || (row.cap > 0 && row.cap !== Infinity))
+  }).filter((row) => row.total > 0 || (row.effectiveCap > 0 && row.effectiveCap !== Infinity))
 })
+
+/**
+ * Calls the colony store invest action (+1 public level), then deducts BP on success.
+ */
+function handleInvest(domain: InfraDomain) {
+  const result = colonyStore.investInfrastructure(
+    props.colony.id,
+    domain,
+    budgetStore.currentBP as BPAmount,
+    props.deposits,
+  )
+  if (result.success) {
+    budgetStore.adjustBP(-result.bpSpent)
+  }
+}
 </script>
 
 <template>
@@ -149,11 +212,17 @@ const infraRows = computed<InfraRow[]>(() => {
           </template>
         </span>
 
-        <!-- Invest button (disabled until budget system) -->
+        <!-- Invest button -->
         <button
-          disabled
-          class="text-[10px] px-2 py-0.5 rounded bg-zinc-800 text-zinc-600 cursor-not-allowed shrink-0"
-          title="Budget system not yet implemented"
+          :disabled="!row.canInvest"
+          :title="row.canInvest ? `Invest 3 BP → +1 ${row.name}` : row.disabledReason"
+          class="text-[10px] px-2 py-0.5 rounded shrink-0 transition-colors"
+          :class="
+            row.canInvest
+              ? 'bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer'
+              : 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
+          "
+          @click="row.canInvest && handleInvest(row.domain)"
         >
           Invest
         </button>

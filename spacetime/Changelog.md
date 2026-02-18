@@ -4,6 +4,32 @@
 
 ## Epic 8: Infrastructure & Production
 
+### Story 8.4 — Infrastructure UI Updates (2026-02-18)
+
+**What changed:**
+- Updated `src/stores/colony.store.ts` — added `investInfrastructure(colonyId, domain, currentBP, deposits)` action that calls `investPlanet` and updates the colony in-store on success
+- Updated `src/components/colony/InfraPanel.vue` — wired the Invest button: deposits prop added, per-domain effective cap computed dynamically, button enabled when below cap and player has ≥ 3 BP, click calls `colonyStore.investInfrastructure` then `budgetStore.adjustBP(-3)`
+- Updated `src/components/colony/ResourceFlow.vue` — replaced manual infra-level traversal with `calculateColonyResourceFlow(colony, deposits)` output; deposits prop added; produced/consumed/surplus shown per resource with tooltip
+- Updated `src/views/ColonyDetailView.vue` — passes `planet.deposits` to both `InfraPanel` and `ResourceFlow`
+
+**Key design decisions:**
+- `investInfrastructure` lives in the colony store (not the view) so the engine function is never called directly from a component — the view only calls store actions
+- BP deduction stays in the view (calling `budgetStore.adjustBP`) to avoid a circular module import between colony.store and budget.store
+- Effective cap is mirrored in `InfraPanel` (Civilian → Infinity; extraction → max richness cap of deposits; others → popLevel × 2) for the button enabled state; `currentCap` on `InfraState` (still Infinity everywhere) is not used for display — TODO Story 10.1
+- `ResourceFlow` now calls `calculateColonyResourceFlow` directly (pure calculation, no state mutation) instead of manually summing infra levels
+
+**Acceptance criteria met:**
+- Each infrastructure domain shows: current level, effective cap, ownership breakdown (public/corporate) ✓
+- "Invest" button enabled when below cap AND player has ≥ 3 BP; disabled with tooltip explaining reason ✓
+- Clicking Invest deducts 3 BP, adds +1 public infrastructure, UI updates immediately ✓
+- Resource flow panel uses real production/consumption formulas from `calculateColonyResourceFlow` ✓
+- Surplus shown in green, deficit in red ✓
+- Tooltip on each resource shows produced / consumed / surplus breakdown ✓
+- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
+- `npx vitest run` — 357/357 tests pass ✓
+
+---
+
 ### Story 8.3 — Player Investment Action (2026-02-18)
 
 **What changed:**

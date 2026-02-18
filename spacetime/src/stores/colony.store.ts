@@ -11,10 +11,11 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { ColonyId, SectorId, TurnNumber } from '../types/common'
+import type { ColonyId, SectorId, TurnNumber, InfraDomain, BPAmount } from '../types/common'
 import { PlanetStatus } from '../types/common'
 import type { Colony } from '../types/colony'
-import type { Planet } from '../types/planet'
+import type { Planet, Deposit } from '../types/planet'
+import { investPlanet, type InvestPlanetResult } from '../engine/actions/invest-planet'
 import { generateColony } from '../generators/colony-generator'
 import { usePlanetStore } from './planet.store'
 import { PLANET_FEATURE_BY_ID } from '../data/planet-features'
@@ -46,6 +47,36 @@ export const useColonyStore = defineStore('colony', () => {
   /** Removes a colony (e.g., abandonment). */
   function removeColony(id: ColonyId) {
     colonies.value.delete(id)
+  }
+
+  /**
+   * Validates and applies a +1 public infrastructure investment to a colony domain.
+   * Calls the investPlanet engine function, then updates the colony in-store on success.
+   * The caller (view) is responsible for deducting bpSpent from the budget store.
+   *
+   * @param colonyId   - Target colony
+   * @param domain     - Infrastructure domain to invest in
+   * @param currentBP  - Player's current BP (used for validation)
+   * @param deposits   - Planet deposits for cap/deposit validation
+   * @returns InvestPlanetResult — success with updatedColony, or failure with error code
+   */
+  function investInfrastructure(
+    colonyId: ColonyId,
+    domain: InfraDomain,
+    currentBP: BPAmount,
+    deposits: Deposit[],
+  ): InvestPlanetResult {
+    const result = investPlanet({
+      colonyId,
+      domain,
+      currentBP,
+      colonies: colonies.value,
+      deposits,
+    })
+    if (result.success) {
+      updateColony(result.updatedColony)
+    }
+    return result
   }
 
   /**
@@ -111,6 +142,7 @@ export const useColonyStore = defineStore('colony', () => {
     addColony,
     updateColony,
     removeColony,
+    investInfrastructure,
     initializeTerraNova,
     // Getters (functions)
     getColony,

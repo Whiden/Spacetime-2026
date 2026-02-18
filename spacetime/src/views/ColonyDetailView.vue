@@ -182,8 +182,8 @@ function goBack() {
 
       <!-- Right column: Infrastructure + Resource Flow + Corporations -->
       <div class="space-y-4">
-        <InfraPanel :colony="colony" />
-        <ResourceFlow :colony="colony" />
+        <InfraPanel :colony="colony" :deposits="planet.deposits" />
+        <ResourceFlow :colony="colony" :deposits="planet.deposits" />
 
         <!-- Corporations present -->
         <div class="rounded-lg border border-zinc-700 bg-zinc-900/80">
