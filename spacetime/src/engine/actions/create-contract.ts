@@ -35,9 +35,9 @@ const MEGACORP_LEVEL = 6
 export type ContractValidationError =
   | 'INVALID_TARGET_TYPE'           // Contract type and target type don't match
   | 'CORP_NOT_ELIGIBLE'             // Corp type cannot do this contract type
-  | 'INSUFFICIENT_BP'               // Player doesn't have enough BP for first turn
   | 'INVALID_PLANET_STATUS'         // Colonization target must be Accepted or GroundSurveyed
   | 'SECTORS_NOT_ADJACENT'          // Trade route sectors must be adjacent
+  | 'SECTOR_OUT_OF_RANGE'           // Exploration target is not adjacent to any colony sector
   | 'CORP_NOT_FOUND'                // Corp ID not in provided corps map
   | 'TARGET_NOT_FOUND'              // Target entity not found
   | 'MISSING_COLONY_TYPE'           // Colonization requires colonyType param
@@ -63,14 +63,18 @@ export interface CreateContractParams {
   target: ContractTarget
   assignedCorpId: CorpId
   currentTurn: TurnNumber
-  currentBP: BPAmount
   /** All available sectors, keyed by ID — used for existence checks. */
   sectors: Map<string, Sector>
   /**
    * Adjacency map from Galaxy: sectorId → array of adjacent sector IDs.
-   * Used for trade route adjacency validation.
+   * Used for trade route adjacency validation and exploration range checks.
    */
   sectorAdjacency: Map<string, string[]>
+  /**
+   * Set of sector IDs that contain at least one player colony.
+   * Used to validate exploration range — can only explore sectors adjacent to a colony sector.
+   */
+  colonySectorIds: Set<string>
   /** All colonies, keyed by ID — used for ship commission target validation. */
   colonies: Map<string, Colony>
   /** All planets, keyed by ID — used for colonization/survey target validation. */
@@ -151,6 +155,16 @@ function validateTarget(
     case ContractType.Exploration: {
       if (target.type !== 'sector') return 'INVALID_TARGET_TYPE'
       if (!params.sectors.has(target.sectorId)) return 'TARGET_NOT_FOUND'
+      // Can only explore sectors adjacent to (or containing) a player colony.
+      // Skip range check if no colonies exist yet (early game / Terra Nova not yet initialized).
+      if (params.colonySectorIds.size > 0) {
+        const adjacentToColony =
+          params.colonySectorIds.has(target.sectorId) ||
+          (params.sectorAdjacency.get(target.sectorId) ?? []).some((adj) =>
+            params.colonySectorIds.has(adj),
+          )
+        if (!adjacentToColony) return 'SECTOR_OUT_OF_RANGE'
+      }
       break
     }
 
@@ -310,16 +324,9 @@ export function createContract(params: CreateContractParams): ContractCreationRe
   const bpPerTurn = calculateBpPerTurn(params)
   const duration = calculateDuration(params, corp)
 
-  // 5. Validate player has sufficient BP for at least the first turn
-  if (params.currentBP < bpPerTurn) {
-    return {
-      success: false,
-      error: 'INSUFFICIENT_BP',
-      message: `Insufficient BP: need ${bpPerTurn} BP/turn but only have ${params.currentBP} BP.`,
-    }
-  }
-
-  // 6. Build the Contract object
+  // 5. Build the Contract object
+  // Note: No BP affordability check — deficit spending is intentional per Specs.
+  // Debt tokens accumulate when the empire runs a deficit at end of turn (Story 12.x).
   const contract: Contract = {
     id: generateContractId(),
     type: params.type,

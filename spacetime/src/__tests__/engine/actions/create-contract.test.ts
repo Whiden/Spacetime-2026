@@ -35,7 +35,6 @@ import type {
   SectorId,
   PlanetId,
   TurnNumber,
-  BPAmount,
 } from '../../../types/common'
 import type { Corporation } from '../../../types/corporation'
 import type { Colony } from '../../../types/colony'
@@ -153,13 +152,14 @@ function makeBaseParams(overrides: Partial<CreateContractParams> = {}): CreateCo
     target: { type: 'sector', sectorId: SECTOR_A_ID },
     assignedCorpId: CORP_ID,
     currentTurn: TURN_1,
-    currentBP: 10 as BPAmount,
     sectors: new Map([
       [SECTOR_A_ID, sector],
       [SECTOR_B_ID, sectorB],
       [SECTOR_C_ID, sectorC],
     ]),
     sectorAdjacency: makeAdjacency(),
+    // Default: colony is in sector A — sector A and adjacent sector B are in range
+    colonySectorIds: new Set([SECTOR_A_ID]),
     colonies: new Map([[COLONY_ID, makeColony(COLONY_ID)]]),
     planets: new Map([[PLANET_ID, planet]]),
     corporations: new Map([[CORP_ID, explCorp]]),
@@ -438,31 +438,12 @@ describe('createContract — corp eligibility', () => {
   })
 })
 
-// ─── Insufficient BP Tests ────────────────────────────────────────────────────
+// ─── Deficit Spending Tests ───────────────────────────────────────────────────
 
-describe('createContract — insufficient BP', () => {
-  it('rejects when player has 0 BP and contract costs 2 BP/turn', () => {
-    const result = createContract(
-      makeBaseParams({ currentBP: 0 as BPAmount }),
-    )
-    expect(result.success).toBe(false)
-    if (result.success) return
-    expect(result.error).toBe('INSUFFICIENT_BP')
-  })
-
-  it('rejects when player has 1 BP and contract costs 2 BP/turn', () => {
-    const result = createContract(
-      makeBaseParams({ currentBP: 1 as BPAmount }),
-    )
-    expect(result.success).toBe(false)
-    if (result.success) return
-    expect(result.error).toBe('INSUFFICIENT_BP')
-  })
-
-  it('allows when player has exactly the BP/turn amount', () => {
-    const result = createContract(
-      makeBaseParams({ currentBP: 2 as BPAmount }),
-    )
+describe('createContract — deficit spending allowed', () => {
+  it('allows contract creation even when it would cause a deficit (debt is a valid strategy)', () => {
+    // Debt tokens accumulate at end-of-turn (Story 12.x) — no BP check at creation time
+    const result = createContract(makeBaseParams())
     expect(result.success).toBe(true)
   })
 })
@@ -556,6 +537,40 @@ describe('createContract — invalid target', () => {
     expect(result.error).toBe('INVALID_PLANET_STATUS')
   })
 
+  it('rejects Exploration targeting a sector with no adjacent colony sector', () => {
+    const result = createContract(
+      makeBaseParams({
+        // Target sector C which has no adjacent sectors and is not a colony sector
+        target: { type: 'sector', sectorId: SECTOR_C_ID },
+        colonySectorIds: new Set([SECTOR_A_ID]), // colony only in A, C is isolated
+      }),
+    )
+    expect(result.success).toBe(false)
+    if (result.success) return
+    expect(result.error).toBe('SECTOR_OUT_OF_RANGE')
+  })
+
+  it('allows Exploration targeting a sector adjacent to a colony sector', () => {
+    const result = createContract(
+      makeBaseParams({
+        // Target sector B, which is adjacent to sector A (colony sector)
+        target: { type: 'sector', sectorId: SECTOR_B_ID },
+        colonySectorIds: new Set([SECTOR_A_ID]),
+      }),
+    )
+    expect(result.success).toBe(true)
+  })
+
+  it('allows Exploration targeting the colony sector itself', () => {
+    const result = createContract(
+      makeBaseParams({
+        target: { type: 'sector', sectorId: SECTOR_A_ID },
+        colonySectorIds: new Set([SECTOR_A_ID]),
+      }),
+    )
+    expect(result.success).toBe(true)
+  })
+
   it('rejects TradeRoute between non-adjacent sectors', () => {
     const transportCorp = makeCorp(CORP_ID, CorpType.Transport)
     const result = createContract(
@@ -644,7 +659,6 @@ describe('createContract — colonization costs by colony type', () => {
           corporations: new Map([[CORP_ID, constructionCorp]]),
           planets: new Map([[PLANET_ID, planet]]),
           colonizationParams: { colonyType },
-          currentBP: 10 as BPAmount,
         }),
       )
       expect(result.success).toBe(true)

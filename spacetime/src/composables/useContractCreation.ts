@@ -22,7 +22,7 @@ import type {
   ContractTarget,
   ColonizationParams,
 } from '../types/contract'
-import type { CorpId, TurnNumber, BPAmount, SectorId, PlanetId, ColonyId } from '../types/common'
+import type { CorpId, TurnNumber, SectorId, PlanetId, ColonyId } from '../types/common'
 import type { Corporation } from '../types/corporation'
 import { useContractStore } from '../stores/contract.store'
 import { useBudgetStore } from '../stores/budget.store'
@@ -83,6 +83,12 @@ export function useContractCreation() {
   /** True while the creation request is being processed. */
   const submitting = ref(false)
 
+  /**
+   * Corp ID kickstarted during this wizard session, if any.
+   * Prevents creating duplicate corps if the user clicks kickstart more than once.
+   */
+  const kickstartedCorpId = ref<CorpId | null>(null)
+
   // ─── Step 1: Contract Type ────────────────────────────────────────────────
 
   const contractTypes = Object.values(ContractType)
@@ -94,6 +100,7 @@ export function useContractCreation() {
     selectedSectorB.value = null
     selectedColonyType.value = null
     selectedCorpId.value = null
+    kickstartedCorpId.value = null
     errorMessage.value = null
   }
 
@@ -107,13 +114,28 @@ export function useContractCreation() {
     if (!selectedType.value) return []
 
     switch (selectedType.value) {
-      case ContractType.Exploration:
-        // All sectors (explorable are shown first but all available)
-        return galaxyStore.allSectors.map((s) => ({
+      case ContractType.Exploration: {
+        // Only sectors adjacent to (or containing) a player colony — matching engine rule.
+        // If no colonies exist yet (early game before Terra Nova init), show all sectors.
+        const colonySectorIds = new Set(colonyStore.allColonies.map((c) => c.sectorId))
+        const allSectors = galaxyStore.allSectors
+        if (colonySectorIds.size === 0) return allSectors.map((s) => ({
           id: s.id,
           label: s.name,
           sublabel: `${s.explorationPercent}% explored`,
         }))
+        return allSectors
+          .filter((s) => {
+            if (colonySectorIds.has(s.id)) return true
+            const adj = galaxyStore.getAdjacentSectors(s.id)
+            return adj.some((id) => colonySectorIds.has(id))
+          })
+          .map((s) => ({
+            id: s.id,
+            label: s.name,
+            sublabel: `${s.explorationPercent}% explored`,
+          }))
+      }
 
       case ContractType.GroundSurvey:
         // OrbitScanned or Accepted planets
@@ -298,9 +320,19 @@ export function useContractCreation() {
    * Kickstarts a new corporation of the required type for the selected contract.
    * Uses Terra Nova as home planet (first colony's planet).
    * Selects the newly created corp automatically.
+   *
+   * If a corp was already kickstarted this wizard session, reuses it instead of
+   * creating a duplicate — prevents spam-clicking from creating multiple corps.
    */
   function kickstartCorp() {
     if (!selectedType.value) return
+
+    // Reuse any corp already kickstarted this wizard session
+    if (kickstartedCorpId.value) {
+      selectedCorpId.value = kickstartedCorpId.value
+      errorMessage.value = null
+      return
+    }
 
     const def = CONTRACT_TYPE_DEFINITIONS[selectedType.value]
     const defaultType = def.eligibleCorpTypes[0]
@@ -312,6 +344,7 @@ export function useContractCreation() {
 
     const turn = 1 as TurnNumber // TODO (Story 12.5): use game.store.ts currentTurn
     const newCorp = corpStore.kickstartCorp(defaultType, firstColony.planetId, turn)
+    kickstartedCorpId.value = newCorp.id
     selectedCorpId.value = newCorp.id
     errorMessage.value = null
   }
@@ -416,14 +449,16 @@ export function useContractCreation() {
         ? { colonyType: selectedColonyType.value }
         : undefined
 
+    const colonySectorIds = new Set(colonyStore.allColonies.map((c) => c.sectorId))
+
     const result = contractStore.createNewContract({
       type: selectedType.value,
       target: resolvedTarget.value,
       assignedCorpId: selectedCorpId.value,
       currentTurn: 1 as TurnNumber, // TODO (Story 12.5): use game.store.ts currentTurn
-      currentBP: budgetStore.currentBP as BPAmount,
       sectors: galaxyStore.sectors as Map<string, import('../types/sector').Sector>,
       sectorAdjacency: galaxyStore.adjacency as Map<string, string[]>,
+      colonySectorIds,
       colonies: colonyStore.colonies as Map<string, import('../types/colony').Colony>,
       planets: planetStore.planets as Map<string, import('../types/planet').Planet>,
       corporations: corpStore.corporations as Map<string, Corporation>,
@@ -450,6 +485,7 @@ export function useContractCreation() {
     selectedSectorB.value = null
     selectedColonyType.value = null
     selectedCorpId.value = null
+    kickstartedCorpId.value = null
     errorMessage.value = null
     submitting.value = false
   }
