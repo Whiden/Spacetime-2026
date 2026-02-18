@@ -67,7 +67,7 @@ spacetime/
 │   │   ├── resource.ts            # Resource, ResourceType, ProductionEntry, Shortage
 │   │   ├── infrastructure.ts      # Infrastructure, InfraDomain, InfraOwnership
 │   │   ├── science.ts             # ScienceSector, Discovery, SectorLevel
-│   │   ├── ship.ts                # Ship, ShipRole, Captain, ServiceRecord, Schematic, SizeVariant
+│   │   ├── ship.ts                # Ship, ShipRole, Captain, ServiceRecord, Schematic, SizeVariant, ShipAbilities (Fight/Investigation/Support)
 │   │   ├── mission.ts             # Mission, MissionType, MissionPhase, TaskForce
 │   │   ├── combat.ts              # CombatResult, CombatRound, CombatPhase
 │   │   ├── sector.ts              # Sector, SectorAdjacency, SectorMarket
@@ -97,7 +97,7 @@ spacetime/
 │   │   ├── patents.ts             # Patent definitions (placeholder for future corp differentiation)
 │   │   ├── threats.ts             # Threat category definitions (placeholder for prototype)
 │   │   ├── sector-names.ts        # Sector name generation pools
-│   │   └── start-conditions.ts    # Terra Nova, starting colony, starting budget, galaxy seed
+│   │   └── start-conditions.ts    # Terra Nova, starting colony, starting budget, galaxy seed, starting corporations
 │   │
 │   ├── engine/                    # Pure game logic (NO Vue/Pinia imports)
 │   │   ├── turn/                  # Turn resolution pipeline

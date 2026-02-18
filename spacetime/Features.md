@@ -467,7 +467,7 @@
 
 **Acceptance Criteria**:
 - State: turn number, game phase (player-action / resolving / reviewing)
-- Action: `initializeGame()` generates galaxy, creates Terra Nova, sets turn 1
+- Action: `initializeGame()` generates galaxy, creates Terra Nova, sets turn 1, spawns starting corporations: one level 1 Exploration, one level 1 Construction, two level 1 Science (each owning one science infrastructure level on Terra Nova)
 - Action: `endTurn()` — collects full state from all stores → calls turn resolver → distributes results back to all stores → increments turn
 - Action: `getFullGameState()` assembles GameState from all stores
 - Getter: `currentTurn`, `gamePhase`
@@ -608,7 +608,7 @@
 - Schematic level determined by corresponding science domain level
 - Schematic category selected randomly from unlocked categories
 - Same-category schematic replaces the older version
-- Stat bonuses by level
+- Stat bonus per level: flat +1 to the schematic's target ship stat (e.g., a level 3 Hull schematic gives +3 Defence). See Data.md Section 12 for the full domain → stat mapping
 - Name generated from tier prefix + category name pool
 - Returns typed Schematic object with category, level, stat bonuses, source discovery, owner corp
 - Unit tests: chance calculation, max schematic cap, level determination from science domain, category replacement logic, stat scaling by level, name generation
@@ -622,7 +622,7 @@
 - Runs science accumulation and level checks
 - Runs discovery rolls for all science corps
 -  Runs schematic development rolls for shipbuilding corps based on unlocked science domain levels
--  Runs patent development rolls for all corps (placeholder — patent mechanics to be detailed later)
+-  Runs patent development rolls for all corps. Patent bonus: +1 capital per turn per level (flat, flavor-only for prototype). See Data.md Section 14 for domain → bonus mapping
 - Returns updated science state + events
 
 ### Story 14.5: Science Store & View 🖥️
@@ -653,8 +653,9 @@
 - Accepts: role, size variant, building corp, empire tech bonuses, corp schematics
 - Calculate ship stats
 - Applies size variant multiplier to size stat
-- Derives hull points and power projection 
+- Derives hull points and power projection
 - Calculates BP/turn cost
+- Calculates ship abilities from final stats: `Fight`, `Investigation`, `Support` (see Specs.md Section 10 for formulas). These are stored on the Ship object and used for mission assessment
 - Reads empire bonuses as plain values, stores schematics as ship.modifiers for per-ship attribution
 - Returns fully typed Ship object with all stats, schematics applied list, build turn, and owning corp
 - Unit tests: stat scaling with corp level (level 1 vs level 5 vs level 10), tech bonus application, variant multiplier effect on size and derived stats, schematic bonus stacking, randomness within bounds, derived stat calculations
@@ -698,7 +699,7 @@
 - Action: `removeShip(id)` removes ship (on destruction), preserves service record in memorial
 - Getter: `getShip(id)`, `getShipsBySector(sectorId)`, `getShipsByStatus(status)`, `getAvailableShips()` (stationed, not on mission)
 - View shows: ships grouped by sector with status indicators, ship construction contracts in progress
-- Ship card: name, role, size (with descriptive label), stat bars with labels (Poor/Average/Good/Excellent/Exceptional), captain name and experience, condition bar, status, schematics applied
+- Ship card: name, role, size (with descriptive label), stat bars with labels (Poor/Average/Good/Excellent/Exceptional), ability scores (Fight / Investigation / Support), captain name and experience, condition bar, status, schematics applied
 - Ship detail (expanded or separate panel): full stat breakdown showing "Base 6 + Tech 2 + Corp ×1.0 + Schematic +2 + Random +1 = 11 (Exceptional)", schematics list with names and bonuses, captain service record, build turn, owning corp
 - "Commission Ship" button leads to contract creation: select role → select variant (Light/Standard/Heavy) → select colony (filtered by space infra) → select corp (shows level, schematics they'll apply, estimated stat ranges) → review estimated cost and build time → confirm
 - Empty state: "No ships yet. Commission your first ship by creating a Ship Commission contract. You'll need a Shipbuilding corporation, a colony with Space Industry infrastructure, and Ship Parts production."
@@ -771,7 +772,7 @@
 **Acceptance Criteria**:
 - Mission card: type, target, task force ships, phase (travel/execution/return), turns remaining, cost/turn
 - Mission wizard: select type → select target → select ships (multi-select from available) → review cost/risk → confirm
-- Risk assessment shown: estimated combat power vs. known threats
+- Risk assessment shown: task force ability scores (Fight / Investigation / Support) surfaced per mission type — the relevant ability score determines mission fitness (Fight for Assault/Defense, Investigation for Investigation/Rescue, Support for Escort)
 - Mission reports expandable: outcome, losses, damage, rounds summary
 - "Task Force has not returned" shown for worst-case outcomes
 
@@ -903,7 +904,7 @@
 - Quick actions: Create Contract, View Colonies, View Corporations, View Fleet
 - Each summary card links to relevant screen
 - "No active contracts" prompts contract creation
-- "No corporations" explains they emerge from contracts
+- Starting corporations (Exploration, Construction, 2× Science) are shown immediately on the dashboard — no empty state needed for corps at game start
 
 ---
 

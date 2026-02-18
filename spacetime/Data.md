@@ -16,13 +16,13 @@ Spacetime — Game Data Reference
 8. [Corporation Types]
 9. [Corporation Personality Traits]
 10. [Contract Types]
-11. [Ship Classes]
-12. [Schematic Types]
+11. [Ship Roles]
+12. [Schematics]
 13. [Science Domains & Discoveries]
-14. [Mission Types]
-15. [Sector Generation]
-16. [Start Conditions]
-17. [Formula Reference]
+14. [Patents]
+15. [Mission Types]
+16. [Sector Generation]
+17. [Start Conditions]
 
 ---
 
@@ -341,7 +341,6 @@ Contract success is guaranteed (no failure for prototype).
 | **Assault** | Offensive combat operations | 6 | 3 | 7 | 6 | 3 | 2 |
 | **Carrier** | Launch fighters, fleet support | 7 | 2 | 3 | 5 | 4 | 1 |
 | **Flagship** | Command ship, power projection | 9 | 2 | 6 | 8 | 5 | 1 |
-| **Transport** | Cargo hauling, non-combat | 4 | 3 | 0 | 2 | 2 | 2 |
 
 ### Ship Properties
 
@@ -384,29 +383,23 @@ Schematics are unique equipment blueprints developed by shipbuilding corporation
 
 ### Schematic domains
 
-| Schematic Domain | Stat affected | Bonus per level |
-|---|---|---|
-| Hull |
-| Sensor | 
-| Armor | 
-| Shield | 
-| Turret | 
-| Missile | 
-| Reactor | 
-| Engine | 
-| Targetting systems |
-| Fighter |
-| Bomber |
-| Gunship |
-| Electronic systems |
+| Schematic Domain | Bonus per level |
+|---|---|
+| Hull | +1 Defence |
+| Sensor | +1 Detection |
+| Armor | +1 Defence |
+| Shield | +1 Defence |
+| Turret | +1 Firepower |
+| Missile | +1 Firepower |
+| Reactor | +1 Speed |
+| Engine | +1 Speed |
+| Targetting systems | +1 Firepower |
+| Fighter | +1 Firepower |
+| Bomber | +1 Firepower |
+| Gunship | +1 Firepower |
+| Electronic systems | +1 Detection |
 
-TODO
-
-### Schematic Name Generation
-
-Combine from pools:
-- Prefixes: Hydra, Typhoon, Aegis, Nova, Phantom, Titan, Vortex, Sentinel, Apex, Eclipse, Forge...
-- Suffixes: Missile, Reactor, Drive, Plating, Array, Core, Matrix, Shield, Lance, Module, Frame...
+TODO : Add more, add more variety to bonuses
 
 ---
 
@@ -478,12 +471,25 @@ Patents are unique production technique owned by corporations from available dis
 
 ### Patent domains
 
-| Patent Domain | Stat affected | Bonus per level |
-|---|---|---|
-| Construction |
-| Exploration | 
+| Patent Domain | Bonus per level |
+|---|---|
+| Construction | +1 capital per turn |
+| Exploration |  +1 capital per turn |
+| Production |  +1 capital per turn |
+| Combat |  +1 bonus to fight |
+| Logistics |  +1 capital per turn |
+| Extraction | +1 capital per turn |
+| Research | +1 capital per turn |
+| Sociology | +1 capital per turn |
+| Automation | +1 capital per turn |
+| Security | +1 capital per turn |
+| Marketing | +1 capital per turn |
+| Civil transport |  +1 capital per turn |
+| Civil cargo | +1 capital per turn |
+| Civil personal ship | +1 capital per turn |
 
-TODO
+
+TODO : Add more, define naming rules, add more variety to bonuses
 
 ---
 
@@ -566,4 +572,8 @@ TODO
 - No ships exist
 - All science domains at level 0
 
+### Starting corporations
+- One level 1 exploration
+- One level 1 construction
+- Two level 1 science (each owning one science level on Terra Nova)
 ---
