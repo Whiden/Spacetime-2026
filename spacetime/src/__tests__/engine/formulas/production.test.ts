@@ -103,11 +103,11 @@ describe('calculateManufacturing', () => {
     expect(calculateManufacturing(14, true)).toBe(14)
   })
 
-  it('returns floor(infraLevel / 2) when inputs are in shortage', () => {
-    // Acceptance criterion: returns floor(infraLevel / 2) if shortage
-    expect(calculateManufacturing(1, false)).toBe(0)   // floor(1/2) = 0
-    expect(calculateManufacturing(2, false)).toBe(1)   // floor(2/2) = 1
-    expect(calculateManufacturing(5, false)).toBe(2)   // floor(5/2) = 2
+  it('returns max(1, floor(infraLevel / 2)) when inputs are in shortage', () => {
+    // Updated: Specs.md says 'halved (not zero)'. max(1, floor(level/2)) ensures at least 1.
+    expect(calculateManufacturing(1, false)).toBe(1)   // max(1, floor(1/2)) = 1 (not zero)
+    expect(calculateManufacturing(2, false)).toBe(1)   // max(1, floor(2/2)) = 1
+    expect(calculateManufacturing(5, false)).toBe(2)   // max(1, floor(5/2)) = 2
     expect(calculateManufacturing(10, false)).toBe(5)  // floor(10/2) = 5
     expect(calculateManufacturing(7, false)).toBe(3)   // floor(7/2) = 3
   })
@@ -193,11 +193,11 @@ describe('population consumption contract', () => {
 // ─── calculateInfraCap ────────────────────────────────────────────────────────
 
 describe('calculateInfraCap', () => {
-  it('returns Infinity for Civilian domain (uncapped)', () => {
-    // Acceptance criterion: uncapped for civilian
-    expect(calculateInfraCap(1, InfraDomain.Civilian)).toBe(Infinity)
-    expect(calculateInfraCap(7, InfraDomain.Civilian)).toBe(Infinity)
-    expect(calculateInfraCap(10, InfraDomain.Civilian)).toBe(Infinity)
+  it('returns (popLevel+1)*2 for Civilian domain (capped at next pop level)', () => {
+    // Updated: Specs.md § 6 caps Civilian at next_population_level × 2.
+    expect(calculateInfraCap(1, InfraDomain.Civilian)).toBe(4)   // (1+1)*2 = 4
+    expect(calculateInfraCap(7, InfraDomain.Civilian)).toBe(16)  // (7+1)*2 = 16
+    expect(calculateInfraCap(10, InfraDomain.Civilian)).toBe(22) // (10+1)*2 = 22
   })
 
   it('returns popLevel × 2 for industry domains', () => {

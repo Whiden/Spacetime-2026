@@ -74,7 +74,8 @@ interface InfraRow {
  * - Others → populationLevel × 2
  */
 function computeEffectiveCap(domain: InfraDomain): number {
-  if (domain === InfraDomain.Civilian) return Infinity
+  // Civilian: capped at next_population_level × 2 (Specs.md § 6).
+  if (domain === InfraDomain.Civilian) return (props.colony.populationLevel + 1) * 2
   if (EXTRACTION_DOMAINS.includes(domain)) {
     const matching = props.deposits.filter(
       (d) => DEPOSIT_DEFINITIONS[d.type].extractedBy === domain,

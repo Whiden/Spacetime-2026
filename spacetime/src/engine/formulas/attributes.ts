@@ -272,9 +272,12 @@ export function calculateInfraCap(
   empireBonuses: EmpireInfraCapBonuses,
   colonyModifiers: Modifier[],
 ): number {
-  // Civilian is permanently uncapped
+  // Civilian: capped at next_population_level × 2 (Specs.md § 6).
+  // The civilian cap limits unchecked growth: players must invest to enable population level-ups.
+  // next_pop_level = popLevel + 1 (pop level 10 is the absolute max, handled by planet size).
   if (domain === InfraDomain.Civilian) {
-    return Infinity
+    const nextPopLevel = popLevel + 1
+    return nextPopLevel * 2
   }
 
   // Derive the empire bonus for this domain (0 if the domain has no empire cap key)

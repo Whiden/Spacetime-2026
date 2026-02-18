@@ -186,9 +186,10 @@ export const useGameStore = defineStore('game', () => {
     // 5. Store events from this turn for the UI to display
     lastTurnEvents.value = events
 
-    // 6. Advance turn and switch to reviewing
+    // 6. Advance turn and return directly to player_action.
+    // Events are displayed non-blocking on the dashboard — no acknowledgement required.
     turn.value = updatedState.turn
-    phase.value = 'reviewing'
+    phase.value = 'player_action'
   }
 
   /**
@@ -289,9 +290,12 @@ function _getTerraNovaPlanetId(
  * - 1× Construction (level 1)
  * - 2× Science (level 1), each owning 1 Science infrastructure level on Terra Nova
  *
- * The Science corps' infrastructure ownership is recorded in their assets.
- * The colony's Science infrastructure comes from STARTING_INFRASTRUCTURE (1 level).
- * Each Science corp owns half of that level (recorded as 1 private level each).
+ * Each Science corp's ownership is recorded both in the corp's assets AND as
+ * corporateLevels on the colony's Science infrastructure domain, so the UI and
+ * all formulas that read corporateLevels see the correct ownership split.
+ *
+ * Starting infrastructure has Science publicLevels = 0 (see start-conditions.ts).
+ * All 2 science levels are corporate-owned (1 per science corp).
  */
 function _spawnStartingCorporations(
   corpStore: ReturnType<typeof useCorporationStore>,
@@ -321,7 +325,9 @@ function _spawnStartingCorporations(
   })
   corpStore.addCorporation(constructionCorp)
 
-  // Two Science corps, each owning 1 Science infra level on Terra Nova
+  // Two Science corps, each owning 1 Science infra level on Terra Nova.
+  // We accumulate all science corp IDs so we can write them to the colony in one pass.
+  const scienceCorpIds: ColonyId[] = []
   for (let i = 0; i < 2; i++) {
     const scienceCorp = generateCorporation({
       type: CorpType.Science,
@@ -329,11 +335,33 @@ function _spawnStartingCorporations(
       foundedTurn,
     })
 
-    // Record ownership: 1 Science infrastructure level on Terra Nova
+    // Record ownership in corp assets (used by corp AI and market display)
     scienceCorp.assets.infrastructureByColony.set(terranovaColonyId, {
       [InfraDomain.Science]: 1,
     })
 
     corpStore.addCorporation(scienceCorp)
+    scienceCorpIds.push(scienceCorp.id as unknown as ColonyId)
   }
+
+  // Transfer Science infra levels from public → corporate on the colony itself.
+  // This ensures getTotalLevels(), getCorporateLevels(), and the InfraPanel all
+  // show the correct ownership breakdown (0p + 2c instead of 1p + 0c).
+  const updatedTerraNova = { ...terraNova }
+  const scienceInfra = updatedTerraNova.infrastructure[InfraDomain.Science]
+  const updatedCorporateLevels = new Map(scienceInfra.ownership.corporateLevels)
+  for (const corpId of scienceCorpIds) {
+    updatedCorporateLevels.set(corpId as unknown as import('../types/common').CorpId, 1)
+  }
+  updatedTerraNova.infrastructure = {
+    ...updatedTerraNova.infrastructure,
+    [InfraDomain.Science]: {
+      ...scienceInfra,
+      ownership: {
+        ...scienceInfra.ownership,
+        corporateLevels: updatedCorporateLevels,
+      },
+    },
+  }
+  colonyStore.updateColony(updatedTerraNova)
 }

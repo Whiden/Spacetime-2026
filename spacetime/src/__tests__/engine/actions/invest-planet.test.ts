@@ -291,18 +291,30 @@ describe('investPlanet — AT_CAP', () => {
     expect(result.success).toBe(true)
   })
 
-  it('Civilian domain is always below cap (uncapped)', () => {
-    // Civilian at 100 — still uncapped
-    const infra = makeInfra({ [InfraDomain.Civilian]: 100 })
-    const colony = makeColony(infra, 5)
-    const result = investPlanet({
+  it('Civilian domain is capped at (pop+1)*2 — investment blocked at cap', () => {
+    // pop=5 → Civilian cap = (5+1)*2 = 12. Level 5 is below cap, level 12 is at cap.
+    const infraBelow = makeInfra({ [InfraDomain.Civilian]: 5 })
+    const colonyBelow = makeColony(infraBelow, 5)
+    const resultBelow = investPlanet({
       colonyId: COLONY_ID,
       domain: InfraDomain.Civilian,
       currentBP: BP_ENOUGH,
-      colonies: makeColoniesMap(colony),
+      colonies: makeColoniesMap(colonyBelow),
       deposits: [],
     })
-    expect(result.success).toBe(true)
+    expect(resultBelow.success).toBe(true) // 5 < 12, below cap
+
+    const infraAtCap = makeInfra({ [InfraDomain.Civilian]: 12 })
+    const colonyAtCap = makeColony(infraAtCap, 5)
+    const resultAtCap = investPlanet({
+      colonyId: COLONY_ID,
+      domain: InfraDomain.Civilian,
+      currentBP: BP_ENOUGH,
+      colonies: makeColoniesMap(colonyAtCap),
+      deposits: [],
+    })
+    expect(resultAtCap.success).toBe(false) // 12 >= 12, at cap
+    if (!resultAtCap.success) expect(resultAtCap.error).toBe('AT_CAP')
   })
 })
 

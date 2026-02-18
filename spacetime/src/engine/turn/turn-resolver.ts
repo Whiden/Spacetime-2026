@@ -81,7 +81,17 @@ export interface TurnResult {
  */
 export function resolveTurn(state: GameState): TurnResult {
   const allEvents: GameEvent[] = []
-  let currentState = state
+
+  // ── BP Reset ─────────────────────────────────────────────────────────────────
+  // BP is political capital, not a savings account. Unused BP from the previous
+  // turn is gone — each turn starts from zero and income is earned fresh.
+  // Player investments made during the player-action phase have already been
+  // deducted from currentBP; resetting to 0 here wipes any unspent remainder.
+  let currentState: GameState = {
+    ...state,
+    currentBP: 0,
+    budget: { ...state.budget, currentBP: 0 },
+  }
 
   // ── Phase 1: Debt ───────────────────────────────────────────────────────────
   // Clear one debt token if any exist, deduct 1 BP.

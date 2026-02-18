@@ -555,10 +555,13 @@ describe('calculateInfraCap', () => {
     expect(calculateInfraCap(5, InfraDomain.Science, zeroCaps(), mods)).toBe(15)
   })
 
-  it('empire bonus does not apply to Civilian (Infinity short-circuits)', () => {
+  it('Civilian cap is (popLevel+1)*2, empire bonus does not apply to it', () => {
+    // Updated: Specs.md § 6 caps Civilian at next_population_level × 2.
+    // Empire bonuses (from science discoveries) don't modify the Civilian cap.
     const caps: EmpireInfraCapBonuses = { ...zeroCaps(), maxMining: 999 }
-    // Civilian is still Infinity
-    expect(calculateInfraCap(5, InfraDomain.Civilian, caps, [])).toBe(Infinity)
+    expect(calculateInfraCap(5, InfraDomain.Civilian, caps, [])).toBe(12) // (5+1)*2 = 12
+    expect(calculateInfraCap(7, InfraDomain.Civilian, caps, [])).toBe(16) // (7+1)*2 = 16
+    expect(calculateInfraCap(1, InfraDomain.Civilian, caps, [])).toBe(4)  // (1+1)*2 = 4
   })
 })
 

@@ -4,7 +4,9 @@
       "Bash(npx vue-tsc:*)",
       "Bash(npx vitest run:*)",
       "Bash(echo:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(python3:*)",
+      "Bash(node -e:*)"
     ]
   }
 }

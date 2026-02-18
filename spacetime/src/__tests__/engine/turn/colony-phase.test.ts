@@ -392,7 +392,8 @@ describe('resolveColonyPhase', () => {
   // colony-phase must write fresh currentCap values based on pop level and deposits.
 
   describe('infrastructure cap recalculation', () => {
-    it('sets Civilian cap to Infinity', () => {
+    it('sets Civilian cap to (pop+1)*2 (next_pop_level x 2)', () => {
+      // pop = 3 → Civilian cap = (3+1)*2 = 8 per Specs.md § 6
       const infra = makeInfra({ [InfraDomain.Civilian]: 2 })
       const colony = makeColony(COLONY_A, PLANET_A, SECTOR_ID, infra, 3, 0)
       const planet = makePlanet(PLANET_A, SECTOR_ID, [], 8, PlanetSize.Large)
@@ -401,7 +402,7 @@ describe('resolveColonyPhase', () => {
       const { updatedState } = resolveColonyPhase(state)
       const updated = updatedState.colonies.get(COLONY_A)!
 
-      expect(updated.infrastructure[InfraDomain.Civilian].currentCap).toBe(Infinity)
+      expect(updated.infrastructure[InfraDomain.Civilian].currentCap).toBe(8) // (3+1)*2 = 8
     })
 
     it('sets non-extraction domain caps to pop × 2', () => {

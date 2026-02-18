@@ -6,7 +6,7 @@
  * - initializeGame(): galaxy generated, Terra Nova created, budget set, 4 corps spawned
  * - getFullGameState(): assembles complete GameState from domain stores
  * - endTurn(): phase transitions, turn increments, state distribution
- * - acknowledgeResults(): reviewing → player_action transition
+ * - acknowledgeResults(): now a no-op; reviewing phase removed in playability fix
  */
 
 import { describe, it, expect, beforeEach } from 'vitest'
@@ -18,6 +18,7 @@ import { useCorporationStore } from '../../stores/corporation.store'
 import { useBudgetStore } from '../../stores/budget.store'
 import { CorpType, InfraDomain } from '../../types/common'
 import { STARTING_BP } from '../../data/start-conditions'
+import { getCorporateLevels } from '../../types/infrastructure'
 
 // ─── Setup ────────────────────────────────────────────────────────────────────
 
@@ -106,7 +107,7 @@ describe('initializeGame()', () => {
     expect(scienceCorps).toHaveLength(2)
   })
 
-  it('Science corps each own 1 Science infra level on Terra Nova', () => {
+  it('Science corps each own 1 Science infra level in their assets', () => {
     const gameStore = useGameStore()
     gameStore.initializeGame()
 
@@ -120,6 +121,19 @@ describe('initializeGame()', () => {
       expect(holdings).toBeDefined()
       expect(holdings![InfraDomain.Science]).toBe(1)
     }
+  })
+
+  it('Terra Nova Science infra has 2 corporate levels and 0 public levels', () => {
+    const gameStore = useGameStore()
+    gameStore.initializeGame()
+
+    const colonyStore = useColonyStore()
+    const terraNova = colonyStore.allColonies[0]!
+    const scienceInfra = terraNova.infrastructure[InfraDomain.Science]
+
+    // All science levels are corporate-owned (1 per science corp)
+    expect(scienceInfra.ownership.publicLevels).toBe(0)
+    expect(getCorporateLevels(scienceInfra)).toBe(2)
   })
 
   it('sets turn to 1', () => {
@@ -235,25 +249,13 @@ describe('endTurn()', () => {
     expect(gameStore.currentTurn).toBe(2)
   })
 
-  it('sets phase to reviewing after endTurn()', () => {
+  it('returns directly to player_action after endTurn() — no reviewing phase', () => {
+    // Events are displayed non-blocking on the dashboard; no acknowledgement required.
     const gameStore = useGameStore()
     gameStore.initializeGame()
 
     gameStore.endTurn()
-    expect(gameStore.gamePhase).toBe('reviewing')
-  })
-
-  it('does nothing if not in player_action phase', () => {
-    const gameStore = useGameStore()
-    gameStore.initializeGame()
-    // End turn once to get into reviewing state
-    gameStore.endTurn()
-    expect(gameStore.gamePhase).toBe('reviewing')
-    const turnAfterFirst = gameStore.currentTurn
-
-    // Calling endTurn while in reviewing should do nothing
-    gameStore.endTurn()
-    expect(gameStore.currentTurn).toBe(turnAfterFirst) // unchanged
+    expect(gameStore.gamePhase).toBe('player_action')
   })
 
   it('distributes updated colonies back to colony store', () => {
@@ -272,7 +274,6 @@ describe('endTurn()', () => {
 
     for (let i = 0; i < 3; i++) {
       gameStore.endTurn()
-      gameStore.acknowledgeResults()
     }
 
     expect(gameStore.currentTurn).toBe(4)
@@ -280,23 +281,21 @@ describe('endTurn()', () => {
 })
 
 // ─── acknowledgeResults() ─────────────────────────────────────────────────────
+// acknowledgeResults() is now a no-op: the reviewing phase was removed so that
+// the player is never blocked by turn events. The method is kept for API
+// compatibility but does nothing meaningful.
 
 describe('acknowledgeResults()', () => {
-  it('transitions from reviewing to player_action', () => {
+  it('is a no-op — phase stays player_action', () => {
     const gameStore = useGameStore()
     gameStore.initializeGame()
-    gameStore.endTurn()
 
-    expect(gameStore.gamePhase).toBe('reviewing')
+    // After endTurn, phase is already player_action
+    gameStore.endTurn()
+    expect(gameStore.gamePhase).toBe('player_action')
+
+    // acknowledgeResults does nothing when already in player_action
     gameStore.acknowledgeResults()
     expect(gameStore.gamePhase).toBe('player_action')
-  })
-
-  it('does nothing if not in reviewing phase', () => {
-    const gameStore = useGameStore()
-    gameStore.initializeGame()
-
-    gameStore.acknowledgeResults()
-    expect(gameStore.gamePhase).toBe('player_action') // unchanged
   })
 })

@@ -3,24 +3,20 @@ import { ref } from 'vue'
 import { RouterView } from 'vue-router'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
 import AppHeader from '@/components/layout/AppHeader.vue'
-import { useGalaxyStore } from '@/stores/galaxy.store'
-import { useColonyStore } from '@/stores/colony.store'
+import { useGameStore } from '@/stores/game.store'
 
 // ─── Global game initialization ───────────────────────────────────────────────
-// Runs once on app start so all stores are populated regardless of which view
-// the user navigates to first.
-// TODO (Story 12.4): Replace with game.store.ts initializeGame() which will also
-// restore saved state, handle turn number, etc.
+// Delegates to game.store.ts initializeGame() which:
+// - Generates galaxy
+// - Creates Terra Nova colony + planet
+// - Initializes budget (income calculated AFTER colony exists)
+// - Spawns starting corporations
+// - Sets turn 1, player_action phase
+//
+// TODO (Story 18.2): Replace with save/load restore when returning to an existing game.
 
-const galaxyStore = useGalaxyStore()
-const colonyStore = useColonyStore()
-
-if (galaxyStore.allSectors.length === 0) {
-  galaxyStore.generate()
-}
-if (colonyStore.colonyCount === 0 && galaxyStore.startingSectorId !== null) {
-  colonyStore.initializeTerraNova(galaxyStore.startingSectorId)
-}
+const gameStore = useGameStore()
+gameStore.initializeGame()
 
 const sidebarCollapsed = ref(false)
 </script>

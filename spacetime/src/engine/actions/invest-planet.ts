@@ -86,7 +86,7 @@ export interface InvestPlanetParams {
  * properly each turn). Until then, the cap must be computed from live data.
  *
  * Rules (see Specs.md § 6 Infrastructure Caps):
- * - Civilian: uncapped (Infinity)
+ * - Civilian: capped at next_population_level × 2
  * - Extraction domains (Mining, DeepMining, GasExtraction, Agricultural):
  *     max richness cap among all matching deposits on the planet.
  *     Returns 0 if no deposit exists (no investment allowed).
@@ -112,7 +112,7 @@ function computeEffectiveCap(colony: Colony, domain: InfraDomain, deposits: Depo
     return Math.max(...richnessCaps)
   }
 
-  // All other domains (including Civilian → Infinity)
+  // All other domains including Civilian (capped at next_pop_level × 2 per Specs.md § 6)
   return calculateInfraCap(colony.populationLevel, domain)
 }
 

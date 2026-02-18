@@ -2,6 +2,84 @@
 
 ---
 
+## Playability Fixes #2 — Turn Loop & Start Conditions (2026-02-19)
+
+### Bug Fixes
+
+**1. Player no longer blocked by event acknowledgement**
+- `DashboardView.vue` used `v-if="isReviewing"` to gate the Turn Events panel behind an Acknowledge button. If the player navigated away before clicking Acknowledge, the game was stuck in `reviewing` phase permanently.
+- Fixed: `game.store.ts` `endTurn()` now transitions directly from `resolving` → `player_action` (skipping `reviewing`). Events are displayed as a non-blocking panel on the dashboard — the player can act immediately after turn resolution.
+- `DashboardView.vue` updated: Turn Events panel shows whenever `sortedEvents.length > 0`, no Acknowledge button.
+- `game.store.test.ts` updated: `endTurn()` now expects `player_action` phase, `acknowledgeResults()` is now a no-op test.
+
+**2. BP is not a stock — unused BP no longer carries over**
+- Each turn, `income-phase.ts` was adding income to the existing `currentBP` balance, causing BP to accumulate indefinitely across turns even with no expenses. Per spec: "BP not consumed are wasted."
+- Fixed: `turn-resolver.ts` now resets `currentBP` to 0 before the debt/income/expense cycle. BP each turn = income − expenses. Player investments made during the player-action phase are deducted during the turn, and any unspent remainder is wiped at turn start.
+
+**3. Terra Nova starting deposits updated to match Data.md § 17**
+- `start-conditions.ts` had only 3 deposits (FertileGround Rich, CommonOreVein Moderate, RareOreVein Poor). Data.md specifies 7 deposits.
+- Fixed: now includes `CommonOreVein (Moderate)`, `CarbonBasedLand (Moderate)`, `RareOreVein (Poor)`, `FertileGround (Rich)`, `FertileGround (Moderate)`, `RichOcean (Moderate)`, `GasPocket (Poor)`.
+
+**4. High-Tech Industry missing from starting infrastructure**
+- `start-conditions.ts` had no `HighTechIndustry` entry. Data.md § 17 lists it at level 1.
+- Fixed: added `{ domain: InfraDomain.HighTechIndustry, publicLevels: 1 }`. With `GasPocket` now present, Gas Extraction 2 produces 2 volatiles, enabling High-Tech Industry to produce 1 High-Tech Goods per turn. Space Industry 1 now has all inputs available.
+
+**5. Science infrastructure incorrectly marked as public — now correctly corporate-owned**
+- `STARTING_INFRASTRUCTURE` had `Science: publicLevels: 1`. Data.md says Science = 2 levels, all Corp-owned (two science corps each own 1).
+- Fixed: `publicLevels` set to 0 for Science in start conditions.
+- Fixed: `_spawnStartingCorporations()` in `game.store.ts` now also updates the colony's `infrastructure[Science].ownership.corporateLevels` with 1 level per science corp, so `getTotalLevels()`, `getCorporateLevels()`, and the InfraPanel all display the correct 0p + 2c breakdown.
+- `game.store.test.ts` now includes a test: `Terra Nova Science infra has 2 corporate levels and 0 public levels`.
+
+**6. Low Industry raised to 8 (from 4)**
+- With the corrected Low Industry level (8 from Data.md), pop 7 demands 7 Consumer Goods; 8 production gives 1 surplus. Mining 5 covers 5 of the 8 Common Materials demand; the remaining 3 come from market trade.
+
+**Tests:** All existing tests updated to reflect new phase behavior. TypeScript: zero errors.
+
+---
+
+## Playability Fixes — Game Start & First Turns (2026-02-19)
+
+### Bug Fixes
+
+**What changed:**
+
+**1. BP info not showing on Turn 1 — **
+-  was manually initializing only the galaxy and colony stores, never calling . This meant income sources were never calculated on game start.
+- Fixed by replacing the manual store initialization with a single  call, which correctly initializes all stores in order (galaxy → colony → budget → corporations).
+
+**2. End Turn button stuck after first turn — **
+- The Turn Events panel was conditionally rendered with . If a turn produced no events (or the events panel was empty), the Acknowledge button never appeared, leaving the game permanently in the  phase.
+- Fixed by rendering the Turn Events panel whenever  is true regardless of event count. Shows "No notable events this turn." message when events are empty.
+
+**3. Starting infrastructure updated to match Data.md — **
+- Updated  to match the revised Data.md § 17 values:
+  - Mining: 2 → 5 (enough to supply Low Industry 4 + Heavy Industry 1)
+  - Deep Mining: 0 → 3 (provides Rare Materials for Heavy Industry)
+  - Gas Extraction: 0 → 2 (visible; 0 production since no gas deposit on Terra Nova)
+  - Agricultural: 3 → 10 (major food surplus for pop 7)
+  - Low Industry: 2 → 4 (balanced with Mining 5 to avoid common material shortage)
+  - HeavyIndustry: 1 → 1 (unchanged; now actually produces 1 Heavy Machinery per turn)
+  - Military: 0 → 2 (stability bonus from turn 1)
+
+**4. Gas Extraction now visible in infrastructure panel**
+- Gas Extraction appears in InfraPanel because it now has 2 starting levels (total > 0 passes the display filter). Note: no gas deposit on Terra Nova means 0 volatiles produced until a gas-bearing planet is colonized.
+
+**5. Manufacturing output at level 1 with shortage — **
+-  returned  when a 1-level industry had input shortages, violating Specs.md § 6 rule "output is halved (not zero)".
+- Fixed:  ensures any non-zero infrastructure always produces at least 1 unit even under shortage. Zero-level domains still return 0.
+- This fixes Heavy Industry (level 1) and High-Tech Industry (level 1) each now producing 1 unit even when material inputs are partially short.
+
+**6. Civilian infrastructure cap — , , , **
+- Civilian was permanently uncapped (returned ) despite Specs.md § 6 clearly stating: "Civilian: Capped at ".
+- Fixed:  now returns  for Civilian. At pop 7, cap = 16. Starting Civilian 14 is safely below cap.
+-  ,  , and  all updated consistently.
+- Six unit tests updated to reflect the new cap behavior (3 test files).
+
+**Tests:** 754/754 passing
+**TypeScript:** zero errors
+
+---
+
 ## Epic 12: Turn Resolution Pipeline
 
 ### Story 12.6 — Event Phase Placeholder (2026-02-19)

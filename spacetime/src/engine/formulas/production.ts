@@ -76,7 +76,10 @@ export function calculateManufacturing(infraLevel: number, hasInputs: boolean): 
   if (hasInputs) {
     return infraLevel
   }
-  return Math.floor(infraLevel / 2)
+  // Specs.md § 6: output is halved (not zero). With level 1, floor(1/2)=0 violates 'not zero'.
+  // We use max(1, floor(level/2)) so any non-zero infrastructure always produces at least 1.
+  if (infraLevel === 0) return 0
+  return Math.max(1, Math.floor(infraLevel / 2))
 }
 
 /**
@@ -158,8 +161,9 @@ export function calculateTCConsumption(popLevel: number): number {
  * @returns The infrastructure level cap, or Infinity for the Civilian domain.
  */
 export function calculateInfraCap(popLevel: number, domain: InfraDomain): number {
+  // Civilian: capped at next_population_level × 2 (Specs.md § 6).
   if (domain === InfraDomain.Civilian) {
-    return Infinity
+    return (popLevel + 1) * 2
   }
   return popLevel * 2
 }
