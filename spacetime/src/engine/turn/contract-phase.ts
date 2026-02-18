@@ -7,9 +7,13 @@
  * Completion effects:
  * - Exploration: stub — POI generation deferred to Epic 13
  * - GroundSurvey: updates planet status to GroundSurveyed
- * - Colonization: generates a new colony via colony-generator
+ * - Colonization: generates a new colony via colony-generator, links corp
  * - ShipCommission: stub — ship generation deferred to Epic 15
  * - TradeRoute: ongoing (sentinel 9999) — never auto-completes
+ *
+ * On any contract completion, the assigned corporation receives a capital bonus:
+ *   completion_bonus = floor((bp_per_turn × duration) / 5)
+ * (See Specs.md § 3 Contract Completion Bonus and § 4 Contract System)
  *
  * TODO (Story 7.4): ContractWizard.vue drives createNewContract() from UI.
  * TODO (Story 13.1): resolveExplorationCompletion() generates POIs from sector scan.
@@ -19,10 +23,14 @@
 import type { GameState, PhaseResult } from '../../types/game'
 import type { GameEvent } from '../../types/event'
 import type { Contract } from '../../types/contract'
+import type { Colony } from '../../types/colony'
+import type { Planet } from '../../types/planet'
+import type { Corporation } from '../../types/corporation'
 import { ContractStatus, ContractType, EventPriority, PlanetStatus } from '../../types/common'
-import type { TurnNumber } from '../../types/common'
+import type { TurnNumber, CorpId, PlanetId } from '../../types/common'
 import { generateColony } from '../../generators/colony-generator'
 import { generateEventId } from '../../utils/id'
+import { calculateCompletionBonus } from '../formulas/growth'
 
 // ─── Phase Entry Point ───────────────────────────────────────────────────────
 
@@ -31,13 +39,14 @@ import { generateEventId } from '../../utils/id'
  *
  * For each active contract:
  * 1. Decrements turnsRemaining
- * 2. If turnsRemaining reaches 0, triggers completion effects and generates a completion event
+ * 2. If turnsRemaining reaches 0, triggers completion effects, awards the
+ *    completion capital bonus to the assigned corp, and generates a completion event
  *
  * TradeRoute contracts use sentinel value 9999 and are never auto-completed here.
  * They are cancelled explicitly by the player (Story 17.1).
  *
  * @param state - Full GameState at start of turn resolution
- * @returns updatedState with modified contracts/colonies/planets, and completion events
+ * @returns updatedState with modified contracts/colonies/planets/corporations, and completion events
  */
 export function resolveContractPhase(state: GameState): PhaseResult {
   const events: GameEvent[] = []
@@ -46,6 +55,7 @@ export function resolveContractPhase(state: GameState): PhaseResult {
   const updatedContracts = new Map(state.contracts)
   const updatedColonies = new Map(state.colonies)
   const updatedPlanets = new Map(state.planets)
+  const updatedCorporations = new Map(state.corporations)
 
   for (const [id, contract] of updatedContracts) {
     if (contract.status !== ContractStatus.Active) continue
@@ -67,8 +77,11 @@ export function resolveContractPhase(state: GameState): PhaseResult {
       }
       updatedContracts.set(id, completed)
 
-      // Apply completion effects
-      applyCompletionEffects(completed, state, updatedColonies, updatedPlanets)
+      // Apply completion effects (colony creation, planet status, corp presence)
+      applyCompletionEffects(completed, state, updatedColonies, updatedPlanets, updatedCorporations)
+
+      // Award capital bonus to the assigned corporation (Specs.md § 3 & § 4)
+      rewardCompletionBonus(completed, updatedCorporations)
 
       // Generate completion event
       events.push(buildCompletionEvent(completed, state.turn))
@@ -83,6 +96,7 @@ export function resolveContractPhase(state: GameState): PhaseResult {
       contracts: updatedContracts,
       colonies: updatedColonies,
       planets: updatedPlanets,
+      corporations: updatedCorporations,
     },
     events,
   }
@@ -92,13 +106,14 @@ export function resolveContractPhase(state: GameState): PhaseResult {
 
 /**
  * Applies the side effects of a contract completing, by contract type.
- * Mutates the provided updatedColonies and updatedPlanets maps in place.
+ * Mutates the provided maps in place.
  */
 function applyCompletionEffects(
   contract: Contract,
   state: GameState,
-  updatedColonies: Map<string, import('../../types/colony').Colony>,
-  updatedPlanets: Map<string, import('../../types/planet').Planet>,
+  updatedColonies: Map<string, Colony>,
+  updatedPlanets: Map<string, Planet>,
+  updatedCorporations: Map<string, Corporation>,
 ): void {
   switch (contract.type) {
     case ContractType.Exploration:
@@ -110,7 +125,7 @@ function applyCompletionEffects(
       break
 
     case ContractType.Colonization:
-      resolveColonizationCompletion(contract, state, updatedColonies, updatedPlanets)
+      resolveColonizationCompletion(contract, state, updatedColonies, updatedPlanets, updatedCorporations)
       break
 
     case ContractType.ShipCommission:
@@ -130,7 +145,7 @@ function applyCompletionEffects(
  */
 function resolveGroundSurveyCompletion(
   contract: Contract,
-  updatedPlanets: Map<string, import('../../types/planet').Planet>,
+  updatedPlanets: Map<string, Planet>,
 ): void {
   if (contract.target.type !== 'planet') return
 
@@ -147,14 +162,16 @@ function resolveGroundSurveyCompletion(
 }
 
 /**
- * Colonization completion: generates a new colony via colony-generator and
- * updates the target planet status to Colonized.
+ * Colonization completion: generates a new colony via colony-generator,
+ * updates the target planet status to Colonized, and links the assigned
+ * corporation to the new colony (corporationsPresent) and its own planetsPresent.
  */
 function resolveColonizationCompletion(
   contract: Contract,
   state: GameState,
-  updatedColonies: Map<string, import('../../types/colony').Colony>,
-  updatedPlanets: Map<string, import('../../types/planet').Planet>,
+  updatedColonies: Map<string, Colony>,
+  updatedPlanets: Map<string, Planet>,
+  updatedCorporations: Map<string, Corporation>,
 ): void {
   if (contract.target.type !== 'planet') return
   if (!contract.colonizationParams) return
@@ -162,12 +179,17 @@ function resolveColonizationCompletion(
   const planet = updatedPlanets.get(contract.target.planetId)
   if (!planet) return
 
-  // Generate the new colony
-  const colony = generateColony({
+  // Generate the new colony, with the assigned corp listed as present
+  const baseColony = generateColony({
     planet,
     colonyType: contract.colonizationParams.colonyType,
     foundedTurn: contract.completedTurn ?? (state.turn as TurnNumber),
   })
+
+  const colony: Colony = {
+    ...baseColony,
+    corporationsPresent: [contract.assignedCorpId as CorpId],
+  }
 
   updatedColonies.set(colony.id, colony)
 
@@ -175,6 +197,42 @@ function resolveColonizationCompletion(
   updatedPlanets.set(planet.id, {
     ...planet,
     status: PlanetStatus.Colonized,
+  })
+
+  // Update the assigned corp's planetsPresent
+  const corp = updatedCorporations.get(contract.assignedCorpId)
+  if (corp && !corp.planetsPresent.includes(planet.id as PlanetId)) {
+    updatedCorporations.set(corp.id, {
+      ...corp,
+      planetsPresent: [...corp.planetsPresent, planet.id as PlanetId],
+    })
+  }
+}
+
+// ─── Completion Bonus ─────────────────────────────────────────────────────────
+
+/**
+ * Awards the contract completion capital bonus to the assigned corporation.
+ *
+ * Formula (Specs.md § 3 & § 4):
+ *   completion_bonus = floor((bp_per_turn × duration) / 5)
+ *
+ * @param contract - The just-completed contract
+ * @param updatedCorporations - The mutable corporations map to update in place
+ */
+function rewardCompletionBonus(
+  contract: Contract,
+  updatedCorporations: Map<string, Corporation>,
+): void {
+  const corp = updatedCorporations.get(contract.assignedCorpId)
+  if (!corp) return
+
+  const bonus = calculateCompletionBonus(contract.bpPerTurn, contract.durationTurns)
+  if (bonus <= 0) return
+
+  updatedCorporations.set(corp.id, {
+    ...corp,
+    capital: corp.capital + bonus,
   })
 }
 

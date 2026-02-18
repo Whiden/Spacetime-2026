@@ -10,7 +10,10 @@
  * - GroundSurvey completion advances planet status to GroundSurveyed
  * - Colonization completion creates a new colony in updatedState.colonies
  * - Colonization completion marks the planet as Colonized
+ * - Colonization completion sets corporationsPresent on the new colony
+ * - Colonization completion adds the planet to the corp's planetsPresent
  * - Multiple contracts advance independently in a single phase
+ * - Completion bonus is awarded to the assigned corporation as capital
  */
 
 import { describe, it, expect } from 'vitest'
@@ -18,6 +21,7 @@ import { resolveContractPhase } from '../../../engine/turn/contract-phase'
 import type { GameState } from '../../../types/game'
 import type { Contract } from '../../../types/contract'
 import type { Planet } from '../../../types/planet'
+import type { Corporation } from '../../../types/corporation'
 import {
   ContractStatus,
   ContractType,
@@ -25,6 +29,7 @@ import {
   ColonyType,
   PlanetStatus,
   SectorDensity,
+  CorpType,
 } from '../../../types/common'
 import type {
   ContractId,
@@ -112,12 +117,34 @@ function makeColony(id: ColonyId): Colony {
   }
 }
 
+/** Build a minimal Corporation for use in tests. */
+function makeCorporation(id: CorpId, capital = 0): Corporation {
+  return {
+    id,
+    name: 'Test Corp',
+    type: CorpType.Construction,
+    level: 2,
+    capital,
+    traits: [],
+    homePlanetId: PLANET_ID,
+    planetsPresent: [],
+    assets: {
+      infrastructureByColony: new Map(),
+      schematics: [],
+      patents: [],
+    },
+    activeContractIds: [],
+    foundedTurn: 1 as TurnNumber,
+  }
+}
+
 /** Build a minimal GameState with the given contracts. */
 function makeState(
   contracts: Map<string, Contract>,
   overrides: {
     colonies?: Map<string, Colony>
     planets?: Map<string, Planet>
+    corporations?: Map<string, Corporation>
   } = {},
 ): GameState {
   return {
@@ -137,7 +164,7 @@ function makeState(
     } as any,
     colonies: overrides.colonies ?? new Map(),
     planets: overrides.planets ?? new Map(),
-    corporations: new Map(),
+    corporations: overrides.corporations ?? new Map(),
     contracts,
     ships: new Map(),
     missions: new Map(),
@@ -438,5 +465,139 @@ describe('resolveContractPhase — immutability', () => {
     const { updatedState } = resolveContractPhase(state)
 
     expect(updatedState.contracts).not.toBe(state.contracts)
+  })
+})
+
+// ─── Completion Bonus Tests (Issue #1) ───────────────────────────────────────
+
+describe('resolveContractPhase — completion bonus', () => {
+  it('awards capital bonus to the assigned corp on contract completion', () => {
+    // bpPerTurn=5, durationTurns=10 → bonus = floor((5 × 10) / 5) = 10
+    const contract = makeContract(CONTRACT_ID, ContractType.Exploration, 1, {
+      bpPerTurn: 5 as BPAmount,
+      durationTurns: 10,
+      turnsRemaining: 1,
+    })
+    const corp = makeCorporation(CORP_ID, 3) // starts with 3 capital
+    const state = makeState(
+      new Map([[CONTRACT_ID, contract]]),
+      { corporations: new Map([[CORP_ID, corp]]) },
+    )
+
+    const { updatedState } = resolveContractPhase(state)
+    const updatedCorp = updatedState.corporations.get(CORP_ID)!
+
+    expect(updatedCorp.capital).toBe(13) // 3 + 10
+  })
+
+  it('does not change corp capital when bonus is 0 (short/cheap contract)', () => {
+    // bpPerTurn=1, durationTurns=1 → bonus = floor(1/5) = 0
+    const contract = makeContract(CONTRACT_ID, ContractType.Exploration, 1, {
+      bpPerTurn: 1 as BPAmount,
+      durationTurns: 1,
+      turnsRemaining: 1,
+    })
+    const corp = makeCorporation(CORP_ID, 5) // starts with 5 capital
+    const state = makeState(
+      new Map([[CONTRACT_ID, contract]]),
+      { corporations: new Map([[CORP_ID, corp]]) },
+    )
+
+    const { updatedState } = resolveContractPhase(state)
+    const updatedCorp = updatedState.corporations.get(CORP_ID)!
+
+    expect(updatedCorp.capital).toBe(5) // unchanged — bonus is 0
+  })
+
+  it('does not error when the assigned corp is not in the corporations map', () => {
+    // Corps map is empty — bonus silently skipped, no throw
+    const contract = makeContract(CONTRACT_ID, ContractType.Exploration, 1)
+    const state = makeState(new Map([[CONTRACT_ID, contract]]))
+
+    expect(() => resolveContractPhase(state)).not.toThrow()
+  })
+
+  it('does not mutate the original corporations map', () => {
+    const contract = makeContract(CONTRACT_ID, ContractType.Exploration, 1, {
+      bpPerTurn: 5 as BPAmount,
+      durationTurns: 10,
+      turnsRemaining: 1,
+    })
+    const corp = makeCorporation(CORP_ID, 0)
+    const originalCorps = new Map([[CORP_ID, corp]])
+    const state = makeState(new Map([[CONTRACT_ID, contract]]), { corporations: originalCorps })
+
+    resolveContractPhase(state)
+
+    expect(state.corporations.get(CORP_ID)!.capital).toBe(0) // original unchanged
+  })
+})
+
+// ─── Colonization Corp Linking Tests (Issue #3) ──────────────────────────────
+
+describe('resolveContractPhase — colonization corp linking', () => {
+  it('sets corporationsPresent on the new colony to the assigned corp', () => {
+    const contract = makeContract(CONTRACT_ID, ContractType.Colonization, 1, {
+      target: { type: 'planet', planetId: PLANET_ID },
+      colonizationParams: { colonyType: ColonyType.FrontierColony },
+    })
+    const planet = makePlanet(PLANET_ID, PlanetStatus.Accepted)
+    const corp = makeCorporation(CORP_ID)
+    const state = makeState(
+      new Map([[CONTRACT_ID, contract]]),
+      {
+        planets: new Map([[PLANET_ID, planet]]),
+        corporations: new Map([[CORP_ID, corp]]),
+      },
+    )
+
+    const { updatedState } = resolveContractPhase(state)
+
+    const [newColony] = [...updatedState.colonies.values()]
+    expect(newColony.corporationsPresent).toContain(CORP_ID)
+    expect(newColony.corporationsPresent).toHaveLength(1)
+  })
+
+  it('adds the colonized planet to the assigned corp planetsPresent', () => {
+    const contract = makeContract(CONTRACT_ID, ContractType.Colonization, 1, {
+      target: { type: 'planet', planetId: PLANET_ID },
+      colonizationParams: { colonyType: ColonyType.FrontierColony },
+    })
+    const planet = makePlanet(PLANET_ID, PlanetStatus.Accepted)
+    const corp = makeCorporation(CORP_ID) // starts with empty planetsPresent
+    const state = makeState(
+      new Map([[CONTRACT_ID, contract]]),
+      {
+        planets: new Map([[PLANET_ID, planet]]),
+        corporations: new Map([[CORP_ID, corp]]),
+      },
+    )
+
+    const { updatedState } = resolveContractPhase(state)
+
+    const updatedCorp = updatedState.corporations.get(CORP_ID)!
+    expect(updatedCorp.planetsPresent).toContain(PLANET_ID)
+  })
+
+  it('does not duplicate a planet in planetsPresent if corp already has it', () => {
+    const contract = makeContract(CONTRACT_ID, ContractType.Colonization, 1, {
+      target: { type: 'planet', planetId: PLANET_ID },
+      colonizationParams: { colonyType: ColonyType.FrontierColony },
+    })
+    const planet = makePlanet(PLANET_ID, PlanetStatus.Accepted)
+    // Corp already lists the planet
+    const corp: Corporation = { ...makeCorporation(CORP_ID), planetsPresent: [PLANET_ID] }
+    const state = makeState(
+      new Map([[CONTRACT_ID, contract]]),
+      {
+        planets: new Map([[PLANET_ID, planet]]),
+        corporations: new Map([[CORP_ID, corp]]),
+      },
+    )
+
+    const { updatedState } = resolveContractPhase(state)
+
+    const updatedCorp = updatedState.corporations.get(CORP_ID)!
+    expect(updatedCorp.planetsPresent.filter((p) => p === PLANET_ID)).toHaveLength(1)
   })
 })
