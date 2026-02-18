@@ -4,6 +4,38 @@
 
 ## Epic 11: Corporation AI
 
+### Story 11.2 — Corp Phase: Turn Resolution (2026-02-18)
+
+**What changed:**
+- Created `src/engine/turn/corp-phase.ts` — corp phase integrating investment AI into the turn pipeline
+- Created `src/__tests__/engine/turn/corp-phase.test.ts` — 12 unit tests
+
+**Function implemented:**
+
+- `resolveCorpPhase(state: GameState): PhaseResult` — runs the full corporation AI phase each turn:
+  1. **Sort by level descending** — highest-level corps act first (biggest players have first pick of investment targets).
+  2. **Apply capital gain** — each corp receives `calculateCapitalGain(totalOwnedInfra)` before decisions.
+  3. **Run corp AI** — calls `runCorpInvestmentAI` (from corp-ai.ts, Story 11.1) with the most up-to-date colony and corporation state, so each corp sees investments made by previously-processed corps this turn.
+  4. **Merge results** — updates the running corporation map (new capital/level/assets), updates touched colonies (new corporate ownership), removes absorbed corporations.
+  5. **Skip absorbed corps** — if a corp is acquired mid-turn, it is removed from the map and skipped if it appears later in the processing queue.
+
+**Key architecture decisions:**
+- State is threaded through incrementally: each corp AI call receives a state snapshot with all previous corps' changes applied, so investment competition is accurate within the same turn.
+- Absorbed corps are tracked in a `Set<CorpId>` and skipped via an early `continue` guard.
+- The sort order snapshots levels at turn start — level changes from acquisitions do not reorder the queue mid-turn.
+
+**Acceptance criteria met:**
+- Processes corps in order: highest level first ✓
+- Each corp: calculates capital gain, then runs AI decisions ✓
+- Handles infrastructure ownership updates ✓
+- Handles mergers/acquisitions and asset transfers ✓
+- Returns updated corporations + events ✓
+- Unit tests: multi-corp turn with investments ✓, acquisition ✓, processing order ✓, absorbed corp skipped ✓
+- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
+- `npx vitest run` — 620/620 tests pass ✓
+
+---
+
 ### Story 11.1 — Corporation Investment AI (2026-02-18)
 
 **What changed:**

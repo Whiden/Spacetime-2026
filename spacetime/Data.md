@@ -177,12 +177,12 @@ Colony type is determined by the colonization contract. Each type provides a **s
 
 ### Colony Type Definitions
 
-| Type | Starting Infrastructure | Starting Population | BP/turn Cost | Duration |
+| Type | Starting Infrastructure | Starting Population | Base Cost | Base Duration |
 |---|---|---|---|---|
-| **Frontier Colony** | Civilian 10, Low Industry 1, Agricultural (if possible) 1 | 5 | 2 | 15 turns |
-| **Mining Outpost** | Civilian 8, Mining/Deep Mining/Gas Extraction (if possible) 3 | 4 | 2 | 6 turns |
-| **Science Outpost** | Civilian 6, Science 3 | 5 | 3 | 10 turns |
-| **Military Outpost** | Civilian 8, Military 3 | 5 | 3 | 8 turns |
+| **Frontier Colony** | Civilian 10, Low Industry 1, Agricultural (if possible) 1 | 5 | 2 | 15 |
+| **Mining Outpost** | Civilian 8, Mining/Deep Mining/Gas Extraction (if possible) 3 | 4 | 2 | 6 |
+| **Science Outpost** | Civilian 6, Science 3 | 5 | 3 | 10 |
+| **Military Outpost** | Civilian 8, Military 3 | 5 | 3 | 8 |
 
 ---
 
@@ -239,8 +239,8 @@ Colony type is determined by the colonization contract. Each type provides a **s
 | Buy infrastructure | None | 2C |
 | Level up | corp.level < 10 | level × 3C |
 | Buy corporation | corp.level >= 6 | target.level × 5C |
-| Buy ship | None | varies by ship class |
-| Settle outpost | None | varies by outpost type |
+| Buy ship | None | Base_BP x Base_Duration |
+| Settle outpost | None | Base_BP x Base_Duration |
 
 **Getting capital:**
 
@@ -315,14 +315,14 @@ Contract success is guaranteed (no failure for prototype).
 
 ### Role Definitions
 
-| Role | Purpose | Base Size | Base Speed | Base Firepower | Base Armor | Base Sensors | Base Evasion |
-|---|---|---|---|---|---|---|---|
-| **System Patrol** | Local security, anti-piracy | 3 | 5 | 3 | 3 | 4 | 5 |
-| **Escort** | Protect convoys and contracts | 4 | 4 | 4 | 5 | 3 | 3 |
-| **Recon** | Scouting, intel gathering | 2 | 6 | 1 | 2 | 7 | 6 |
-| **Assault** | Offensive combat operations | 6 | 3 | 7 | 6 | 3 | 2 |
-| **Carrier** | Launch fighters, fleet support | 7 | 2 | 3 | 5 | 4 | 1 |
-| **Flagship** | Command ship, power projection | 9 | 2 | 6 | 8 | 5 | 1 |
+| Role | Purpose | Base Size | Base Speed | Base Firepower | Base Armor | Base Sensors | Base Evasion | Base Cost | Base duration |
+|---|---|---|---|---|---|---|---|---|---|
+| **System Patrol** | Local security, anti-piracy | 3 | 5 | 3 | 3 | 4 | 5 | 2 | 3 |
+| **Escort** | Protect convoys and contracts | 4 | 4 | 4 | 5 | 3 | 3 | 2 | 5 |
+| **Recon** | Scouting, intel gathering | 2 | 6 | 1 | 2 | 7 | 6 | 2 | 3 |
+| **Assault** | Offensive combat operations | 6 | 3 | 7 | 6 | 3 | 2 | 2 | 8 |
+| **Carrier** | Launch fighters, fleet support | 7 | 2 | 3 | 5 | 4 | 1 | 3 | 8 |
+| **Flagship** | Command ship, power projection | 9 | 2 | 6 | 8 | 5 | 1 | 3 | 15 |
 
 ### Ship Properties
 
