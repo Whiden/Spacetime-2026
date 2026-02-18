@@ -2,151 +2,53 @@
 
 ---
 
-## Epic 10: Colony Simulation
+## Epic 11: Corporation AI
 
-### Story 10.4 — Colony UI Updates (2026-02-18)
-
-**What changed:**
-- Extended `src/types/colony.ts` — added optional `previousAttributes?: ColonyAttributes` field to `Colony`
-- Extended `src/engine/turn/colony-phase.ts` — snapshots `colony.attributes` into `previousAttributes` before recalculating each turn
-- Rewrote `src/components/colony/AttributePanel.vue` — trend arrows, improved derivation tooltips, warning highlights
-- Rewrote `src/components/colony/ColonyCard.vue` — trend arrows on attribute bars, warning border on card
-- Updated `src/views/ColonyDetailView.vue` — growth progress bar in header
-
-**Features implemented:**
-
-- **Trend arrows (▲/▼/–)**: `AttributePanel` and `ColonyCard` compare `colony.attributes` against `colony.previousAttributes` (set by colony-phase). Stable shown as `–` (gray), up as `▲` (green), down as `▼` (red). No arrows on turn 0 (no previous turn yet).
-- **Warning highlights**: Attributes declining vs last turn show a red ring around the bar in `AttributePanel`; the whole card gets a red border in `ColonyCard` when any attribute is declining.
-- **Improved tooltips**: `AttributePanel` tooltips now show the full derivation line (e.g., "Base 10 − 2 habitability penalty = 8", "floor((6 access + 3 pop) ÷ 2) = 4") plus all modifiers, plus delta vs last turn ("−1 vs last turn").
-- **Growth bar**: Maps `growth/10` to 0–100% progress; negative growth clamps to 0%. Label shows `N/10 toward next level`.
-- **Population progress**: `ColonyDetailView` header now shows a growth progress bar next to population level.
-
-**Key architecture decisions:**
-- `previousAttributes` is optional (`?`) on `Colony` — undefined on turn 0, no generator changes needed
-- Trend logic lives entirely in the Vue components (UI layer), reading the data already stored on colony
-- `getTotalTransport()` uses the typed `InfraDomain.Transport` key and `getTotalLevels()` helper from `infrastructure.ts`
-
-**Acceptance criteria met:**
-- Attribute panel shows current value + trend arrow (up/down/stable compared to last turn) ✓
-- Growth bar shows progress toward next population level ✓
-- Population level shown with progress indicator ✓
-- Tooltips on each attribute explain current value derivation ✓
-- Warnings shown for declining attributes ✓
-- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
-- `npx vitest run` — 584/584 tests pass ✓
-
----
-
-### Story 10.3 — Colony Phase: Turn Resolution (2026-02-18)
+### Story 11.1 — Corporation Investment AI (2026-02-18)
 
 **What changed:**
-- Created `src/engine/turn/colony-phase.ts` — full colony simulation turn phase
-- Created `src/__tests__/engine/turn/colony-phase.test.ts` — 33 unit tests
+- Created `src/engine/simulation/corp-ai.ts` — corporation decision-making engine
+- Created `src/__tests__/engine/simulation/corp-ai.test.ts` — 24 unit tests
 
 **Function implemented:**
 
-- `resolveColonyPhase(state)` → `PhaseResult` — processes every colony once per turn:
-  1. **Infrastructure cap recalculation** — for each domain, calls `calculateInfraCap()` from `attributes.ts`; extraction domains get `min(pop_cap, richness_cap)`; extraction domains with no matching deposit get cap = 0; Civilian = Infinity
-  2. **Attribute recalculation** — calls all six attribute formulas from `attributes.ts` in cascade order (hab → access → dynamism → QoL → stability → growthPerTurn); shortage modifiers from market-phase are already on `colony.modifiers` and flow through naturally
-  3. **Growth tick** — preserves the existing growth accumulator, delegates to `applyGrowthTick()` from `colony-sim.ts` which adds `growthPerTurn` and checks transitions
-  4. **Population events** — level-up emits `EventPriority.Positive`; level-down emits `EventPriority.Warning`
-  5. **Organic infrastructure growth** — delegates to `applyOrganicInfraGrowth()` with shortage resources derived from `state.sectorMarkets[colony.sectorId].netSurplus`
-  6. **Attribute warning events** — emits `Warning` events for stability ≤ 2 or qualityOfLife ≤ 2
+- `runCorpInvestmentAI(corp, state)` → `CorpAIResult` — processes one corporation per turn:
+  1. **Infrastructure investment** — if capital ≥ 2: scans all sector markets for resource deficits; filters to allowed domains (specialty-only below level 3, any domain at level 3+); selects a deficit weighted by severity; finds highest-dynamism eligible colony; buys 1 infra level (cost: 2 capital).
+  2. **Acquisition** (level 6+ only) — if capital ≥ target_level × 5 and target is 3+ levels below: absorbs target corp (merges all infra holdings, schematics, patents, planetsPresent), buyer gains 1 level (capped at 10).
 
 **Key architecture decisions:**
-- Shortage resources for organic growth are derived from `state.sectorMarkets` (previous turn's data) because colony-phase (#8) runs before market-phase (#9) in the turn order
-- Infra caps are recalculated before attribute calculation so `currentCap` values are accurate for organic growth cap checks
-- The growth accumulator in `colony.attributes.growth` is intentionally preserved when building `colonyWithAttrs` — `applyGrowthTick` owns the responsibility of adding `growthPerTurn` and triggering transitions
-- Attribute warnings (stability/QoL ≤ 2) are structural issues (debt, habitability, features) distinct from shortage warnings already emitted by market-phase
-- Colonies with no matching planet in `state.planets` are silently skipped (orphan guard)
+- `RESOURCE_TO_DOMAIN` map drives deficit → domain selection; manufacturing domains also check required inputs are not in deficit (no point building factories with no raw materials)
+- Extraction domains (Mining, DeepMining, GasExtraction, Agricultural) require a matching deposit via `DEPOSIT_DEFINITIONS[depositType].extractedBy === domain`
+- Acquisition picks the most asset-rich eligible target (highest total infra owned)
+- Returns `CorpAIResult { updatedCorp, updatedColonies: Map, absorbedCorpId?, events[] }` — caller (corp-phase.ts, Story 11.2) merges partial updates into full state
 
 **Acceptance criteria met:**
-- Recalculates all attributes for every colony (using current market data, infra, etc.) ✓
-- Applies growth tick ✓
-- Checks population level transitions ✓
-- Checks organic infrastructure growth ✓
-- Returns updated colonies + events (population milestones, attribute warnings) ✓
-- Unit tests: full colony turn with attribute changes ✓, population growth event ✓, population decline event ✓, infra cap recalculation ✓, organic growth check ✓, shortage resource derivation ✓, attribute warnings ✓, multiple colonies ✓, state immutability ✓
+- Corps with capital ≥ 2 consider investing ✓
+- Investment priority: sector market resource deficits ✓
+- Deficit selected weighted by severity ✓
+- Highest-dynamism planet with available infra slots and required inputs not in deficit ✓
+- Level 3+ corps invest in any domain, lower corps only their specialty ✓
+- Level 6+ corps consider acquisitions if capital ≥ target × 5 ✓
+- Target must be 3+ levels below buyer; target can refuse if within 2 levels ✓
+- On acquisition: buyer gains all target assets, buyer gains 1 level ✓
+- Returns list of actions as events ✓
+- Unit tests: investment with clear deficit ✓, no suitable planet ✓, acquisition ✓, level restrictions ✓
 - `npx vue-tsc --noEmit` — zero TypeScript errors ✓
-- `npx vitest run` — 584/584 tests pass ✓
+- `npx vitest run` — 608/608 tests pass ✓
 
 ---
 
-### Story 10.2 — Colony Simulation: Growth & Population (2026-02-18)
+## Epic 10: Colony Simulation (Completed 2026-02-18)
 
-**What changed:**
-- Extended `src/engine/formulas/growth.ts` — added three colony growth formula functions
-- Extended `src/engine/simulation/colony-sim.ts` — added growth tick and organic infra growth functions
-- Extended `src/__tests__/engine/formulas/growth.test.ts` — 24 new tests for colony formulas
-- Extended `src/__tests__/engine/simulation/colony-sim.test.ts` — 22 new tests for growth simulation
-
-**Functions added to `growth.ts`:**
-
-- `shouldPopLevelUp(growth, popLevel, maxPopLevel, civilianInfra)` — returns true when all three level-up conditions are met: `growth >= 10`, pop is below planet size cap, and `civilianInfra >= (popLevel + 1) × 2`
-- `shouldPopLevelDown(growth, popLevel)` — returns true when `growth <= -1` and `popLevel > 1`
-- `calculateOrganicInfraChance(dynamism)` — returns `dynamism × 5` as an integer percentage (0-50)
-
-**Types + functions added to `colony-sim.ts`:**
-
-- `GrowthTickResult` — `{ updatedColony, populationChanged, changeType: 'levelUp' | 'levelDown' | null }`
-- `applyGrowthTick(colony, growthPerTurn, maxPopLevel)` → `GrowthTickResult` — applies one turn of growth accumulation; triggers level-up (pop+1, growth→0) or level-down (pop-1, growth→9) when conditions are met; never mutates input colony
-- `OrganicGrowthResult` — `{ triggered, domain, updatedColony }`
-- `applyOrganicInfraGrowth(colony, dynamism, shortageResources, rng?)` → `OrganicGrowthResult` — rolls `dynamism × 5%` chance; on success picks a demand-weighted eligible domain (shortage domains get 3× weight, Civilian excluded, capped domains excluded) and adds +1 public level; accepts optional `rng` for deterministic testing
+Implemented colony attribute calculation, population growth, organic infrastructure growth, and UI updates (Stories 10.1–10.4). Built six attribute formulas (`calculateHabitability`, `calculateAccessibility`, `calculateDynamism`, `calculateQualityOfLife`, `calculateStability`, `calculateGrowthPerTurn`, `calculateInfraCap` — all pure, using `resolveModifiers` for local modifiers; `debtTokens` read directly from state). Built growth simulation (`shouldPopLevelUp`, `shouldPopLevelDown`, `calculateOrganicInfraChance`; `applyGrowthTick` — level-up resets growth to 0, level-down to 9; `applyOrganicInfraGrowth` — `dynamism × 5%` chance, demand-weighted domain selection excluding Civilian). Built colony turn phase (`resolveColonyPhase` — recalculates infra caps → all six attributes → growth tick → organic infra growth → events; extraction domains with no deposit get cap = 0; shortage modifiers from previous market-phase flow through naturally; population-milestone and attribute-warning events). Updated UI: `AttributePanel` trend arrows + derivation tooltips; `ColonyCard` warning borders; `ColonyDetailView` growth progress bar in header.
 
 **Key architecture decisions:**
-- Growth tick is pure and returns a new colony object — caller (colony-phase.ts, Story 10.3) is responsible for event generation from `changeType`
-- Organic growth uses `colony.infrastructure[domain].currentCap` for cap checks — correctly gated once colony-phase.ts starts populating it (Story 10.3)
-- `shortageResources: ResourceType[]` is a parameter so the caller can pass live market data; the function itself is pure
-- Civilian, Science, and Military are excluded from organic domain selection — Civilian grows via population mechanics; Science/Military do not produce tradeable resources with shortages
-- Science and Military domains with existing levels participate at base weight 1 (could benefit from organic growth even without a resource shortage)
+- `previousAttributes` is optional on `Colony` — undefined on turn 0, no generator changes needed
+- Infra caps recalculated before attributes so `currentCap` is accurate for organic growth cap checks
+- Shortage resources for organic growth derived from `state.sectorMarkets` (last turn data — colony-phase runs before market-phase)
+- Growth is an unclamped progress accumulator; transitions handled by `applyGrowthTick`
 
-**Acceptance criteria met:**
-- Growth accumulates each turn based on growth formula ✓
-- At growth 10 + civilian infra requirement met → pop level +1, growth resets to 0 ✓
-- At growth -1 → pop level -1, growth resets to 9 ✓
-- Population capped by planet size max ✓
-- Organic infra growth: `dynamism × 5%` chance per turn, +1 to random demand-weighted domain ✓
-- Unit tests: growth accumulation ✓, level up trigger ✓, level down trigger ✓, pop cap ✓, organic growth probability ✓
-- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
-- `npx vitest run` — 551/551 tests pass ✓
-
----
-
-### Story 10.1 — Attribute Formulas (2026-02-18)
-
-**What changed:**
-- Created `src/engine/formulas/attributes.ts` — all six colony attribute calculation functions
-- Created `src/__tests__/engine/formulas/attributes.test.ts` — 67 unit tests
-
-**Functions implemented:**
-
-- `calculateHabitability(basePlanetHab, colonyModifiers)` — resolves base planet habitability through local 'habitability' modifiers (planet features); clamped 0–10
-- `calculateAccessibility(transportInfra, colonyModifiers)` — `3 + floor(transport/2)` resolved through local 'accessibility' modifiers; clamped 0–10
-- `calculateDynamism(accessibility, populationLevel, totalCorporateInfra, colonyModifiers)` — `floor((access+pop)/2) + min(3, floor(corpInfra/10))` resolved through local 'dynamism' modifiers; clamped 0–10
-- `calculateQualityOfLife(habitability, colonyModifiers)` — `10 - floor(max(0,10-hab)/3)` resolved through local 'qualityOfLife' modifiers (shortage maluses from market-phase already on colony); clamped 0–10
-- `calculateStability(qualityOfLife, militaryInfra, debtTokens, colonyModifiers)` — reads `debtTokens` **directly** from the caller (not from modifiers); `10 - max(0,5-qol) - floor(debt/2) + min(3,floor(military/3))` resolved through local 'stability' modifiers; clamped 0–10
-- `calculateGrowthPerTurn(qualityOfLife, stability, accessibility, habitability, colonyModifiers)` — `floor((qol+stab+access)/3) - 3 - floor(max(0,10-hab)/3)` resolved through local 'growth' modifiers; **not clamped** (accumulator transitions at −1/+10)
-- `calculateInfraCap(popLevel, domain, empireBonuses, colonyModifiers)` — `popLevel×2 + empireBonuses.infraCaps[domain]` resolved through local 'max{Domain}' modifiers (e.g., Mineral Veins → 'maxMining'); returns Infinity for Civilian; floor + max(0) for all others
-
-**Key architecture decisions:**
-- All attribute functions use `resolveModifiers()` for local per-entity bonuses — no inline bonus hardcoding
-- `debtTokens` is read directly from the passed-in state value, never expressed as a per-colony modifier (empire-wide value, applies uniformly — see Structure.md § Empire Bonuses vs Local Modifiers)
-- Empire infra cap bonuses are plain numbers from `EmpireInfraCapBonuses`, combined before resolveModifiers, not stored as modifiers
-- `calculateInfraCap` returns the pop-derived cap only; the tighter deposit richness cap (from `calculateExtractionCap` in production.ts) is the caller's responsibility to enforce in colony-sim.ts
-- Growth is intentionally unclamped — it is a progress accumulator, not an attribute; transitions are handled by colony-sim.ts (Story 10.2)
-
-**Acceptance criteria met:**
-- All attribute functions use `resolveModifiers` for local per-entity bonuses ✓
-- All attribute functions read empire-wide values directly from state (debt tokens, empire bonuses) — not from modifiers ✓
-- `calculateHabitability(basePlanetHab, colonyModifiers)` ✓
-- `calculateAccessibility(transportInfra, colonyModifiers)` — base is `3 + floor(transport/2)` ✓
-- `calculateStability(...)` reads `gameState.debtTokens` directly for debt malus, uses local modifiers for everything else ✓
-- `calculateInfraCap(popLevel, domain, empireBonuses, colonyModifiers)` — base is `popLevel×2 + empireBonuses.infraCaps[domain]`, then resolves through local modifiers ✓
-- Formula implementations match Specs.md Section 5 ✓
-- Unit tests verify local modifiers and empire bonuses combine correctly ✓
-- Unit tests verify debt is read from state not modifiers ✓
-- `npx vue-tsc --noEmit` — zero TypeScript errors ✓
-- `npx vitest run` — 511/511 tests pass ✓
+**Tests:** 584 passing (attributes: 67, growth colony: 24, colony-sim: 22, colony-phase: 33, prior: 438)
 
 ---
 

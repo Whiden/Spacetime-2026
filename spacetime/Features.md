@@ -32,210 +32,118 @@
 ---
 
 ## Epic 1: Project Foundation
-
 > Set up the project, define all TypeScript types, create utility functions, and establish static data files. No game logic yet — just the skeleton.
 
 ### Story 1.1: Project Scaffolding 🔧
-**Description**: Initialize the Vue 3 + TypeScript project with Vite, Pinia, Vue Router, Tailwind CSS, and Vitest. Configure all tooling.
-
+Initialize the Vue 3 + TypeScript project with Vite, Pinia, Vue Router, Tailwind CSS, and Vitest. Configure all tooling.
 ### Story 1.2: Core Types — Common 🔧
-**Description**: Define shared types used across the entire project: Id types, TurnNumber, BPAmount, enums for planet types, sizes, resource types, etc.
-**Files**: `src/types/common.ts`
-
+Define shared types used across the entire project: Id types, TurnNumber, BPAmount, enums for planet types, sizes, resource types, etc.
 ### Story 1.3: Core Types — All Entities 🔧
-**Description**: Define TypeScript interfaces for every game entity.
-**Files**: `src/types/colony.ts`, `src/types/planet.ts`, `src/types/corporation.ts`, `src/types/contract.ts`, `src/types/resource.ts`, `src/types/infrastructure.ts`, `src/types/science.ts`, `src/types/ship.ts`, `src/types/mission.ts`, `src/types/combat.ts`, `src/types/sector.ts`, `src/types/budget.ts`, `src/types/event.ts`, `src/types/trade.ts`, `src/types/game.ts`
-
+Define TypeScript interfaces for every game entity.
 ### Story 1.3b: Modifier System Types & Resolver 🔧🧪
-**Description**: Define the modifier type system and implement the resolver function that colony attributes and ship stats use for local per-entity variation. Also define the EmpireBonuses type for global cumulative values.
-**Files**: `src/types/modifier.ts`, `src/types/empire.ts`, `src/engine/formulas/modifiers.ts`
-
+Define the modifier type system and implement the resolver function that colony attributes and ship stats use for local per-entity variation. Also define the EmpireBonuses type for global cumulative values.
 ### Story 1.4: Utility Functions 🔧🧪
-**Description**: Implement shared utility functions for random number generation, math helpers, formatting, and ID generation.
-**Files**: `src/utils/random.ts`, `src/utils/math.ts`, `src/utils/format.ts`, `src/utils/id.ts`
-
+Implement shared utility functions for random number generation, math helpers, formatting, and ID generation.
 ### Story 1.5: Static Data Files 🔧
-**Description**: Create all static data files containing game constants, tables, and templates as defined in Data.md.
-**Files**: All files in `src/data/`
-
----
+Create all static data files containing game constants, tables, and templates as defined in Data.md.
 
 ## Epic 2: Game Shell & Navigation
-
 > Build the application shell: sidebar navigation, header with turn/BP display, router configuration, and empty view scaffolds. The player can navigate between screens but everything is empty.
 
 ### Story 2.1: Router Configuration 🖥️
-**Description**: Set up Vue Router with routes for all primary screens.
-**Files**: `src/router/index.ts`
-
+Set up Vue Router with routes for all primary screens.
 ### Story 2.2: App Layout Shell 🖥️
-**Description**: Create the main application layout with sidebar navigation, top header bar, and main content area.
-**Files**: `src/App.vue`, `src/components/layout/AppHeader.vue`, `src/components/layout/AppSidebar.vue`
-
+Create the main application layout with sidebar navigation, top header bar, and main content area.
 ### Story 2.3: Empty View Scaffolds 🖥️
-**Description**: Create placeholder views for all screens with titles and empty states.
-**Files**: All files in `src/views/`
-
+Create placeholder views for all screens with titles and empty states.
 ### Story 2.4: Shared UI Components 🖥️
-**Description**: Build reusable UI components used across multiple screens.
-**Files**: `src/components/shared/ProgressBar.vue`, `AttributeBar.vue`, `StatCard.vue`, `ResourceBadge.vue`, `EventCard.vue`, `ConfirmDialog.vue`, `Tooltip.vue`, `DataTable.vue`, `EmptyState.vue`
----
+Build reusable UI components used across multiple screens.
 
 ## Epic 3: Galaxy Generation & Sectors
-
 > Generate the galaxy (sector network) at game start. Display sectors in the Galaxy screen. This is foundational — sectors are the container for everything else.
 
 ### Story 3.1: Sector Generator 🔧🧪
-**Description**: Implement sector generation: name, density, threat modifier.
-**Files**: `src/generators/sector-generator.ts`
-
+Implement sector generation: name, density, threat modifier.
 ### Story 3.2: Galaxy Generator 🔧🧪
-**Description**: Generate the full galaxy: 10-15 sectors with adjacency graph.
-**Files**: `src/generators/galaxy-generator.ts`
-
+Generate the full galaxy: 10-15 sectors with adjacency graph.
 ### Story 3.3: Galaxy Store 🔧
-**Description**: Create Pinia store for galaxy state.
-**Files**: `src/stores/galaxy.store.ts`
-
+Create Pinia store for galaxy state.
 ### Story 3.4: Galaxy View 🖥️
-**Description**: Display sector list with adjacency connections, exploration status, and basic info.
-**Files**: `src/views/GalaxyView.vue`, `src/components/galaxy/SectorCard.vue`, `src/components/galaxy/SectorGraph.vue`
-
----
+Display sector list with adjacency connections, exploration status, and basic info.
 
 ## Epic 4: Planets & Colonies — Data Model
-
 > Implement planet generation and colony data structures. Create Terra Nova as the starting colony. Display colonies in the UI. No simulation yet — just data display.
 
 ### Story 4.1: Planet Generator 🔧🧪
-**Description**: Generate planets with type, size, features, and deposits according to Data.md rules.
-**Files**: `src/generators/planet-generator.ts`
-
+Generate planets with type, size, features, and deposits according to Data.md rules.
 ### Story 4.2: Colony Generator 🔧🧪
-**Description**: Initialize a colony from a planet and colony type selection.
-**Files**: `src/generators/colony-generator.ts`
-
+Initialize a colony from a planet and colony type selection.
 ### Story 4.3: Planet & Colony Stores 🔧
-**Description**: Create Pinia stores for planets and colonies.
-**Files**: `src/stores/planet.store.ts`, `src/stores/colony.store.ts`
-
+Create Pinia stores for planets and colonies.
 ### Story 4.4: Colony List View 🖥️
-**Description**: Display all colonies in a list with summary information.
-**Files**: `src/views/ColoniesView.vue`, `src/components/colony/ColonyCard.vue`
-
+Display all colonies in a list with summary information.
 ### Story 4.5: Colony Detail View 🖥️
-**Description**: Display full colony information: attributes, infrastructure, deposits, features, corporations present.
-**Files**: `src/views/ColonyDetailView.vue`, `src/components/colony/InfraPanel.vue`, `src/components/colony/AttributePanel.vue`, `src/components/colony/ResourceFlow.vue`
-
----
+Display full colony information: attributes, infrastructure, deposits, features, corporations present.
 
 ## Epic 5: Budget System
-
 > Implement the BP economy: income calculation, expense tracking, debt tokens. Display budget in header and dedicated section of dashboard.
 
 ### Story 5.1: Tax Formulas 🔧🧪
-**Description**: Implement planet tax and corporation tax calculations.
-**Files**: `src/engine/formulas/tax.ts`
-
+Implement planet tax and corporation tax calculations.
 ### Story 5.2: Budget Store 🔧
-**Description**: Create Pinia store for budget state: balance, income, expenses, debt tokens.
-**Files**: `src/stores/budget.store.ts`
-
+Create Pinia store for budget state: balance, income, expenses, debt tokens.
 ### Story 5.3: Budget Display 🖥️
-**Description**: Show budget information in the header and on the dashboard.
-**Files**: `src/composables/useBudgetDisplay.ts`, update `AppHeader.vue`, update `DashboardView.vue`
-
----
+Show budget information in the header and on the dashboard.
 
 ## Epic 6: Corporations — Data Model & Lifecycle
-
 > Implement corporation generation, data model, capital system, and display. No AI behavior yet — just creating corps and viewing them.
 
 ### Story 6.1: Corporation Generator 🔧🧪
-**Description**: Generate corporations with name, type, personality traits, and starting stats.
-**Files**: `src/generators/corp-generator.ts`, `src/generators/name-generator.ts`
-
+Generate corporations with name, type, personality traits, and starting stats.
 ### Story 6.2: Corporation Store 🔧
-**Description**: Create Pinia store for all corporations.
-**Files**: `src/stores/corporation.store.ts`
-
+Create Pinia store for all corporations.
 ### Story 6.3: Corporation Capital Formulas 🔧🧪
-**Description**: Implement capital gain calculations.
-**Files**: `src/engine/formulas/growth.ts` (corp section)
-
+Implement capital gain calculations.
 ### Story 6.4: Corporations View 🖥️
-**Description**: Display corporation list and detail views.
-**Files**: `src/views/CorporationsView.vue`, `src/views/CorpDetailView.vue`, `src/components/corporation/CorpCard.vue`, `src/components/corporation/CorpAssets.vue`, `src/components/corporation/CorpHistory.vue`
-
----
+Display corporation list and detail views.
 
 ## Epic 7: Contract System
-
 > Implement the contract creation flow, contract execution (progress tracking), and contract completion. This is the player's primary interaction — it must feel smooth.
 
 ### Story 7.1: Contract Engine — Creation & Validation 🔧🧪
-**Description**: Implement contract creation logic: validate inputs, calculate costs, check eligibility.
-**Files**: `src/engine/actions/create-contract.ts`
-
+Implement contract creation logic: validate inputs, calculate costs, check eligibility.
 ### Story 7.2: Contract Store 🔧
-**Description**: Create Pinia store for contracts.
-**Files**: `src/stores/contract.store.ts`
-
+Create Pinia store for contracts.
 ### Story 7.3: Contract Phase — Turn Resolution 🔧🧪
-**Description**: Implement contract advancement during turn resolution.
-**Files**: `src/engine/turn/contract-phase.ts`
-
+Implement contract advancement during turn resolution.
 ### Story 7.4: Contract Creation UI — Wizard Flow 🖥️
-**Description**: Build the multi-step contract creation interface.
-**Files**: `src/components/contract/ContractWizard.vue`, `src/components/contract/CorpSelector.vue`, `src/composables/useContractCreation.ts`
-
+Build the multi-step contract creation interface.
 ### Story 7.5: Contracts View 🖥️
-**Description**: Display active and completed contracts.
-**Files**: `src/views/ContractsView.vue`, `src/components/contract/ContractCard.vue`
-
----
+Display active and completed contracts.
 
 ## Epic 8: Infrastructure & Production
-
 > Implement infrastructure levels, resource production and consumption calculations, and player investment in infrastructure. This connects colonies to the economy.
 
 ### Story 8.1: Production & Consumption Formulas 🔧🧪
-**Description**: Implement all resource production and consumption calculations.
-**Files**: `src/engine/formulas/production.ts`
-
+Implement all resource production and consumption calculations.
 ### Story 8.2: Colony Resource Flow Calculator 🔧🧪
-**Description**: Calculate complete production and consumption for a single colony.
-**Files**: `src/engine/simulation/colony-sim.ts` (production section)
-
+Calculate complete production and consumption for a single colony.
 ### Story 8.3: Player Investment Action 🔧🧪
-**Description**: Implement direct BP investment in colony infrastructure.
-**Files**: `src/engine/actions/invest-planet.ts`
-
+Implement direct BP investment in colony infrastructure.
 ### Story 8.4: Infrastructure UI Updates 🖥️
-**Description**: Update colony detail view with functional infrastructure investment.
-**Files**: Update `src/components/colony/InfraPanel.vue`, `src/components/colony/ResourceFlow.vue`
-
----
+Update colony detail view with functional infrastructure investment.
 
 ## Epic 9: Sector Market & Trade
-
 > Implement the sector market resolution system: production pooling, dynamism-priority purchasing, shortage resolution. This is the economic engine of the game.
 
 ### Story 9.1: Market Resolver 🔧🧪
-**Description**: Implement full sector market resolution logic.
-**Files**: `src/engine/simulation/market-resolver.ts`
-
+Implement full sector market resolution logic.
 ### Story 9.2: Market Phase — Turn Resolution 🔧🧪
-**Description**: Integrate market resolver into turn resolution pipeline.
-**Files**: `src/engine/turn/market-phase.ts`
-
+Integrate market resolver into turn resolution pipeline.
 ### Story 9.3: Market Store 🔧
-**Description**: Create Pinia store for market state.
-**Files**: `src/stores/market.store.ts`
-
+Create Pinia store for market state.
 ### Story 9.4: Market View 🖥️
-**Description**: Display sector market dashboard.
-**Files**: `src/views/MarketView.vue`, `src/components/market/ResourceRow.vue`, `src/components/market/MarketSummary.vue`
+Display sector market dashboard.
 
 ---
 

@@ -215,9 +215,9 @@ Colony type is determined by the colonization contract. Each type provides a **s
 
 ---
 
-## 8. Corporation Types
+## 8. Corporation
 
-### Type Definitions
+### Corporation types
 
 | Type | Infrastructures | Special |
 |---|---|---|
@@ -231,34 +231,16 @@ Colony type is determined by the colonization contract. Each type provides a **s
 | **Exploration** | — | Can explore and survey |
 | **Agriculture** | Agricultural | |
 
-### Level 6+ (Megacorp Transition)
-When any corporation reaches level 6:
-- It can invest in **any** infrastructure type, not just its specialty, and can operate any contracts
-- It can acquire other corporations (cost: target_level × 5 Capital)
-
-### Corporation Generation
-When a corporation is generated (via contract kickstart or organic emergence):
-
-| Property | Generation Rule |
-|---|---|
-| Name | Procedural (see name generation) |
-| Type | Determined by contract type or infrastructure type that triggered emergence |
-| Level | 1 (kickstarted) or 1-2 (organic emergence) |
-| Capital | 0 (kickstarted) or 1-3 (organic) |
-| Personality | 1-2 random traits |
-| Home Planet | Colony where founded |
-
 ### Corporation Capital
 
-**Spending Capital:**
-
-| Action | Capital Cost |
-|---|---|
-| Buy 1 infrastructure level | 2 |
-| Level up | current_level × 3 |
-| Acquire another corp | target_level × 5 |
-| Commission a ship (from another corp) | Varies by ship class |
-| Commission an outpost (from another corp, on a free rejected planet) | 10
+### Corporation Actions
+| Action | Requirements | Costs (Capital) |
+|---|---|---|
+| Buy infrastructure | None | 2C |
+| Level up | corp.level < 10 | level × 3C |
+| Buy corporation | corp.level >= 6 | target.level × 5C |
+| Buy ship | None | varies by ship class |
+| Settle outpost | None | varies by outpost type |
 
 **Getting capital:**
 

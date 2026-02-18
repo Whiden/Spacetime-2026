@@ -117,50 +117,54 @@ stability_malus = floor(debt_tokens / 2)
 Corporations are autonomous AI-driven entities that perform all economic, scientific, military, and infrastructure activity in the game. The player interacts with them through contracts and investment, never through direct command.
 
 ### Corporation Properties
-Every corporation has: a unique procedurally generated **name**, a **type** (primary specialization — see Data.md for type definitions), a **level** (1-10), **Capital** (financial reserves), 1-2 **personality traits** (see Data.md), a **home planet**, a list of **planets present**, and **assets** (infrastructure owned, ships, schematics, blueprints).
+**name** : Procedurally generated
+**type** : Primary specialization
+**level** : 1-10
+**Capital** : Financials reserves 
+**personality traits** : 1-2 randoms traits
+**home planet** : Planet where it was founded
+**planets present** : Planet where it has at least one infrastructure
+**assets** : infrastructures owned, ships, schematics, patents
 
 ### Capital System
 
-Capital represents a corporation's financial reserves — used to buy infrastructure, level up, and acquire other corporations.
+Capital represents a corporation's financial reserves — used to buy infrastructure, level up, buy assets and acquire other corporations. They gain capital through their assets and infrastructure and through contract completion.
 
 **Capital gain per turn:**
 ```
-capital_gain = random(0, 1) + floor(total_owned_infrastructure / 10)
+random_gain = random(0, 1)
+infrastructure_profits = floor(total_owned_infrastructure / 10)
+capital_gain = random_gain + infrastructure_profits
 ```
 
 **Contract completion bonus (awarded once on completion):**
 ```
-completion_bonus = floor((bp_per_turn × duration) / 5)
+contract_total_cost = bp_per_turn × duration
+completion_bonus = floor(contract_total_cost / 5)
 ```
-
-**Spending Capital:**
-- Buy 1 infrastructure level: **2 Capital**
-- Level up to next corp level: **current_level × 3 Capital**
-- Acquire another corporation: **target_level × 5 Capital**
-- Commission a ship from another corp: varies by ship class
 
 **Maximum infrastructure owned:**
 ```
 max_infrastructure = corp_level × 4
 ```
 
-### Level Abilities
+### Megacorp Transition
+When any corporation reaches level 6, it becomes a megacorp
+- It can invest in **any** infrastructure type, not just its specialty, and can operate any contracts
+- It can acquire other corporations (cost: target_level × 5 Capital)
 
-| Level | Unlocks |
-|---|---|
-| 1 | Execute contracts, invest in own type infrastructure only |
-| 3 | Invest in any infrastructure type (own type gets AI priority) |
-| 6 | **Megacorp**: unrestricted investment, can acquire other corporations |
+### Corporation actions
+On each turn, corporation has several actions at their disposals (see data.md for details).
 
 ### Lifecycle
 
-**Birth**: Generated when the player kickstarts a new corporation via a contract, OR when colony dynamism triggers organic emergence.
+**Generation**: A corporation can be founded by the player during a contract (startup) or each turn, by a colony with dynamism >= 6.
 
-**Organic Emergence**: Each turn, colonies with dynamism ≥ 6 roll:
+**Organic Emergence**: 
 ```
 emergence_chance = (dynamism - 5) × 10%
 ```
-New corp type is determined by the colony's most prominent infrastructure domain. The new corp receives one colony-owned infrastructure level as its first asset (transfers from public to corporate). Max one emergence per colony per turn.
+New corp type is determined by the colony's most prominent infrastructure domain with independant levels. The new corp receives one independant-owned infrastructure level as its first asset (transfers from independant to corporate).
 
 **Level Up**: Costs `current_level × 3` Capital. Corps accumulate capital through passive income and contract bonuses.
 
