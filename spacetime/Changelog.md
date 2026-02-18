@@ -4,6 +4,24 @@
 
 ## Epic 12: Turn Resolution Pipeline
 
+### Story 12.6 — Event Phase Placeholder (2026-02-19)
+
+**What changed:**
+- `src/engine/turn/event-phase.ts` — placeholder implementation already in place from Story 12.1; verified and finalized.
+
+**Features implemented:**
+
+- `resolveEventPhase(state)`: accepts `GameState`, returns `{ updatedState: state, events: [] }` unchanged. No threat or event logic.
+- Wired as phase #10 in `turn-resolver.ts`.
+- Inline comments document future responsibilities (piracy, corp conflict, colony unrest, natural disasters, resource crises, unknown encounters).
+
+**Acceptance criteria met:**
+- Accepts game state, returns it unchanged with empty event list ✓
+- Structure in place for future threat/event implementation ✓
+- No actual threat logic ✓
+
+---
+
 ### Story 12.5 — End Turn UI Flow (2026-02-19)
 
 **What changed:**

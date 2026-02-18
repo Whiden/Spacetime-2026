@@ -16,7 +16,6 @@
  *
  * Pure TypeScript — no Vue or Pinia imports.
  *
- * TODO (Story 12.6): Verify placeholder passes through cleanly.
  * TODO (Epic 13 / Post-prototype): Implement actual threat/event generation
  *   using the trigger definitions in data/threats.ts.
  */
