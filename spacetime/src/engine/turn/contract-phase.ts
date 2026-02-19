@@ -5,7 +5,8 @@
  * and handles completion effects by contract type.
  *
  * Completion effects:
- * - Exploration: stub — POI generation deferred to Epic 13
+ * - Exploration: adds exploration gain to sector, generates POI planets (OrbitScanned),
+ *   applies orbit scan based on corp level, generates discovery events per planet
  * - GroundSurvey: updates planet status to GroundSurveyed
  * - Colonization: generates a new colony via colony-generator, links corp
  * - ShipCommission: stub — ship generation deferred to Epic 15
@@ -16,7 +17,6 @@
  * (See Specs.md § 3 Contract Completion Bonus and § 4 Contract System)
  *
  * TODO (Story 7.4): ContractWizard.vue drives createNewContract() from UI.
- * TODO (Story 13.1): resolveExplorationCompletion() generates POIs from sector scan.
  * TODO (Story 15.2): resolveShipCommissionCompletion() builds ship with stat generator.
  */
 
@@ -27,10 +27,13 @@ import type { Colony } from '../../types/colony'
 import type { Planet } from '../../types/planet'
 import type { Corporation } from '../../types/corporation'
 import { ContractStatus, ContractType, EventPriority, PlanetStatus } from '../../types/common'
-import type { TurnNumber, CorpId, PlanetId } from '../../types/common'
+import type { TurnNumber, CorpId, PlanetId, SectorId } from '../../types/common'
 import { generateColony } from '../../generators/colony-generator'
+import { generatePlanet } from '../../generators/planet-generator'
 import { generateEventId } from '../../utils/id'
 import { calculateCompletionBonus } from '../formulas/growth'
+import { calculateExplorationGain, calculatePOICount, generateOrbitScan } from '../formulas/exploration'
+import type { Sector } from '../../types/sector'
 
 // ─── Phase Entry Point ───────────────────────────────────────────────────────
 
@@ -56,6 +59,7 @@ export function resolveContractPhase(state: GameState): PhaseResult {
   const updatedColonies = new Map(state.colonies)
   const updatedPlanets = new Map(state.planets)
   const updatedCorporations = new Map(state.corporations)
+  const updatedSectors = new Map(state.galaxy.sectors)
 
   for (const [id, contract] of updatedContracts) {
     if (contract.status !== ContractStatus.Active) continue
@@ -78,7 +82,7 @@ export function resolveContractPhase(state: GameState): PhaseResult {
       updatedContracts.set(id, completed)
 
       // Apply completion effects (colony creation, planet status, corp presence)
-      applyCompletionEffects(completed, state, updatedColonies, updatedPlanets, updatedCorporations)
+      applyCompletionEffects(completed, state, updatedColonies, updatedPlanets, updatedCorporations, updatedSectors, events)
 
       // Award capital bonus to the assigned corporation (Specs.md § 3 & § 4)
       rewardCompletionBonus(completed, updatedCorporations)
@@ -93,6 +97,10 @@ export function resolveContractPhase(state: GameState): PhaseResult {
   return {
     updatedState: {
       ...state,
+      galaxy: {
+        ...state.galaxy,
+        sectors: updatedSectors,
+      },
       contracts: updatedContracts,
       colonies: updatedColonies,
       planets: updatedPlanets,
@@ -114,10 +122,12 @@ function applyCompletionEffects(
   updatedColonies: Map<string, Colony>,
   updatedPlanets: Map<string, Planet>,
   updatedCorporations: Map<string, Corporation>,
+  updatedSectors: Map<string, Sector>,
+  events: GameEvent[],
 ): void {
   switch (contract.type) {
     case ContractType.Exploration:
-      // TODO (Story 13.1): Generate POIs from sector scan data.
+      resolveExplorationCompletion(contract, state, updatedPlanets, updatedSectors, events)
       break
 
     case ContractType.GroundSurvey:
@@ -136,6 +146,83 @@ function applyCompletionEffects(
     case ContractType.TradeRoute:
       // Never reaches here — trade routes are filtered out above.
       break
+  }
+}
+
+/**
+ * Exploration contract completion (Story 13.2):
+ * 1. Adds exploration gain (random 5-15%) to the target sector, capped at 100.
+ * 2. Generates POI count (2-4) new planets in the sector with OrbitScanned status.
+ * 3. Applies orbit scan reveal based on the assigned corp's level.
+ * 4. Generates one discovery event per planet.
+ *
+ * Planets are generated fresh via generatePlanet() and added to updatedPlanets.
+ */
+function resolveExplorationCompletion(
+  contract: Contract,
+  state: GameState,
+  updatedPlanets: Map<string, Planet>,
+  updatedSectors: Map<string, Sector>,
+  events: GameEvent[],
+): void {
+  if (contract.target.type !== 'sector') return
+
+  const sectorId = contract.target.sectorId as SectorId
+  const sector = updatedSectors.get(sectorId)
+  if (!sector) return
+
+  // 1. Add exploration gain, capped at 100
+  const gain = calculateExplorationGain()
+  const newExplorationPercent = Math.min(100, sector.explorationPercent + gain)
+  updatedSectors.set(sectorId, {
+    ...sector,
+    explorationPercent: newExplorationPercent,
+  })
+
+  // 2. Determine assigned corp level for orbit scan quality
+  const corp = state.corporations.get(contract.assignedCorpId)
+  const corpLevel = corp?.level ?? 1
+
+  // 3. Generate POI planets and add to updatedPlanets
+  const poiCount = calculatePOICount()
+  const usedNames = new Set<string>([...updatedPlanets.values()].map((p) => p.name))
+
+  for (let i = 0; i < poiCount; i++) {
+    const planet = generatePlanet({
+      sectorId,
+      usedNames,
+      initialStatus: PlanetStatus.OrbitScanned,
+    })
+
+    // Apply orbit scan reveal (marks features as revealed based on corp level)
+    const scanResult = generateOrbitScan(planet, corpLevel)
+
+    // Update feature revealed flags based on scan result
+    const revealedSet = new Set(scanResult.revealedOrbitFeatureIds)
+    const updatedFeatures = planet.features.map((f) => ({
+      ...f,
+      revealed: revealedSet.has(f.featureId),
+    }))
+
+    const scannedPlanet: Planet = {
+      ...planet,
+      features: updatedFeatures,
+      orbitScanTurn: state.turn,
+    }
+
+    updatedPlanets.set(scannedPlanet.id, scannedPlanet)
+
+    // 4. Generate a discovery event for each planet
+    events.push({
+      id: generateEventId(),
+      turn: state.turn,
+      priority: EventPriority.Positive,
+      category: 'exploration',
+      title: 'Planet Discovered',
+      description: `${scannedPlanet.name} (${scannedPlanet.type}, ${scannedPlanet.size}) discovered in sector ${sectorId}.`,
+      relatedEntityIds: [contract.id, scannedPlanet.id, sectorId],
+      dismissed: false,
+    })
   }
 }
 

@@ -2,6 +2,34 @@
 
 ---
 
+## Story 13.2: Exploration Contract Completion (2026-02-19)
+
+**File**: `src/engine/turn/contract-phase.ts`
+
+- `resolveExplorationCompletion()`: Wired into `applyCompletionEffects` for `ContractType.Exploration`.
+  1. Adds `calculateExplorationGain()` (random 5–15%) to the target sector's `explorationPercent`, capped at 100.
+  2. Generates `calculatePOICount()` (2–4) new planets via `generatePlanet()` with `initialStatus: OrbitScanned`.
+  3. Applies `generateOrbitScan(planet, corpLevel)` to mark orbit-visible features as `revealed` based on the assigned corp's level tier.
+  4. Sets `orbitScanTurn` on each generated planet to the current turn.
+  5. Emits one `exploration`-category `Positive`-priority discovery event per planet.
+- `resolveContractPhase` now also returns updated `galaxy.sectors` in `updatedState`.
+- Unit tests: 12 new tests (36 total, all passing) covering:
+  - Sector exploration increases by 5–15 on completion
+  - Exploration capped at 100
+  - 2–4 planets generated per contract
+  - All generated planets have `OrbitScanned` status and correct `sectorId`
+  - `orbitScanTurn` set to current turn
+  - One discovery event per planet (`exploration` category, `Positive` priority)
+  - Tier-1 corp: no orbit-visible features revealed
+  - Tier-2 corp: scan applied without error
+  - Pre-existing planets unaffected; missing sector is a no-op
+- 3 pre-existing tests updated to use `ShipCommission` (no side-effect events) to isolate contract event count from exploration discovery events.
+
+**Tests**: 36/36 passing
+**TypeScript**: zero errors
+
+---
+
 ## Story 13.1: Exploration Engine (2026-02-19)
 
 **File**: `src/engine/formulas/exploration.ts`
