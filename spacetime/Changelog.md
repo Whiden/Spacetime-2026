@@ -2,6 +2,46 @@
 
 ---
 
+## Story 14.2: Discovery System (2026-02-19)
+
+**File**: `src/engine/simulation/science-sim.ts` (extended), `src/types/science.ts`
+
+### Functions implemented
+
+- `getCorporationScienceInfra(corp)`: sums all Science infrastructure levels a corp holds across all colonies.
+- `calculateDiscoveryChance(corpLevel, corpScienceInfra, focused)`: returns `(corpLevel × 5) + (corpScienceInfra × 2)`, doubled if the drawn domain is focused.
+- `getAvailableDiscoveries(scienceDomains, alreadyDiscoveredDefinitionIds)`: filters `DISCOVERY_DEFINITIONS` to those whose domain is at or above `poolLevel` and whose `definitionId` has not yet been discovered empire-wide.
+- `applyDiscoveryEffects(def, empireBonuses)`: increments the `EmpireBonuses` fields specified in `def.empireBonusEffects` (key format `"shipStats.speed"`, `"infraCaps.maxMining"`). Returns a new object; does not mutate.
+- `rollForDiscovery(corp, scienceDomains, alreadyDiscoveredDefinitionIds, empireBonuses, turn, randFn?)`: full discovery roll — picks a random available definition, checks focus for that domain, rolls against `discoveryChance`. On success: creates a `Discovery`, applies effects to `empireBonuses`, updates `scienceDomains.discoveredIds` and `unlockedSchematicCategories`, generates a `Positive` science event.
+- `DiscoveryRollResult` interface: `{ discovery, updatedEmpireBonuses, updatedScienceDomains, events }`.
+
+### Type changes
+
+- `Discovery` (in `src/types/science.ts`): added `sourceDefinitionId: string` for pool exhaustion tracking.
+
+### Key decisions
+
+- `randFn` injectable parameter enables deterministic testing without seeded utilities.
+- Pool exhaustion tracked via `alreadyDiscoveredDefinitionIds: string[]` — the caller (science-phase) maintains this list from `GameState.discoveries`.
+- Focus bonus is applied to the *drawn definition's* domain, consistent with the spec wording "if the drawn domain is focused".
+- `unlockedSchematicCategories` on `ScienceDomainState` is updated deduped via `Set`.
+
+### Acceptance criteria met
+
+- `discovery_chance = (corp_level × 5) + (corp_science_infrastructure × 2)` ✓
+- Focus bonus doubles discovery chance for focused domain ✓
+- Draws random undiscovered item from available pools (domains at level 1+) ✓
+- Discovery is permanent and empire-wide (applied to `empireBonuses` directly) ✓
+- Generates discovery event with name and description ✓
+- Directly increments `gameState.empireBonuses` ship stat values ✓
+- Pool exhaustion: no further discoveries once all definitions at a level are drawn ✓
+- Unit tests: discovery chance (with/without focus) ✓, pool exhaustion ✓, no available discoveries ✓, empireBonuses persist across turns ✓
+
+**Tests**: 55/55 passing (27 Story 14.1 + 28 Story 14.2)
+**TypeScript**: zero errors
+
+---
+
 ## Story 14.1: Science Simulation (2026-02-19)
 
 **File**: `src/engine/simulation/science-sim.ts`

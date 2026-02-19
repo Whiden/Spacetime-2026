@@ -56,6 +56,8 @@ export interface ScienceDomainState {
  */
 export interface Discovery {
   id: DiscoveryId
+  /** The DiscoveryDefinition.definitionId this was drawn from. Used for pool exhaustion checks. */
+  sourceDefinitionId: string
   name: string
   description: string
   domain: ScienceSectorType

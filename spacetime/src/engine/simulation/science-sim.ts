@@ -1,30 +1,31 @@
 /**
- * science-sim.ts — Science point accumulation and domain advancement.
+ * science-sim.ts — Science point accumulation, domain advancement, and discovery rolling.
  *
- * Calculates empire science output, distributes it across 9 domains,
- * applies focus doubling, and checks level-up thresholds.
- *
- * Formulas (Specs.md § 8, Features.md Story 14.1):
+ * Formulas (Specs.md § 8, Features.md Stories 14.1–14.2):
  *   empire_science_per_turn = sum of all science infrastructure levels across all colonies
  *   per_domain_base = floor(empire_science_per_turn / 9)
  *   focused domain allocation = per_domain_base × 2
  *   threshold_to_next_level = current_level × 15
- *   On level up: unlocks discovery pool for that domain
+ *   discovery_chance = (corp_level × 5) + (corp_science_infrastructure × 2) %
+ *   focus bonus on discovery: if the drawn domain is focused, discovery_chance × 2
  *
  * Pure TypeScript — no Vue or Pinia imports.
  *
- * TODO (Story 14.2): Discovery rolling for science corps.
  * TODO (Story 14.4): Integration into science-phase.ts.
  */
 
 import type { Colony } from '../../types/colony'
-import type { ScienceDomainState } from '../../types/science'
+import type { ScienceDomainState, Discovery } from '../../types/science'
 import type { GameEvent } from '../../types/event'
 import { InfraDomain, ScienceSectorType, EventPriority } from '../../types/common'
 import type { TurnNumber } from '../../types/common'
 import { getTotalLevels } from '../../types/infrastructure'
 import { getScienceLevelThreshold } from '../../data/science-sectors'
-import { generateEventId } from '../../utils/id'
+import { generateEventId, generateDiscoveryId } from '../../utils/id'
+import type { Corporation } from '../../types/corporation'
+import type { EmpireBonuses } from '../../types/empire'
+import type { DiscoveryDefinition } from '../../data/discoveries'
+import { DISCOVERY_DEFINITIONS } from '../../data/discoveries'
 
 // ─── Science Output Calculation ──────────────────────────────────────────────
 
@@ -161,4 +162,177 @@ export function setDomainFocus(
   }
 
   return updated
+}
+
+// ─── Discovery System (Story 14.2) ───────────────────────────────────────────
+
+/**
+ * Sums all science infrastructure levels owned by a corporation across all colonies.
+ */
+export function getCorporationScienceInfra(corp: Corporation): number {
+  let total = 0
+  for (const holdings of corp.assets.infrastructureByColony.values()) {
+    total += holdings[InfraDomain.Science] ?? 0
+  }
+  return total
+}
+
+/**
+ * Calculates discovery chance % for a science corp.
+ *   discovery_chance = (corp_level × 5) + (corp_science_infrastructure × 2)
+ * Focus bonus: if the domain is focused, the chance is doubled.
+ */
+export function calculateDiscoveryChance(
+  corpLevel: number,
+  corpScienceInfra: number,
+  focused: boolean,
+): number {
+  const base = corpLevel * 5 + corpScienceInfra * 2
+  return focused ? base * 2 : base
+}
+
+/**
+ * Returns all discovery definitions available to draw this turn:
+ * - Domain level >= discovery's poolLevel (domain must be unlocked)
+ * - Not already in alreadyDiscoveredDefinitionIds (empire-wide)
+ */
+export function getAvailableDiscoveries(
+  scienceDomains: Map<string, ScienceDomainState>,
+  alreadyDiscoveredDefinitionIds: string[],
+): DiscoveryDefinition[] {
+  return DISCOVERY_DEFINITIONS.filter((def) => {
+    const domain = scienceDomains.get(def.domain)
+    if (!domain || domain.level < def.poolLevel) return false
+    return !alreadyDiscoveredDefinitionIds.includes(def.definitionId)
+  })
+}
+
+/**
+ * Applies a discovery definition's bonus effects to EmpireBonuses.
+ * Key format: "shipStats.speed", "infraCaps.maxMining", etc.
+ * Returns a new EmpireBonuses object; does not mutate the original.
+ */
+export function applyDiscoveryEffects(
+  def: DiscoveryDefinition,
+  empireBonuses: EmpireBonuses,
+): EmpireBonuses {
+  const updated: EmpireBonuses = {
+    shipStats: { ...empireBonuses.shipStats },
+    infraCaps: { ...empireBonuses.infraCaps },
+  }
+
+  for (const effect of def.empireBonusEffects) {
+    const dotIdx = effect.key.indexOf('.')
+    if (dotIdx === -1) continue
+    const category = effect.key.slice(0, dotIdx)
+    const stat = effect.key.slice(dotIdx + 1)
+    if (category === 'shipStats') {
+      ;(updated.shipStats as Record<string, number>)[stat] =
+        ((updated.shipStats as Record<string, number>)[stat] ?? 0) + effect.amount
+    } else if (category === 'infraCaps') {
+      ;(updated.infraCaps as Record<string, number>)[stat] =
+        ((updated.infraCaps as Record<string, number>)[stat] ?? 0) + effect.amount
+    }
+  }
+
+  return updated
+}
+
+/**
+ * Result of a discovery roll for a single science corporation.
+ */
+export interface DiscoveryRollResult {
+  /** The discovery made, or null if the roll failed or no pool is available. */
+  discovery: Discovery | null
+  /** Empire bonuses with discovery effects applied (unchanged if no discovery). */
+  updatedEmpireBonuses: EmpireBonuses
+  /** Science domain states with discoveredIds / unlockedSchematicCategories updated. */
+  updatedScienceDomains: Map<string, ScienceDomainState>
+  /** Events generated (one discovery event if successful). */
+  events: GameEvent[]
+}
+
+/**
+ * Rolls for a discovery for a science corporation.
+ *
+ * Process:
+ * 1. Collect all available definitions (domain level ≥ poolLevel, not yet discovered).
+ * 2. If pool is empty, return null immediately.
+ * 3. Pick a random definition from the pool.
+ * 4. Calculate discovery_chance; doubled if the definition's domain is focused.
+ * 5. Roll — if successful, create Discovery, apply empire bonus effects, update domains.
+ *
+ * @param randFn - Injectable RNG for deterministic tests (defaults to Math.random).
+ */
+export function rollForDiscovery(
+  corp: Corporation,
+  scienceDomains: Map<string, ScienceDomainState>,
+  alreadyDiscoveredDefinitionIds: string[],
+  empireBonuses: EmpireBonuses,
+  turn: TurnNumber,
+  randFn: () => number = Math.random,
+): DiscoveryRollResult {
+  const noChange: DiscoveryRollResult = {
+    discovery: null,
+    updatedEmpireBonuses: empireBonuses,
+    updatedScienceDomains: scienceDomains,
+    events: [],
+  }
+
+  const available = getAvailableDiscoveries(scienceDomains, alreadyDiscoveredDefinitionIds)
+  if (available.length === 0) return noChange
+
+  // Pick a random definition from the available pool
+  const def = available[Math.floor(randFn() * available.length)]!
+
+  // Check domain focus for the selected definition
+  const domain = scienceDomains.get(def.domain)!
+  const scienceInfra = getCorporationScienceInfra(corp)
+  const discoveryChance = calculateDiscoveryChance(corp.level, scienceInfra, domain.focused)
+
+  // Roll against the chance (second call to randFn)
+  if (randFn() * 100 >= discoveryChance) return noChange
+
+  // Create the Discovery record
+  const discovery: Discovery = {
+    id: generateDiscoveryId(),
+    sourceDefinitionId: def.definitionId,
+    name: def.name,
+    description: def.description,
+    domain: def.domain,
+    poolLevel: def.poolLevel,
+    discoveredByCorpId: corp.id,
+    discoveredTurn: turn,
+    empireBonusEffects: def.empireBonusEffects,
+    unlocksSchematicCategories: def.unlocksSchematicCategories,
+  }
+
+  // Apply effects to empire bonuses
+  const updatedEmpireBonuses = applyDiscoveryEffects(def, empireBonuses)
+
+  // Update the domain: record discovery ID, unlock schematic categories
+  const updatedScienceDomains = new Map(scienceDomains)
+  const updatedDomain: ScienceDomainState = {
+    ...domain,
+    discoveredIds: [...domain.discoveredIds, discovery.id],
+    unlockedSchematicCategories: [
+      ...new Set([...domain.unlockedSchematicCategories, ...def.unlocksSchematicCategories]),
+    ],
+  }
+  updatedScienceDomains.set(def.domain, updatedDomain)
+
+  const events: GameEvent[] = [
+    {
+      id: generateEventId(),
+      turn,
+      priority: EventPriority.Positive,
+      category: 'science',
+      title: `Discovery: ${def.name}`,
+      description: `${corp.name} has made a breakthrough in ${def.domain}: ${def.description}`,
+      relatedEntityIds: [corp.id],
+      dismissed: false,
+    },
+  ]
+
+  return { discovery, updatedEmpireBonuses, updatedScienceDomains, events }
 }
