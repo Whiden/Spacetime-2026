@@ -2,6 +2,20 @@
 
 ---
 
+## Story 13.3: Accept/Reject Planet Action (2026-02-19)
+
+**File**: `src/engine/actions/accept-planet.ts`
+
+- `acceptPlanet(planetId, planets)`: validates planet is `OrbitScanned` or `GroundSurveyed`, returns updated planet with `Accepted` status.
+- `rejectPlanet(planetId, planets)`: same validation, returns updated planet with `Rejected` status; planet available for future independent corp settlement.
+- `AcceptPlanetError`: `PLANET_NOT_FOUND` | `INVALID_STATUS`
+- Both functions are pure with no side effects; caller (store) applies the updated planet.
+
+**Tests**: 15/15 passing — accept/reject from both valid statuses, field preservation, PLANET_NOT_FOUND, INVALID_STATUS for Undiscovered/Accepted/Rejected/Colonized.
+**TypeScript**: zero errors
+
+---
+
 ## Story 13.2: Exploration Contract Completion (2026-02-19)
 
 **File**: `src/engine/turn/contract-phase.ts`
