@@ -33,7 +33,7 @@ const sortedCorps = computed(() =>
     </div>
 
     <div class="max-w-2xl">
-      <div v-if="sortedCorps.length > 0" class="space-y-3">
+      <div v-if="sortedCorps.length > 0" class="space-y-1">
         <CorpCard
           v-for="corp in sortedCorps"
           :key="corp.id"

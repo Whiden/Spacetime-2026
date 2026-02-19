@@ -290,7 +290,9 @@ export function applyGrowthTick(
 ): GrowthTickResult {
   const civilianInfra = getTotalLevels(colony.infrastructure[InfraDomain.Civilian])
 
-  let newGrowth = colony.attributes.growth + growthPerTurn
+  // Growth accumulator is clamped at 10 (max, per Specs.md § 5).
+  // It can still go negative — the level-down threshold is -1.
+  let newGrowth = Math.min(10, colony.attributes.growth + growthPerTurn)
   let newPop = colony.populationLevel
   let changeType: 'levelUp' | 'levelDown' | null = null
 

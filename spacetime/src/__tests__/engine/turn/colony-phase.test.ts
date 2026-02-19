@@ -420,10 +420,10 @@ describe('resolveColonyPhase', () => {
       expect(updated.infrastructure[InfraDomain.Military].currentCap).toBe(6)
     })
 
-    it('extraction cap is min(pop cap, richness cap) when deposit exists', () => {
+    it('extraction cap is min(pop cap, deposit maxInfraBonus) when deposit exists', () => {
       // pop = 3 → pop cap = 3 × 2 = 6
-      // FertileGround Rich → richness cap = 15
-      // Agricultural cap = min(6, 15) = 6
+      // FertileGround → maxInfraBonus = 6
+      // Agricultural cap = min(6, 6) = 6
       const infra = makeInfra()
       const colony = makeColony(COLONY_A, PLANET_A, SECTOR_ID, infra, 3, 0)
       const deposit = makeDeposit(DepositType.FertileGround, RichnessLevel.Rich)
@@ -436,10 +436,10 @@ describe('resolveColonyPhase', () => {
       expect(updated.infrastructure[InfraDomain.Agricultural].currentCap).toBe(6)
     })
 
-    it('richness cap dominates when deposit richness is tighter than pop cap', () => {
+    it('deposit maxInfraBonus dominates when it is tighter than pop cap', () => {
       // pop = 5 → pop cap = 5 × 2 = 10
-      // CommonOreVein Poor → richness cap = 5
-      // Mining cap = min(10, 5) = 5 ← richness is tighter
+      // CommonOreVein → maxInfraBonus = 5
+      // Mining cap = min(10, 5) = 5 ← deposit type cap is tighter
       const infra = makeInfra()
       const colony = makeColony(COLONY_A, PLANET_A, SECTOR_ID, infra, 5, 0)
       const deposit = makeDeposit(DepositType.CommonOreVein, RichnessLevel.Poor)
@@ -468,14 +468,14 @@ describe('resolveColonyPhase', () => {
       expect(updated.infrastructure[InfraDomain.GasExtraction].currentCap).toBe(0)
     })
 
-    it('uses best deposit when multiple deposits for same domain exist', () => {
-      // Two Mining deposits: Poor (cap 5) and Rich (cap 15)
-      // Mining cap = min(pop×2=6, 15) = 6 — best deposit wins
+    it('uses best deposit type cap when multiple deposits for same domain exist', () => {
+      // Two Agricultural deposits: FertileGround (maxInfraBonus=6) and RichOcean (maxInfraBonus=4)
+      // bestCap = 6; pop = 3 → pop cap = 6; Agricultural cap = min(6, 6) = 6 — best deposit type wins
       const infra = makeInfra()
       const colony = makeColony(COLONY_A, PLANET_A, SECTOR_ID, infra, 3, 0)
       const deposits = [
-        makeDeposit(DepositType.CommonOreVein, RichnessLevel.Poor),
-        makeDeposit(DepositType.CommonOreVein, RichnessLevel.Rich),
+        makeDeposit(DepositType.FertileGround, RichnessLevel.Poor),
+        makeDeposit(DepositType.RichOcean, RichnessLevel.Rich),
       ]
       const planet = makePlanet(PLANET_A, SECTOR_ID, deposits, 8, PlanetSize.Large)
       const state = makeState({ colonies: [colony], planets: [planet] })
@@ -483,7 +483,7 @@ describe('resolveColonyPhase', () => {
       const { updatedState } = resolveColonyPhase(state)
       const updated = updatedState.colonies.get(COLONY_A)!
 
-      expect(updated.infrastructure[InfraDomain.Mining].currentCap).toBe(6)
+      expect(updated.infrastructure[InfraDomain.Agricultural].currentCap).toBe(6)
     })
   })
 

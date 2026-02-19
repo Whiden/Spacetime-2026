@@ -21,7 +21,7 @@ import type { Colony } from '../../types/colony'
 import type { Deposit } from '../../types/planet'
 import type { InfraState } from '../../types/infrastructure'
 import { getTotalLevels } from '../../types/infrastructure'
-import { DEPOSIT_DEFINITIONS, RICHNESS_CAPS } from '../../data/planet-deposits'
+import { DEPOSIT_DEFINITIONS } from '../../data/planet-deposits'
 import { EXTRACTION_DOMAINS } from '../../data/infrastructure'
 import { calculateInfraCap } from '../formulas/production'
 
@@ -85,31 +85,32 @@ export interface InvestPlanetParams {
  * is currently stored as Infinity everywhere (TODO Story 10.1 will write it back
  * properly each turn). Until then, the cap must be computed from live data.
  *
- * Rules (see Specs.md § 6 Infrastructure Caps):
+ * Rules (see Specs.md § 6 Infrastructure Caps & Data.md § 2):
  * - Civilian: capped at next_population_level × 2
  * - Extraction domains (Mining, DeepMining, GasExtraction, Agricultural):
- *     max richness cap among all matching deposits on the planet.
+ *     best maxInfraBonus among all matching deposit types on the planet.
+ *     Richness is display-only — the cap is set by the deposit type, not richness level.
  *     Returns 0 if no deposit exists (no investment allowed).
  * - All other domains (industry, transport, science, military):
  *     popLevel × 2
  *
  * NOTE: Feature bonuses to extraction caps (e.g. "Mineral Veins" +5 max Mining)
  * are stored as modifiers on the colony and will be factored in by
- * calculateInfraCap() in attributes.ts (Story 10.1). For now, only raw richness
+ * calculateInfraCap() in attributes.ts (Story 10.1). For now, only deposit-type
  * caps are used here.
  *
  * TODO (Story 10.1): Replace with resolveModifiers on 'maxMining' etc. to include
  *   planet feature bonuses to extraction caps.
  */
 function computeEffectiveCap(colony: Colony, domain: InfraDomain, deposits: Deposit[]): number {
-  // Extraction domains: cap from deposit richness (best available)
+  // Extraction domains: cap from deposit type's maxInfraBonus (best available)
   if (EXTRACTION_DOMAINS.includes(domain)) {
     const matchingDeposits = deposits.filter(
       (d) => DEPOSIT_DEFINITIONS[d.type].extractedBy === domain,
     )
     if (matchingDeposits.length === 0) return 0 // no deposit → no cap → no investment
-    const richnessCaps = matchingDeposits.map((d) => RICHNESS_CAPS[d.richness])
-    return Math.max(...richnessCaps)
+    const depositCaps = matchingDeposits.map((d) => DEPOSIT_DEFINITIONS[d.type].maxInfraBonus)
+    return Math.max(...depositCaps)
   }
 
   // All other domains including Civilian (capped at next_pop_level × 2 per Specs.md § 6)

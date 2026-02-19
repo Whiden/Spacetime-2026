@@ -37,7 +37,8 @@ import { InfraDomain, ResourceType, EventPriority } from '../../types/common'
 import { getTotalLevels, getCorporateLevels } from '../../types/infrastructure'
 import { PLANET_SIZE_DEFINITIONS } from '../../data/planet-sizes'
 import { DEPOSIT_DEFINITIONS } from '../../data/planet-deposits'
-import { calculateExtractionCap } from '../formulas/production'
+// calculateExtractionCap removed — extraction cap now derived from deposit maxInfraBonus,
+// not from richness level. See getBestDepositCap() below.
 import {
   calculateHabitability,
   calculateAccessibility,
@@ -239,7 +240,7 @@ function processColony(
  *
  * Cap calculation per domain:
  *   - Civilian:             Infinity (uncapped, from calculateInfraCap).
- *   - Extraction domains:   min(pop_cap, richness_cap). If no matching deposit → cap = 0.
+ *   - Extraction domains:   min(pop_cap, deposit.maxInfraBonus). If no matching deposit → cap = 0.
  *   - All other domains:    pop_level × 2 + empire bonus + local modifiers.
  *
  * @param infra          - Current infrastructure state.
@@ -263,11 +264,12 @@ function recalculateInfraCaps(
     // Pop-derived cap (includes empire bonus and local modifiers from attributes.ts)
     let cap = calculateInfraCap(popLevel, d, empireBonuses, colonyModifiers)
 
-    // Extraction domains: also cap at deposit richness (tighter of the two limits)
+    // Extraction domains: also cap at deposit type's maxInfraBonus (tighter of the two limits).
+    // Deposit richness is display-only — the cap comes from the deposit type definition.
     if (EXTRACTION_DOMAINS.has(d)) {
-      const richnessCap = getBestDepositRichnessCap(d, deposits)
-      if (richnessCap !== null) {
-        cap = Math.min(cap, richnessCap)
+      const depositCap = getBestDepositCap(d, deposits)
+      if (depositCap !== null) {
+        cap = Math.min(cap, depositCap)
       } else {
         // No matching deposit on this planet: extraction infra cannot be built here
         cap = 0
@@ -281,19 +283,22 @@ function recalculateInfraCaps(
 }
 
 /**
- * Returns the highest richness cap among deposits extracted by the given domain.
- * Returns null if the planet has no deposit matching this domain.
+ * Returns the highest infrastructure cap among deposits extracted by the given domain.
+ * The cap is derived from the deposit type's maxInfraBonus (Data.md § 2), NOT from
+ * richness level. Richness is display-only after the spec change.
  *
- * When multiple deposits of the same type exist (e.g., two ore veins with different
- * richness), we use the best (highest cap) — reflecting the richest ore body.
+ * When multiple deposits of the same domain type exist (e.g., two Fertile Ground
+ * deposits), we use the best (highest maxInfraBonus) — reflecting the best available source.
+ *
+ * Returns null if the planet has no deposit matching this domain.
  */
-function getBestDepositRichnessCap(domain: InfraDomain, deposits: Deposit[]): number | null {
+function getBestDepositCap(domain: InfraDomain, deposits: Deposit[]): number | null {
   let bestCap: number | null = null
 
   for (const deposit of deposits) {
     const def = DEPOSIT_DEFINITIONS[deposit.type]
     if (def.extractedBy === domain) {
-      const depositCap = calculateExtractionCap(deposit.richness)
+      const depositCap = def.maxInfraBonus
       if (bestCap === null || depositCap > bestCap) {
         bestCap = depositCap
       }

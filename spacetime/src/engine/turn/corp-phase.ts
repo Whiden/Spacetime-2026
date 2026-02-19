@@ -99,18 +99,26 @@ export function determineCorpTypeFromDomain(domain: InfraDomain): CorpType | nul
 }
 
 /**
- * Finds the infrastructure domain with the most public (independent) levels on a colony.
+ * Finds the infrastructure domain with the most public (independent) levels on a colony,
+ * among domains that can produce a corporation type.
  *
  * "Public" levels are those funded by direct player investment or organic colony growth —
  * the independent economy that a new corporation can emerge from.
  *
- * Returns null if no domain has any public levels.
+ * Civilian is excluded: it has no corp type mapping and is always inflated by population
+ * requirements (e.g., Terra Nova starts with 14 public Civilian levels), which would make
+ * Construction the only corp type ever to emerge organically.
+ *
+ * Returns null if no eligible domain has any public levels.
  */
 export function findMostProminentPublicDomain(colony: Colony): InfraDomain | null {
   let bestDomain: InfraDomain | null = null
   let bestLevels = 0
 
   for (const domain of Object.values(InfraDomain)) {
+    // Civilian excluded: it does not map to any corp type and dominates all other domains.
+    if (domain === InfraDomain.Civilian) continue
+
     const infraState = colony.infrastructure[domain]
     if (!infraState) continue
 

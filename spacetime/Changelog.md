@@ -2,6 +2,31 @@
 
 ---
 
+## Playability Fixes #3 — Deposits, Growth, Corp Emergence, UI (2026-02-19)
+
+### Bug Fixes
+
+**1. Extraction cap now based on deposit type, not richness**
+- Deposit richness no longer drives infrastructure caps. Per updated Specs.md, the cap is determined by the deposit TYPE via `DEPOSIT_DEFINITIONS[type].maxInfraBonus` (e.g., FertileGround=6, CommonOreVein=5, RichOcean=4). Richness is display-only.
+- `colony-phase.ts`: Renamed `getBestDepositRichnessCap` → `getBestDepositCap`; now reads `def.maxInfraBonus` instead of `calculateExtractionCap(deposit.richness)`. Removed `calculateExtractionCap` import.
+- `invest-planet.ts`: `computeEffectiveCap()` now uses `DEPOSIT_DEFINITIONS[d.type].maxInfraBonus` instead of `RICHNESS_CAPS[d.richness]`. Removed `RICHNESS_CAPS` import.
+- Tests updated: `invest-planet.test.ts` (4 AT_CAP tests) and `colony-phase.test.ts` (3 extraction-cap tests) updated to use deposit-type cap terminology and correct values.
+
+**2. Growth accumulator capped at 10**
+- The growth accumulator on colonies was unclamped and could grow indefinitely. Per Specs.md § 5, max is 10.
+- `colony-sim.ts` `applyGrowthTick()`: changed to `Math.min(10, colony.attributes.growth + growthPerTurn)`.
+- The accumulator can still go negative — level-down triggers at −1.
+
+**3. Organic emergence no longer Construction-only**
+- After 20 turns, only Construction corps were spawning organically. Root cause: `findMostProminentPublicDomain()` iterated all `InfraDomain` values including `Civilian`. Terra Nova starts with 14 public Civilian levels, which always dominated all other domains (max 10). `Civilian → Construction` always won.
+- `corp-phase.ts`: added `if (domain === InfraDomain.Civilian) continue` in the domain scan loop. Civilian has no meaningful corp type mapping for organic emergence.
+
+**4. Corporations view — compact single-line layout**
+- `CorpCard.vue` replaced with a compact single-line flex row: name · type badge (color-coded) · Lv + level · Cap + capital · Infra + total/max.
+- `CorporationsView.vue`: changed list spacing from `space-y-3` to `space-y-1`.
+
+---
+
 ## Playability Fixes #2 — Turn Loop & Start Conditions (2026-02-19)
 
 ### Bug Fixes

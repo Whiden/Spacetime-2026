@@ -228,57 +228,59 @@ describe('investPlanet — AT_CAP', () => {
     if (!result.success) expect(result.error).toBe('AT_CAP')
   })
 
-  it('returns AT_CAP when extraction domain reaches deposit richness cap (Poor=5)', () => {
-    // Poor deposit cap = 5; Mining already at 5
+  it('returns AT_CAP when extraction domain reaches deposit type cap (CommonOreVein=5)', () => {
+    // CommonOreVein.maxInfraBonus = 5; Mining already at 5 → AT_CAP
     const infra = makeInfra({ [InfraDomain.Mining]: 5 })
     const colony = makeColony(infra, 5)
-    const poorOreDeposit: Deposit = { type: DepositType.CommonOreVein, richness: RichnessLevel.Poor, richnessRevealed: true }
+    const oreDeposit: Deposit = { type: DepositType.CommonOreVein, richness: RichnessLevel.Poor, richnessRevealed: true }
     const result = investPlanet({
       colonyId: COLONY_ID,
       domain: InfraDomain.Mining,
       currentBP: BP_ENOUGH,
       colonies: makeColoniesMap(colony),
-      deposits: [poorOreDeposit],
+      deposits: [oreDeposit],
     })
     expect(result.success).toBe(false)
     if (!result.success) expect(result.error).toBe('AT_CAP')
   })
 
-  it('returns AT_CAP when extraction domain reaches Moderate deposit cap (10)', () => {
-    const infra = makeInfra({ [InfraDomain.Mining]: 10 })
-    const colony = makeColony(infra, 10) // popLevel doesn't matter for extraction cap
-    const result = investPlanet({
-      colonyId: COLONY_ID,
-      domain: InfraDomain.Mining,
-      currentBP: BP_ENOUGH,
-      colonies: makeColoniesMap(colony),
-      deposits: [makeOreDeposit(RichnessLevel.Moderate)], // cap = 10
-    })
-    expect(result.success).toBe(false)
-    if (!result.success) expect(result.error).toBe('AT_CAP')
-  })
-
-  it('uses highest richness cap when multiple deposits exist for the domain', () => {
-    // Two food deposits: Poor (cap 5) and Rich (cap 15). Cap should be 15.
-    const infra = makeInfra({ [InfraDomain.Agricultural]: 15 })
+  it('returns AT_CAP when extraction domain reaches deposit type cap regardless of richness', () => {
+    // CommonOreVein.maxInfraBonus = 5 regardless of richness level. Mining at 5 → AT_CAP.
+    const infra = makeInfra({ [InfraDomain.Mining]: 5 })
     const colony = makeColony(infra, 10)
-    const poorFood: Deposit = { type: DepositType.FertileGround, richness: RichnessLevel.Poor, richnessRevealed: true }
-    const richFood: Deposit = { type: DepositType.RichOcean, richness: RichnessLevel.Rich, richnessRevealed: true }
+    const result = investPlanet({
+      colonyId: COLONY_ID,
+      domain: InfraDomain.Mining,
+      currentBP: BP_ENOUGH,
+      colonies: makeColoniesMap(colony),
+      deposits: [makeOreDeposit(RichnessLevel.Moderate)], // richness ignored; cap = 5
+    })
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error).toBe('AT_CAP')
+  })
+
+  it('uses highest deposit type cap when multiple different deposit types exist for the domain', () => {
+    // FertileGround.maxInfraBonus=6, RichOcean.maxInfraBonus=4. Best = 6.
+    // Agricultural at 6 → AT_CAP.
+    const infra = makeInfra({ [InfraDomain.Agricultural]: 6 })
+    const colony = makeColony(infra, 10)
+    const fertileGround: Deposit = { type: DepositType.FertileGround, richness: RichnessLevel.Poor, richnessRevealed: true }
+    const richOcean: Deposit = { type: DepositType.RichOcean, richness: RichnessLevel.Rich, richnessRevealed: true }
     const result = investPlanet({
       colonyId: COLONY_ID,
       domain: InfraDomain.Agricultural,
       currentBP: BP_ENOUGH,
       colonies: makeColoniesMap(colony),
-      deposits: [poorFood, richFood], // best cap = 15
+      deposits: [fertileGround, richOcean], // best cap = 6 (FertileGround)
     })
-    // At 15/15 → AT_CAP
+    // At 6/6 → AT_CAP
     expect(result.success).toBe(false)
     if (!result.success) expect(result.error).toBe('AT_CAP')
   })
 
-  it('allows investment below deposit cap even with a lower-richness deposit present', () => {
-    // Rich deposit cap = 15; Mining at 10 → still below cap → success
-    const infra = makeInfra({ [InfraDomain.Agricultural]: 10 })
+  it('allows investment below deposit type cap', () => {
+    // FertileGround.maxInfraBonus = 6; Agricultural at 4 → still below cap → success
+    const infra = makeInfra({ [InfraDomain.Agricultural]: 4 })
     const colony = makeColony(infra, 10)
     const richFood: Deposit = { type: DepositType.FertileGround, richness: RichnessLevel.Rich, richnessRevealed: true }
     const result = investPlanet({
