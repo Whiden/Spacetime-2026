@@ -18,7 +18,6 @@ import SectorCard from '../components/galaxy/SectorCard.vue'
 import SectorGraph from '../components/galaxy/SectorGraph.vue'
 import EmptyState from '../components/shared/EmptyState.vue'
 import ContractWizard from '../components/contract/ContractWizard.vue'
-import { acceptPlanet, rejectPlanet } from '../engine/actions/accept-planet'
 
 const galaxyStore = useGalaxyStore()
 const planetStore = usePlanetStore()
@@ -46,23 +45,11 @@ function closeWizard() {
 // ─── Accept / Reject ──────────────────────────────────────────────────────────
 
 function handleAcceptPlanet(planetId: string) {
-  const result = acceptPlanet(
-    planetId as import('../types/common').PlanetId,
-    planetStore.planets as Map<string, Planet>,
-  )
-  if (result.success) {
-    planetStore.updatePlanet(result.updatedPlanet)
-  }
+  planetStore.acceptPlanet(planetId as import('../types/common').PlanetId)
 }
 
 function handleRejectPlanet(planetId: string) {
-  const result = rejectPlanet(
-    planetId as import('../types/common').PlanetId,
-    planetStore.planets as Map<string, Planet>,
-  )
-  if (result.success) {
-    planetStore.updatePlanet(result.updatedPlanet)
-  }
+  planetStore.rejectPlanet(planetId as import('../types/common').PlanetId)
 }
 
 // ─── Computed ─────────────────────────────────────────────────────────────────

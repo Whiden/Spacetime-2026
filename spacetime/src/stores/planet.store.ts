@@ -3,10 +3,6 @@
  *
  * Holds all planets that have been discovered through exploration.
  * Once a planet is colonized, it remains here but its status changes to Colonized.
- *
- * TODO (Story 13.2): Exploration contract completion adds planets via addPlanet().
- * TODO (Story 13.3): Accept/reject actions change planet status.
- * TODO (Story 13.4): Ground survey updates planet data (full feature/deposit reveal).
  */
 
 import { defineStore } from 'pinia'
@@ -14,6 +10,10 @@ import { ref, computed } from 'vue'
 import type { PlanetId, SectorId } from '../types/common'
 import { PlanetStatus } from '../types/common'
 import type { Planet } from '../types/planet'
+import {
+  acceptPlanet as acceptPlanetEngine,
+  rejectPlanet as rejectPlanetEngine,
+} from '../engine/actions/accept-planet'
 
 export const usePlanetStore = defineStore('planet', () => {
   // ─── State ───────────────────────────────────────────────────────────────────
@@ -36,6 +36,34 @@ export const usePlanetStore = defineStore('planet', () => {
   /** Updates a planet in the store (e.g., after ground survey reveals data). */
   function updatePlanet(planet: Planet) {
     planets.value.set(planet.id, planet)
+  }
+
+  /**
+   * Accepts a discovered planet: status → Accepted.
+   * Planet becomes available for ground survey and colonization contracts.
+   * Returns true on success, false if the planet was not found or has invalid status.
+   */
+  function acceptPlanet(planetId: PlanetId): boolean {
+    const result = acceptPlanetEngine(planetId, planets.value)
+    if (result.success) {
+      planets.value.set(planetId, result.updatedPlanet)
+      return true
+    }
+    return false
+  }
+
+  /**
+   * Rejects a discovered planet: status → Rejected.
+   * Planet is hidden from player UI; available for future independent corp settlement.
+   * Returns true on success, false if the planet was not found or has invalid status.
+   */
+  function rejectPlanet(planetId: PlanetId): boolean {
+    const result = rejectPlanetEngine(planetId, planets.value)
+    if (result.success) {
+      planets.value.set(planetId, result.updatedPlanet)
+      return true
+    }
+    return false
   }
 
   /**
@@ -102,6 +130,8 @@ export const usePlanetStore = defineStore('planet', () => {
     removePlanet,
     updatePlanet,
     initialize,
+    acceptPlanet,
+    rejectPlanet,
     // Getters (functions)
     getPlanet,
     getPlanetsByStatus,

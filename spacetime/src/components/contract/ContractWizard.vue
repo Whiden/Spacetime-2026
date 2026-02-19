@@ -73,12 +73,12 @@ const typeSelectedAccent: Record<ContractType, string> = {
   [ContractType.TradeRoute]: 'border-violet-500 bg-violet-500/10',
 }
 
-const typeCostBadge: Record<ContractType, string> = {
-  [ContractType.Exploration]: '2 BP/turn',
-  [ContractType.GroundSurvey]: '1 BP/turn',
-  [ContractType.Colonization]: '2-3 BP/turn',
-  [ContractType.ShipCommission]: '1 BP/turn',
-  [ContractType.TradeRoute]: '2 BP/turn · Ongoing',
+/** Cost badge label derived from CONTRACT_TYPE_DEFINITIONS so it stays in sync with data. */
+function typeCostBadge(type: ContractType): string {
+  const def = CONTRACT_TYPE_DEFINITIONS[type]
+  const ongoing = def.baseDurationTurns === 'ongoing'
+  const base = `${def.baseBpPerTurn} BP/turn`
+  return ongoing ? `${base} · Ongoing` : base
 }
 
 // ─── Step Labels ─────────────────────────────────────────────────────────────
@@ -222,7 +222,7 @@ function netBpClass(net: number): string {
             >
               <div class="flex items-center justify-between mb-1">
                 <span class="text-sm font-medium text-white">{{ def.name }}</span>
-                <span class="text-[10px] text-zinc-500">{{ typeCostBadge[type] }}</span>
+                <span class="text-[10px] text-zinc-500">{{ typeCostBadge(type) }}</span>
               </div>
               <p class="text-[11px] text-zinc-400 leading-relaxed">{{ def.description }}</p>
             </button>

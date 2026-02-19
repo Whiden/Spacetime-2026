@@ -15,7 +15,7 @@
 
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { TurnNumber, ColonyId } from '../types/common'
+import type { TurnNumber, ColonyId, CorpId, BPAmount } from '../types/common'
 import { CorpType, InfraDomain } from '../types/common'
 import type { GameState, GamePhase } from '../types/game'
 import type { Galaxy } from '../types/sector'
@@ -115,16 +115,16 @@ export const useGameStore = defineStore('game', () => {
       turn: turn.value,
       phase: phase.value,
 
-      // Budget
-      currentBP: budgetStore.currentBP as any,
+      // Budget — store exposes plain numbers; cast to BPAmount branded type for GameState
+      currentBP: budgetStore.currentBP as BPAmount,
       debtTokens: budgetStore.debtTokens,
       budget: {
-        currentBP: budgetStore.currentBP as any,
+        currentBP: budgetStore.currentBP as BPAmount,
         incomeSources: [...budgetStore.incomeSources],
         expenseEntries: [...budgetStore.expenseEntries],
-        totalIncome: budgetStore.totalIncome as any,
-        totalExpenses: budgetStore.totalExpenses as any,
-        netBP: budgetStore.netBP as any,
+        totalIncome: budgetStore.totalIncome as BPAmount,
+        totalExpenses: budgetStore.totalExpenses as BPAmount,
+        netBP: budgetStore.netBP as BPAmount,
         debtTokens: budgetStore.debtTokens,
         stabilityMalus: budgetStore.stabilityMalus,
         calculatedTurn: turn.value,
@@ -248,8 +248,9 @@ export const useGameStore = defineStore('game', () => {
       expenseEntries: state.budget.expenseEntries,
     })
 
-    // Market — replace the entire sector markets map via $patch
-    marketStore.$patch({ sectorMarkets: new Map(state.sectorMarkets) as any })
+    // Market — replace the entire sector markets map.
+    // $patch with a Map ref requires an explicit cast due to Pinia typing limitations.
+    marketStore.$patch({ sectorMarkets: new Map(state.sectorMarkets) as Map<import('../types/common').SectorId, import('../types/trade').SectorMarketState> })
   }
 
   return {
@@ -278,7 +279,7 @@ function _getTerraNovaPlanetId(
   colonyStore: ReturnType<typeof useColonyStore>,
   startingSectorId: string,
 ): import('../types/common').PlanetId {
-  const colonies = colonyStore.getColoniesBySector(startingSectorId as any)
+  const colonies = colonyStore.getColoniesBySector(startingSectorId as import('../types/common').SectorId)
   const terraNova = colonies[0]
   if (!terraNova) throw new Error('Terra Nova colony not found after initialization')
   return terraNova.planetId as import('../types/common').PlanetId
@@ -304,7 +305,7 @@ function _spawnStartingCorporations(
   startingSectorId: string,
 ): void {
   const foundedTurn = 1 as import('../types/common').TurnNumber
-  const colonies = colonyStore.getColoniesBySector(startingSectorId as any)
+  const colonies = colonyStore.getColoniesBySector(startingSectorId as import('../types/common').SectorId)
   const terraNova = colonies[0]
   if (!terraNova) return
   const terranovaColonyId = terraNova.id as ColonyId
@@ -327,7 +328,7 @@ function _spawnStartingCorporations(
 
   // Two Science corps, each owning 1 Science infra level on Terra Nova.
   // We accumulate all science corp IDs so we can write them to the colony in one pass.
-  const scienceCorpIds: ColonyId[] = []
+  const scienceCorpIds: CorpId[] = []
   for (let i = 0; i < 2; i++) {
     const scienceCorp = generateCorporation({
       type: CorpType.Science,
@@ -341,7 +342,7 @@ function _spawnStartingCorporations(
     })
 
     corpStore.addCorporation(scienceCorp)
-    scienceCorpIds.push(scienceCorp.id as unknown as ColonyId)
+    scienceCorpIds.push(scienceCorp.id as CorpId)
   }
 
   // Transfer Science infra levels from public → corporate on the colony itself.
@@ -351,7 +352,7 @@ function _spawnStartingCorporations(
   const scienceInfra = updatedTerraNova.infrastructure[InfraDomain.Science]
   const updatedCorporateLevels = new Map(scienceInfra.ownership.corporateLevels)
   for (const corpId of scienceCorpIds) {
-    updatedCorporateLevels.set(corpId as unknown as import('../types/common').CorpId, 1)
+    updatedCorporateLevels.set(corpId, 1)
   }
   updatedTerraNova.infrastructure = {
     ...updatedTerraNova.infrastructure,

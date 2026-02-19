@@ -145,11 +145,10 @@ export function calculateTCConsumption(popLevel: number): number {
  * Calculates the base infrastructure cap for a domain, based on population level.
  *
  * Rules:
- * - Civilian: uncapped (returns Infinity)
+ * - Civilian: capped at next_population_level × 2 = (popLevel + 1) × 2 (Specs.md § 6)
  * - Extraction domains (Mining, DeepMining, GasExtraction, Agricultural): capped
- *   by deposit richness — use calculateExtractionCap() for those instead.
- *   This function still returns popLevel × 2 for them as a fallback baseline;
- *   the actual cap used in-game is the minimum of the two.
+ *   by deposit type via DEPOSIT_DEFINITIONS[type].maxInfraBonus — use the authoritative
+ *   version in attributes.ts for those. This function returns popLevel × 2 as a fallback.
  * - All other domains: popLevel × 2
  *
  * TODO (Story 10.1): The authoritative version in attributes.ts adds empire-wide

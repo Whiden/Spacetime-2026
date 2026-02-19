@@ -440,7 +440,7 @@ describe('organic emergence integration (resolveCorpPhase)', () => {
   it('generates a Positive event describing the emergence', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0)
 
-    const infra = makeInfra({ [InfraDomain.Civilian]: { levels: 3 } })
+    const infra = makeInfra({ [InfraDomain.Agricultural]: { levels: 3 } })
     const colony = makeColony(COLONY_A, PLANET_A, SECTOR_ID, infra, 6)
     const planet = makePlanet(PLANET_A, SECTOR_ID)
 

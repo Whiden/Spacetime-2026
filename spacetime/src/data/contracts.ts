@@ -76,7 +76,7 @@ export const CONTRACT_TYPE_DEFINITIONS: Record<ContractType, ContractTypeDefinit
 /**
  * Calculate the actual duration for an exploration contract based on corp level.
  * Duration = max(2, 4 - floor(corpLevel / 2))
- * Level 1-3: 3 turns, Level 4-5: 2 turns, Level 6+: 2 turns (min)
+ * Level 1: 4 turns, Level 2-3: 3 turns, Level 4+: 2 turns (min)
  */
 export function calculateExplorationDuration(corpLevel: number): number {
   return Math.max(2, 4 - Math.floor(corpLevel / 2))
