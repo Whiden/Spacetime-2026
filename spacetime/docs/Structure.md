@@ -6,16 +6,17 @@
 
 ## Tech Stack
 
-| Layer | Choice | Version |
-|---|---|---|
-| Framework | Vue 3 + TypeScript | Latest stable |
-| State Management | Pinia | Latest stable |
-| Styling | Tailwind CSS | Latest stable (v4+) |
-| Build Tool | Vite | Latest stable |
-| Persistence | LocalStorage + JSON export/import | Native browser API |
-| Backend | None | Client-side only |
+| Layer            | Choice                            | Version             |
+| ---------------- | --------------------------------- | ------------------- |
+| Framework        | Vue 3 + TypeScript                | Latest stable       |
+| State Management | Pinia                             | Latest stable       |
+| Styling          | Tailwind CSS                      | Latest stable (v4+) |
+| Build Tool       | Vite                              | Latest stable       |
+| Persistence      | LocalStorage + JSON export/import | Native browser API  |
+| Backend          | None                              | Client-side only    |
 
 ### Setup Commands
+
 ```bash
 npm create vue@latest spacetime    # Select: TypeScript, Vue Router, Pinia, Vitest
 cd spacetime
@@ -24,6 +25,7 @@ npm install -D tailwindcss @tailwindcss/vite
 ```
 
 ### VS Code Extensions (Recommended)
+
 - **Vue - Official** (formerly Volar) — Vue 3 + TypeScript support
 - **Tailwind CSS IntelliSense** — class autocomplete
 - **ESLint** — code quality
@@ -42,6 +44,7 @@ Vue UI Layer (views, components, composables, router) Reads from stores, dispatc
 ```
 
 ### The Golden Rule
+
 **`engine/` and `data/` never import from Vue, Pinia, or any UI code.** They are pure TypeScript modules that accept typed inputs and return typed outputs. This ensures the entire simulation is testable without mounting components.
 
 Stores call engine functions. Views read stores. Views never call engine functions directly.
@@ -254,12 +257,15 @@ spacetime/
 ├── tsconfig.json
 ├── vite.config.ts
 ├── tailwind.config.ts
-├── CLAUDE.md                      # Vision, design pillars, core concept
-├── Specs.md                       # Detailed mechanical specifications
-├── Structure.md                   # This document
-├── Data.md                        # Static game data tables and spawn rules
-├── Features.md                    # Epics, stories, acceptance criteria
-└── Changelog.md                   # Development update log
+├── docs/                          # Design documents
+│   ├── Specs.md                   # Detailed mechanical specifications
+│   ├── Structure.md               # This document
+│   ├── Data.md                    # Static game data tables and spawn rules
+│   ├── Features.md                # Epics, stories, acceptance criteria
+│   ├── Vision.md                  # Core pillars, vision
+│   └── Changelog.md               # Development update log
+└── CLAUDE.md                      # Important instructions
+
 ```
 
 ---
@@ -268,52 +274,52 @@ spacetime/
 
 ### Files
 
-| Category | Convention | Example |
-|---|---|---|
-| Type definitions | `kebab-case.ts` | `corporation.ts`, `ship.ts` |
-| Static data | `kebab-case.ts` | `planet-types.ts`, `ship-classes.ts` |
-| Engine modules | `kebab-case.ts` | `market-resolver.ts`, `corp-ai.ts` |
-| Generators | `kebab-case.ts` | `planet-generator.ts` |
-| Stores | `kebab-case.store.ts` | `colony.store.ts`, `budget.store.ts` |
-| Vue views | `PascalCase` + `View.vue` | `DashboardView.vue`, `ColoniesView.vue` |
-| Vue components | `PascalCase.vue` | `ColonyCard.vue`, `ProgressBar.vue` |
-| Composables | `camelCase.ts` with `use` prefix | `useTurnActions.ts` |
-| Utils | `kebab-case.ts` | `random.ts`, `format.ts` |
-| Tests | mirror source path + `.test.ts` | `tax.test.ts`, `market-resolver.test.ts` |
+| Category         | Convention                       | Example                                  |
+| ---------------- | -------------------------------- | ---------------------------------------- |
+| Type definitions | `kebab-case.ts`                  | `corporation.ts`, `ship.ts`              |
+| Static data      | `kebab-case.ts`                  | `planet-types.ts`, `ship-classes.ts`     |
+| Engine modules   | `kebab-case.ts`                  | `market-resolver.ts`, `corp-ai.ts`       |
+| Generators       | `kebab-case.ts`                  | `planet-generator.ts`                    |
+| Stores           | `kebab-case.store.ts`            | `colony.store.ts`, `budget.store.ts`     |
+| Vue views        | `PascalCase` + `View.vue`        | `DashboardView.vue`, `ColoniesView.vue`  |
+| Vue components   | `PascalCase.vue`                 | `ColonyCard.vue`, `ProgressBar.vue`      |
+| Composables      | `camelCase.ts` with `use` prefix | `useTurnActions.ts`                      |
+| Utils            | `kebab-case.ts`                  | `random.ts`, `format.ts`                 |
+| Tests            | mirror source path + `.test.ts`  | `tax.test.ts`, `market-resolver.test.ts` |
 
 ### Code
 
-| Element | Convention | Example |
-|---|---|---|
-| Interfaces / Types | `PascalCase` | `Colony`, `Corporation`, `ShipClass` |
-| Enums | `PascalCase` | `PlanetType`, `ResourceType` |
-| Enum values | `PascalCase` | `PlanetType.Continental`, `ResourceType.Food` |
-| Variables / functions | `camelCase` | `calculateTax()`, `colonyGrowth` |
-| Constants | `UPPER_SNAKE_CASE` | `MAX_DEBT_TOKENS`, `BASE_STABILITY` |
-| Store IDs | `camelCase` | `useColonyStore`, `useBudgetStore` |
-| Component props | `camelCase` | `colonyId`, `showDetails` |
-| Component events | `kebab-case` | `@contract-created`, `@turn-ended` |
-| CSS classes | Tailwind utilities only | No custom class names unless unavoidable |
+| Element               | Convention              | Example                                       |
+| --------------------- | ----------------------- | --------------------------------------------- |
+| Interfaces / Types    | `PascalCase`            | `Colony`, `Corporation`, `ShipClass`          |
+| Enums                 | `PascalCase`            | `PlanetType`, `ResourceType`                  |
+| Enum values           | `PascalCase`            | `PlanetType.Continental`, `ResourceType.Food` |
+| Variables / functions | `camelCase`             | `calculateTax()`, `colonyGrowth`              |
+| Constants             | `UPPER_SNAKE_CASE`      | `MAX_DEBT_TOKENS`, `BASE_STABILITY`           |
+| Store IDs             | `camelCase`             | `useColonyStore`, `useBudgetStore`            |
+| Component props       | `camelCase`             | `colonyId`, `showDetails`                     |
+| Component events      | `kebab-case`            | `@contract-created`, `@turn-ended`            |
+| CSS classes           | Tailwind utilities only | No custom class names unless unavoidable      |
 
 ### IDs
 
 All game entities use string IDs with a type prefix for debuggability:
 
-| Entity | ID Format | Example |
-|---|---|---|
-| Colony | `col_` + nanoid | `col_a1b2c3` |
+| Entity      | ID Format        | Example       |
+| ----------- | ---------------- | ------------- |
+| Colony      | `col_` + nanoid  | `col_a1b2c3`  |
 | Corporation | `corp_` + nanoid | `corp_x7y8z9` |
-| Contract | `ctr_` + nanoid | `ctr_m4n5o6` |
-| Ship | `ship_` + nanoid | `ship_p1q2r3` |
-| Mission | `msn_` + nanoid | `msn_d4e5f6` |
-| Sector | `sec_` + nanoid | `sec_g7h8i9` |
-| Planet | `pln_` + nanoid | `pln_j1k2l3` |
-| Patent | `pat_` + nanoid | `pat_s4t5u6` |
-| Schematic | `sch_` + nanoid | `sch_v7w8x9` |
-| Discovery | `dsc_` + nanoid | `dsc_y1z2a3` |
-| Captain | `cpt_` + nanoid | `cpt_b4c5d6` |
-| Event | `evt_` + nanoid | `evt_e7f8g9` |
-| Modifier | `mod_` + nanoid | `mod_a1b2c3` |
+| Contract    | `ctr_` + nanoid  | `ctr_m4n5o6`  |
+| Ship        | `ship_` + nanoid | `ship_p1q2r3` |
+| Mission     | `msn_` + nanoid  | `msn_d4e5f6`  |
+| Sector      | `sec_` + nanoid  | `sec_g7h8i9`  |
+| Planet      | `pln_` + nanoid  | `pln_j1k2l3`  |
+| Patent      | `pat_` + nanoid  | `pat_s4t5u6`  |
+| Schematic   | `sch_` + nanoid  | `sch_v7w8x9`  |
+| Discovery   | `dsc_` + nanoid  | `dsc_y1z2a3`  |
+| Captain     | `cpt_` + nanoid  | `cpt_b4c5d6`  |
+| Event       | `evt_` + nanoid  | `evt_e7f8g9`  |
+| Modifier    | `mod_` + nanoid  | `mod_a1b2c3`  |
 
 Use a small ID generation utility (nanoid or similar, 6-8 chars). Prefix makes it trivial to identify entity type in logs and debugging.
 
@@ -322,7 +328,9 @@ Use a small ID generation utility (nanoid or similar, 6-8 chars). Prefix makes i
 ## Architectural Rules
 
 ### 1. Engine Purity
+
 Files in `engine/`, `data/`, `generators/`, `types/`, and `utils/` must NEVER import from:
+
 - `vue`
 - `pinia`
 - Any file in `stores/`, `views/`, `components/`, `composables/`, or `router/`
@@ -330,13 +338,16 @@ Files in `engine/`, `data/`, `generators/`, `types/`, and `utils/` must NEVER im
 This is testable and enforceable. If an engine function needs game state, it receives it as a typed parameter — it never reaches into a store.
 
 ### 2. Store Responsibility
+
 Stores are the bridge between engine and UI. A store:
+
 - Holds the current state for its domain
 - Exposes **getters** for derived data (formatted values, filtered lists, computed stats)
 - Exposes **actions** that call engine functions and update state with the results
 - Never contains game logic — that lives in `engine/`
 
 Example flow for ending a turn:
+
 ```
 View calls → gameStore.endTurn()
 gameStore.endTurn() calls → turnResolver.resolve(fullGameState)
@@ -345,21 +356,26 @@ gameStore.endTurn() writes → updated state back to all stores
 ```
 
 ### 3. View Simplicity
+
 Views and components should be thin. They:
+
 - Read from stores (via `storeToRefs` or `computed`)
 - Call store actions on user interaction
 - Handle layout, display logic, and transitions
 - Do NOT contain formulas, simulation logic, or complex calculations
 
 ### 4. Data Immutability in Engine
+
 Engine functions should treat input state as read-only and return new state objects. This makes turn resolution predictable and debuggable. Stores handle the mutation.
 
 ### 5. Component Granularity
+
 - `views/` = one per route, handles layout and data fetching from stores
 - `components/` = reusable pieces, receive data via props, emit events upward
 - A component should do ONE thing. If a component file exceeds ~150 lines, split it.
 
 ### 6. Save Compatibility
+
 The game state serialization format must be versioned. Each save file includes a `version` number. When the state shape changes, a migration function converts old saves to the new format. This is critical for a game that players will play over weeks.
 
 ```typescript
@@ -371,6 +387,7 @@ interface SaveFile {
 ```
 
 ### 87. Empire Bonuses vs Local Modifiers
+
 Empire-wide bonuses (from discoveries, affecting all entities uniformly) are stored as simple cumulative values on `gameState.empireBonuses` and read directly by formulas. Local per-entity variation (planet features, schematics, shortage maluses) uses the modifier system. Never use modifiers for values that apply identically to every entity — use empire state instead.
 
 ---
@@ -393,6 +410,7 @@ The turn resolver calls phases in this exact order. This order matters because l
 ```
 
 Each phase function signature follows the same pattern:
+
 ```typescript
 function resolvePhase(state: GameState): PhaseResult {
   // Pure logic, no side effects
@@ -405,11 +423,14 @@ function resolvePhase(state: GameState): PhaseResult {
 ## Modifier System
 
 ### Overview
+
 Modifiers are the universal mechanism for adjusting game values. Instead of hardcoding bonuses and maluses into formulas, all variable adjustments are expressed as modifiers attached to entities. This keeps formulas clean, makes bonuses traceable in the UI, and allows any system to affect any value without coupling.
 
 ### Modifier Properties
+
 Every modifier has:
-- **id**: unique identifier (mod_ prefix)
+
+- **id**: unique identifier (mod\_ prefix)
 - **target**: the stat or attribute being modified (string key, e.g., 'habitability', 'speed', 'stability')
 - **operation**: either 'add' (flat adjustment) or 'multiply' (percentage scaling)
 - **value**: the numeric value (e.g., +1 for additive, 1.1 for 10% multiplicative boost)
@@ -418,7 +439,9 @@ Every modifier has:
 - **condition** (optional): a condition that must be met for the modifier to apply
 
 ### Modifier Conditions
+
 Some modifiers only apply in specific circumstances. A condition specifies:
+
 - **attribute**: which attribute to check (e.g., 'habitability', 'populationLevel')
 - **comparison**: 'lte' (less than or equal) or 'gte' (greater than or equal)
 - **value**: the threshold value
@@ -427,6 +450,7 @@ Some modifiers only apply in specific circumstances. A condition specifies:
 Example: A discovery might grant "+1 growth on colonies with habitability ≤ 4" — this would have condition `{ attribute: 'habitability', comparison: 'lte', value: 4, scope: 'colony' }`.
 
 ### Resolution Order
+
 When calculating a final value, modifiers resolve in a fixed order:
 
 1. Start with the **base value** (from static data or formula)
@@ -439,15 +463,17 @@ When calculating a final value, modifiers resolve in a fixed order:
 Additive always resolves before multiplicative. This means a +2 bonus and a ×1.5 multiplier on a base of 4 yields `(4 + 2) × 1.5 = 9`, not `(4 × 1.5) + 2 = 8`.
 
 ### Where Modifiers Live
+
 Modifiers are stored on the entity they affect. They are only used for per-entity variation — values that differ between entities of the same type.
 
-| Entity | Modifier Sources |
-|---|---|
-| **Colony** | Planet features, colony type passive bonus, shortage maluses (transient, recalculated each turn), event effects |
-| **Ship** | Schematics from building corp (applied at construction, permanent on the ship) |
-| **Corporation** | Patents (future), personality traits (future), event effects |
+| Entity          | Modifier Sources                                                                                                |
+| --------------- | --------------------------------------------------------------------------------------------------------------- |
+| **Colony**      | Planet features, colony type passive bonus, shortage maluses (transient, recalculated each turn), event effects |
+| **Ship**        | Schematics from building corp (applied at construction, permanent on the ship)                                  |
+| **Corporation** | Patents (future), personality traits (future), event effects                                                    |
 
 ### Empire-Wide Bonuses (Not Modifiers)
+
 Empire-wide bonuses from discoveries and other permanent global effects are NOT modifiers. They are cumulative values stored on `gameState.empireBonuses` and read directly by formulas. This avoids unnecessary modifier resolution for values that apply uniformly to the entire empire.
 
 ```
@@ -463,18 +489,20 @@ Similarly, values like debt tokens are stored as simple state (`gameState.debtTo
 
 ### When Modifiers Are Registered
 
-| Event | Modifiers Created |
-|---|---|
-| Colony founded | Planet feature modifiers → colony. Colony type passive bonus → colony |
-| Ship built | Building corp's schematics → ship (permanent snapshot at build time) |
+| Event                            | Modifiers Created                                                               |
+| -------------------------------- | ------------------------------------------------------------------------------- |
+| Colony founded                   | Planet feature modifiers → colony. Colony type passive bonus → colony           |
+| Ship built                       | Building corp's schematics → ship (permanent snapshot at build time)            |
 | Shortage detected (market phase) | Shortage malus modifiers → affected colony (cleared and recalculated each turn) |
 
 ### Transient vs Permanent Modifiers
+
 Some modifiers are permanent (planet features, colony type bonuses, schematics on a built ship). Others are recalculated each turn (shortage maluses). Transient modifiers are cleared at the start of the relevant phase and reapplied based on current state.
 
 Permanent modifiers are written once and persist in save files. Transient modifiers are derived from current state and never saved — they are recalculated on load and each turn.
 
 ### UI: Modifier Breakdown
+
 Every modified value in the UI should support a tooltip showing the full breakdown:
 
 ```
@@ -499,6 +527,7 @@ For empire-wide bonuses, the UI shows the aggregate value ("Tech +2") without pe
 ### Formula Patterns
 
 **For values with local modifiers (colony attributes, ship stats):**
+
 ```
 function calculateStat(baseValue, target, modifiers, clampMin, clampMax):
     filtered = modifiers.filter(m => m.target === target AND m.condition is met)
@@ -509,6 +538,7 @@ function calculateStat(baseValue, target, modifiers, clampMin, clampMax):
 ```
 
 **For values with empire-wide bonuses (ship construction, infra caps):**
+
 ```
 function calculateShipStat(roleBase, stat, empireBonuses, corpModifier, schematics):
     techBase = roleBase + empireBonuses.shipStats[stat]
@@ -526,24 +556,30 @@ Engine code must never add bonuses inline. Local variation uses modifiers. Globa
 ### Modifier Targets (Reference)
 
 Colony attribute targets (local modifiers):
+
 - `habitability`, `accessibility`, `dynamism`, `qualityOfLife`, `stability`, `growth`
 
 Colony infrastructure cap targets (local modifiers, e.g., from planet features):
+
 - `maxMining`, `maxDeepMining`, `maxGasExtraction`, `maxAgricultural`, `maxScience`, `maxSpaceIndustry`
 
 Colony production targets (local modifiers):
+
 - `miningOutput`, `deepMiningOutput`, `gasExtractionOutput`, `agriculturalOutput`
 
 Ship stat targets (local modifiers from schematics):
+
 - `size`, `speed`, `firepower`, `armor`, `sensors`, `evasion`
 
 Empire-wide bonus keys (simple state, not modifiers):
+
 - `empireBonuses.shipStats.*`
 - `empireBonuses.infraCaps.*`
 
 ## Key Implementation Notes
 
 ### When implementing a new feature:
+
 1. Define types in `types/` first
 2. Add static data to `data/` if needed
 3. Write engine logic in `engine/`
@@ -553,9 +589,11 @@ Empire-wide bonus keys (simple state, not modifiers):
 7. Always add Todo referencing the future implementation that will be done through the future stories, epics or features, or when you half implement a system. This will make sure the codebase itself is the documentation for all the implementation.
 
 ### When you need a file you don't have access to:
+
 Reference this structure document. Ask for the specific file by its path. Example: "I need `src/types/colony.ts` and `src/engine/formulas/attributes.ts` to implement the colony attribute calculation."
 
 ### When adding a new entity type:
+
 1. Add type definition in `types/`
 2. Add ID prefix to the ID convention table above
 3. Create or update relevant store
@@ -563,6 +601,7 @@ Reference this structure document. Ask for the specific file by its path. Exampl
 5. Add generator if procedurally generated
 
 ### When modifying formulas:
+
 1. Update the formula in `engine/formulas/`
 2. Verify the formula matches `Specs.md` — if it doesn't, update `Specs.md` first
 3. Check downstream effects (formulas often feed into other formulas)

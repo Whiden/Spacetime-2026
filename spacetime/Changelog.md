@@ -2,6 +2,38 @@
 
 ---
 
+## Story 14.1: Science Simulation (2026-02-19)
+
+**File**: `src/engine/simulation/science-sim.ts`
+
+### Functions implemented
+
+- `calculateEmpireSciencePerTurn(colonies)`: sums all science infrastructure levels (public + corporate) across all colonies.
+- `distributeScience(domains, empireScience, turn)`: distributes science points evenly across 9 domains (`floor(total / 9)` per domain), doubles allocation for the focused domain, accumulates points, and checks level-up thresholds (`(current_level + 1) × 15`). Supports multiple level-ups per turn with point carry-over. Returns updated domain states + level-up events.
+- `createInitialScienceDomains()`: creates all 9 domains at level 0 with threshold 15 for game initialization.
+- `setDomainFocus(domains, domain | null)`: sets focus on one domain (or clears all). Only one domain may be focused at a time.
+
+### Key decisions
+
+- Threshold formula uses `(level + 1) × 15` (from `getScienceLevelThreshold`), matching Specs.md § 8 and `science-sectors.ts`. Level 0 → 1 requires 15 points; level 1 → 2 requires 30.
+- Focus is a boolean on `ScienceDomainState`; `setDomainFocus` ensures mutual exclusivity.
+- Level-up events are `Positive` priority, `science` category.
+
+### Acceptance criteria met
+
+- `empire_science_per_turn = sum of all science infrastructure levels` ✓
+- Distributes evenly: `per_domain_base = floor(empire_science / 9)` ✓
+- Focus doubles allocation ✓
+- Only one domain focused at a time ✓
+- Accumulates points, checks threshold `(level+1) × 15` ✓
+- On level up: increments level, generates event ✓
+- Unit tests: accumulation ✓, level up at threshold ✓, distribution with and without focus ✓, focus doubling effect ✓
+
+**Tests**: 27/27 passing
+**TypeScript**: zero errors
+
+---
+
 ## Story 13.5: Exploration UI (2026-02-19)
 
 **Files**: `src/components/galaxy/SectorCard.vue`, `src/views/GalaxyView.vue`, `src/components/contract/ContractWizard.vue`
