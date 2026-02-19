@@ -99,8 +99,12 @@ export interface Schematic {
   level: number
   /** The ship stat this schematic modifies (e.g., 'firepower', 'armor'). */
   statTarget: string
-  /** Base bonus amount for this level. */
+  /** Total bonus amount: level × baseBonusPerLevel + randomModifier. */
   bonusAmount: number
+  /** Random modifier applied at creation, preserved across version updates. */
+  randomModifier: number
+  /** Version iteration counter. Starts at 1, increments on domain level-up update. */
+  iteration: number
   /** The corp that owns and applies this schematic. */
   ownerCorpId: CorpId
   /** The discovery that enabled this schematic's category. */
