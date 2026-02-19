@@ -2,6 +2,45 @@
 
 ---
 
+## Story 14.4: Science Phase — Turn Resolution (2026-02-19)
+
+**Files**: `src/engine/turn/science-phase.ts` (full implementation), `src/generators/patent-generator.ts` (new)
+
+### Functions implemented
+
+- `resolveSciencePhase(state)` — Phase #6 of turn resolution. Full pipeline:
+  1. `calculateEmpireSciencePerTurn` — sums all science infra levels.
+  2. `distributeScience` — distributes points across 9 domains with focus doubling; checks level-up thresholds.
+  3. On domain level-up: calls `updateSchematicsOnDomainLevelUp` for affected categories; versioned schematics written back to state.
+  4. Discovery rolls — iterates Science corps; calls `rollForDiscovery`; accumulates updated empire bonuses and discovered definition IDs across corps.
+  5. Schematic rolls — iterates Shipbuilding corps; calls `rollForSchematic`; handles replacements.
+  6. Patent rolls — iterates all corps; calls `rollForPatent`; enforces cap.
+  7. Returns `{ updatedState, events }` with all events combined.
+
+- `calculatePatentChance(corpLevel)` — `corp_level × 2 %`.
+- `getMaxPatents(corpLevel)` — `floor(corp_level / 2)`.
+- `rollForPatent(corp, existingPatents, sourceDiscoveryId, turn, randFn?)` — rolls for patent development; respects cap, avoids duplicate bonus targets; creates `Patent` object with correct bonus from `PATENT_DEFINITIONS`.
+
+### Key decisions
+
+- Discovery rolls are sequential; each successful discovery updates `alreadyDiscoveredDefinitionIds` so the next corp cannot draw the same definition this turn.
+- Schematic versioning runs before discovery/schematic rolls so new schematics generated this turn are at the latest domain level.
+- Patent generator deduplicates by `bonusTarget` to prevent corps from holding duplicate-effect patents.
+
+### Acceptance criteria met
+
+- Science accumulation per domain (respecting focus doubling) ✓
+- Domain level-up triggers schematic versioning for affected categories ✓
+- Discovery rolls for all science corps (`discovery_chance = corp_level × 5 + corp_science_infrastructure × 2 %`) ✓
+- Schematic development rolls for shipbuilding corps (`schematic_chance = corp_level × 2 %`, capped at `floor(corp_level / 2)`) ✓
+- Patent development rolls for all corps (`patent_chance = corp_level × 2 %`, capped at `floor(corp_level / 2)`) ✓
+- Returns updated science state + events (level-up, schematic versioning, discovery, schematic, patent events) ✓
+
+**Tests**: 18/18 passing (science-phase.test.ts)
+**TypeScript**: zero errors
+
+---
+
 ## Story 14.2: Discovery System (2026-02-19)
 
 **File**: `src/engine/simulation/science-sim.ts` (extended), `src/types/science.ts`
