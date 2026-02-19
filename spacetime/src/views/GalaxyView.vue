@@ -3,25 +3,69 @@
  * GalaxyView — Displays all sectors with adjacency, exploration status, and presence.
  *
  * Auto-generates the galaxy on first load if no sectors exist.
+ * Shows discovered planets per sector with Accept/Reject actions.
+ * "Explore" quick action opens the contract wizard pre-filled with Exploration type.
  *
- * TODO (Story 13.5): Add "Explore" quick action on explorable sectors.
  * TODO (Story 17.3): Show trade route connections between sectors.
  */
-import { computed, onMounted } from 'vue'
+import { computed, ref } from 'vue'
 import type { SectorId } from '../types/common'
+import { ContractType } from '../types/common'
+import type { Planet } from '../types/planet'
 import { useGalaxyStore } from '../stores/galaxy.store'
+import { usePlanetStore } from '../stores/planet.store'
 import SectorCard from '../components/galaxy/SectorCard.vue'
 import SectorGraph from '../components/galaxy/SectorGraph.vue'
 import EmptyState from '../components/shared/EmptyState.vue'
+import ContractWizard from '../components/contract/ContractWizard.vue'
+import { acceptPlanet, rejectPlanet } from '../engine/actions/accept-planet'
 
 const galaxyStore = useGalaxyStore()
+const planetStore = usePlanetStore()
 
-// Auto-generate galaxy if not yet created
-onMounted(() => {
-  if (galaxyStore.allSectors.length === 0) {
-    galaxyStore.generate()
+// ─── Contract Wizard ──────────────────────────────────────────────────────────
+
+const showWizard = ref(false)
+/** Pre-selected type when opening wizard from Explore action. */
+const wizardPresetType = ref<ContractType | null>(null)
+/** Pre-selected sector ID when opening wizard from Explore action. */
+const wizardPresetSectorId = ref<SectorId | null>(null)
+
+function openExploreWizard(sectorId: SectorId) {
+  wizardPresetType.value = ContractType.Exploration
+  wizardPresetSectorId.value = sectorId
+  showWizard.value = true
+}
+
+function closeWizard() {
+  showWizard.value = false
+  wizardPresetType.value = null
+  wizardPresetSectorId.value = null
+}
+
+// ─── Accept / Reject ──────────────────────────────────────────────────────────
+
+function handleAcceptPlanet(planetId: string) {
+  const result = acceptPlanet(
+    planetId as import('../types/common').PlanetId,
+    planetStore.planets as Map<string, Planet>,
+  )
+  if (result.success) {
+    planetStore.updatePlanet(result.updatedPlanet)
   }
-})
+}
+
+function handleRejectPlanet(planetId: string) {
+  const result = rejectPlanet(
+    planetId as import('../types/common').PlanetId,
+    planetStore.planets as Map<string, Planet>,
+  )
+  if (result.success) {
+    planetStore.updatePlanet(result.updatedPlanet)
+  }
+}
+
+// ─── Computed ─────────────────────────────────────────────────────────────────
 
 // Set of explorable sector IDs for quick lookup
 const explorableSectorIds = computed<Set<SectorId>>(() => {
@@ -29,9 +73,6 @@ const explorableSectorIds = computed<Set<SectorId>>(() => {
 })
 
 // Set of sectors with player presence
-// For now, only the starting sector has presence
-// TODO (Story 4.3): Include sectors with colonies.
-// TODO (Story 15.4): Include sectors with stationed ships.
 const presentSectorIds = computed<Set<SectorId>>(() => {
   const ids = new Set<SectorId>()
   if (galaxyStore.startingSectorId) {
@@ -46,6 +87,14 @@ function getAdjacentNames(sectorId: SectorId): string[] {
     .getAdjacentSectors(sectorId)
     .map((id) => galaxyStore.getSector(id)?.name ?? 'Unknown')
     .sort()
+}
+
+/** Returns visible (non-rejected, non-colonized) planets for a sector. */
+function getPlanetsForSector(sectorId: SectorId): Planet[] {
+  return planetStore.getPlanetsBySector(sectorId).filter(
+    (p) =>
+      p.status !== 'Rejected' && p.status !== 'Colonized' && p.status !== 'Undiscovered',
+  )
 }
 </script>
 
@@ -66,6 +115,7 @@ function getAdjacentNames(sectorId: SectorId): string[] {
         <span>{{ galaxyStore.allSectors.length }} sectors</span>
         <span>{{ explorableSectorIds.size }} explorable</span>
         <span>{{ presentSectorIds.size }} with presence</span>
+        <span>{{ planetStore.allPlanets.filter(p => p.status !== 'Rejected' && p.status !== 'Undiscovered').length }} planets discovered</span>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -79,6 +129,10 @@ function getAdjacentNames(sectorId: SectorId): string[] {
             :is-starting-sector="sector.id === galaxyStore.startingSectorId"
             :is-explorable="explorableSectorIds.has(sector.id)"
             :has-presence="presentSectorIds.has(sector.id)"
+            :planets="getPlanetsForSector(sector.id)"
+            @explore="openExploreWizard"
+            @accept-planet="handleAcceptPlanet"
+            @reject-planet="handleRejectPlanet"
           />
         </div>
 
@@ -94,5 +148,13 @@ function getAdjacentNames(sectorId: SectorId): string[] {
         </div>
       </div>
     </template>
+
+    <!-- Contract wizard (opened via Explore quick action) -->
+    <ContractWizard
+      v-if="showWizard"
+      :preset-type="wizardPresetType"
+      :preset-sector-id="wizardPresetSectorId"
+      @close="closeWizard"
+    />
   </div>
 </template>

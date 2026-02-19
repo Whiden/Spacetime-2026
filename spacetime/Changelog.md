@@ -2,6 +2,37 @@
 
 ---
 
+## Story 13.5: Exploration UI (2026-02-19)
+
+**Files**: `src/components/galaxy/SectorCard.vue`, `src/views/GalaxyView.vue`, `src/components/contract/ContractWizard.vue`
+
+### SectorCard.vue
+- Added `planets: Planet[]` prop — list of visible (non-rejected, non-colonized) planets in the sector.
+- Emits `explore(sectorId)`, `accept-planet(planetId)`, `reject-planet(planetId)`.
+- **Explore button**: shown on explorable/present sectors; triggers contract wizard pre-filled with Exploration + the sector.
+- **Planet count badge**: shown in header when planets are discovered in the sector.
+- **Planets panel**: listed inside expanded detail under "Discovered Planets".
+  - Each planet card shows: name, status badge (Orbit Scanned / Ground Surveyed / Accepted), type, size.
+  - **Orbit Scanned**: reveals deposit types (richness hidden), orbit-visible features; "Low-quality scan" message if nothing revealed (tier-1 corp).
+  - **Ground Surveyed / Accepted**: reveals deposits with richness, all revealed features, exact habitability.
+  - **Accept/Reject buttons**: shown on OrbitScanned and GroundSurveyed planets; hidden once Accepted.
+
+### GalaxyView.vue
+- Imports `usePlanetStore`, `ContractWizard`, `acceptPlanet`/`rejectPlanet` engine actions.
+- `getPlanetsForSector(sectorId)`: returns non-rejected, non-colonized, non-undiscovered planets per sector.
+- `openExploreWizard(sectorId)`: sets `presetType = Exploration`, `presetSectorId`, opens wizard modal.
+- `handleAcceptPlanet` / `handleRejectPlanet`: call engine actions then `planetStore.updatePlanet()`.
+- Summary bar now includes "N planets discovered" count.
+
+### ContractWizard.vue
+- Added optional props: `presetType?: ContractType | null`, `presetSectorId?: SectorId | null`.
+- `onMounted`: if `presetType` is set, calls `wizard.selectType()` and (for Exploration) `wizard.selectTarget()` then advances to step 2.
+
+**TypeScript**: zero errors
+**Tests**: 67 passing (exploration: 14, contract-phase: 38, accept-planet: 15 — all pre-existing, no regressions)
+
+---
+
 ## Story 13.4: Ground Survey Contract (2026-02-19)
 
 **File**: `src/engine/turn/contract-phase.ts`

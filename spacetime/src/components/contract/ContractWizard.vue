@@ -11,18 +11,41 @@
  *
  * Emits 'close' when the wizard is dismissed or after successful creation.
  */
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { ContractType, ColonyType } from '../../types/common'
+import type { SectorId } from '../../types/common'
 import { CONTRACT_TYPE_DEFINITIONS } from '../../data/contracts'
 import { COLONY_TYPE_DEFINITIONS } from '../../data/colony-types'
 import { useContractCreation } from '../../composables/useContractCreation'
 import CorpSelector from './CorpSelector.vue'
+
+const props = withDefaults(defineProps<{
+  /** Pre-selected contract type (e.g., from Explore quick action). */
+  presetType?: ContractType | null
+  /** Pre-selected sector ID for Exploration contracts. */
+  presetSectorId?: SectorId | null
+}>(), {
+  presetType: null,
+  presetSectorId: null,
+})
 
 const emit = defineEmits<{
   close: []
 }>()
 
 const wizard = useContractCreation()
+
+// Apply preset values on open (skip to step 2 if type + target are pre-filled)
+onMounted(() => {
+  if (props.presetType) {
+    wizard.selectType(props.presetType)
+    if (props.presetSectorId && props.presetType === ContractType.Exploration) {
+      wizard.selectTarget(props.presetSectorId)
+      // Skip to step 2 (target is pre-selected, let user confirm or change)
+      wizard.nextStep()
+    }
+  }
+})
 
 // ─── Contract Type Display ────────────────────────────────────────────────────
 
