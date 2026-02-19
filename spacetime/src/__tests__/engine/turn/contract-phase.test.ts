@@ -13,6 +13,8 @@
  * - Trade route (sentinel 9999) is never auto-completed
  * - Completion event is generated with Positive priority and 'contract' category
  * - GroundSurvey completion advances planet status to GroundSurveyed
+ * - GroundSurvey completion reveals all features (including ground-only)
+ * - GroundSurvey completion reveals exact deposit richness
  * - Colonization completion creates a new colony in updatedState.colonies
  * - Colonization completion marks the planet as Colonized
  * - Colonization completion sets corporationsPresent on the new colony
@@ -380,6 +382,52 @@ describe('resolveContractPhase — GroundSurvey completion', () => {
 
     // Status unchanged — only OrbitScanned gets promoted
     expect(updatedPlanet.status).toBe(PlanetStatus.Accepted)
+  })
+
+  it('reveals all features (including ground-only) on ground survey completion', () => {
+    const contract = makeContract(CONTRACT_ID, ContractType.GroundSurvey, 1, {
+      target: { type: 'planet', planetId: PLANET_ID },
+    })
+    const planet: Planet = {
+      ...makePlanet(PLANET_ID, PlanetStatus.OrbitScanned),
+      features: [
+        { featureId: 'OrbitFeature', orbitVisible: true, revealed: true },
+        { featureId: 'GroundFeature', orbitVisible: false, revealed: false },
+      ],
+    }
+    const state = makeState(
+      new Map([[CONTRACT_ID, contract]]),
+      { planets: new Map([[PLANET_ID, planet]]) },
+    )
+
+    const { updatedState } = resolveContractPhase(state)
+    const updatedPlanet = updatedState.planets.get(PLANET_ID)!
+
+    expect(updatedPlanet.features).toHaveLength(2)
+    expect(updatedPlanet.features.every((f) => f.revealed)).toBe(true)
+  })
+
+  it('reveals exact deposit richness on ground survey completion', () => {
+    const contract = makeContract(CONTRACT_ID, ContractType.GroundSurvey, 1, {
+      target: { type: 'planet', planetId: PLANET_ID },
+    })
+    const planet: Planet = {
+      ...makePlanet(PLANET_ID, PlanetStatus.OrbitScanned),
+      deposits: [
+        { type: 'FertileGround' as any, richness: 'Rich' as any, richnessRevealed: false },
+        { type: 'CommonOreVein' as any, richness: 'Moderate' as any, richnessRevealed: false },
+      ],
+    }
+    const state = makeState(
+      new Map([[CONTRACT_ID, contract]]),
+      { planets: new Map([[PLANET_ID, planet]]) },
+    )
+
+    const { updatedState } = resolveContractPhase(state)
+    const updatedPlanet = updatedState.planets.get(PLANET_ID)!
+
+    expect(updatedPlanet.deposits).toHaveLength(2)
+    expect(updatedPlanet.deposits.every((d) => d.richnessRevealed)).toBe(true)
   })
 })
 

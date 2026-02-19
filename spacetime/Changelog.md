@@ -2,6 +2,23 @@
 
 ---
 
+## Story 13.4: Ground Survey Contract (2026-02-19)
+
+**File**: `src/engine/turn/contract-phase.ts`
+
+- `resolveGroundSurveyCompletion()`: enhanced to fully reveal planet data on ground survey completion:
+  - Planet status advances from `OrbitScanned` → `GroundSurveyed` (was already done).
+  - All features revealed (`revealed: true`), including ground-only features not visible from orbit.
+  - All deposits have `richnessRevealed: true` — exact richness visible to the player.
+- `groundSurveyTurn` stamped from `contract.completedTurn`.
+
+**Tests**: 2 new tests added to `contract-phase.test.ts` (38 total, all passing):
+- Ground survey reveals all features (including ground-only).
+- Ground survey reveals exact deposit richness for all deposits.
+**TypeScript**: zero errors
+
+---
+
 ## Story 13.3: Accept/Reject Planet Action (2026-02-19)
 
 **File**: `src/engine/actions/accept-planet.ts`

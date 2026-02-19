@@ -227,8 +227,12 @@ function resolveExplorationCompletion(
 }
 
 /**
- * Ground survey completion: advances planet status to GroundSurveyed.
- * Only applies if the target planet is still at OrbitScanned status.
+ * Ground survey completion (Story 13.4):
+ * - Advances planet status to GroundSurveyed.
+ * - Reveals all features (including ground-only ones).
+ * - Reveals exact deposit richness for all deposits.
+ *
+ * Only applies if the target planet is at OrbitScanned status.
  */
 function resolveGroundSurveyCompletion(
   contract: Contract,
@@ -244,6 +248,10 @@ function resolveGroundSurveyCompletion(
       ...planet,
       status: PlanetStatus.GroundSurveyed,
       groundSurveyTurn: contract.completedTurn ?? null,
+      // Reveal all features (including ground-only ones not visible from orbit)
+      features: planet.features.map((f) => ({ ...f, revealed: true })),
+      // Reveal exact richness for all deposits
+      deposits: planet.deposits.map((d) => ({ ...d, richnessRevealed: true })),
     })
   }
 }

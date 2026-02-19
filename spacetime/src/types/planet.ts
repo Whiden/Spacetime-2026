@@ -50,8 +50,8 @@ export interface PlanetFeature {
  * A discovered or undiscovered planet in the game world.
  * Planets progress through status tiers via contracts and player decisions.
  *
- * TODO (Story 13.2): Exploration contract completion populates orbit scan data.
- * TODO (Story 13.4): Ground survey contract reveals full data.
+ * TODO (Story 13.2): Exploration contract completion populates orbit scan data. ✓
+ * TODO (Story 13.4): Ground survey contract reveals full data. ✓
  */
 export interface Planet {
   id: PlanetId
