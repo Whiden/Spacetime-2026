@@ -2,6 +2,26 @@
 
 ---
 
+## Story 15.1: Blueprint System (Completed 2026-02-19)
+
+Implemented ship stat generation from role, tech, corp level, schematics, and size variant.
+
+**Types** (`src/types/ship.ts`): Added `ShipAbilities` interface (`fight`, `investigation`, `support`) and added `abilities: ShipAbilities` field to the `Ship` interface. Removed the Story 15.1 TODO comment.
+
+**Engine** (`src/engine/actions/design-blueprint.ts`): `designBlueprint(input)` — accepts role, size variant, building corp, empire tech bonuses, and corp schematics; generates each primary stat with the formula `floor((floor(effectiveBase × corpModifier) + schematicBonus) × random(0.8, 1.2))`; applies size variant multiplier to the `size` stat (floor); calculates secondary stats (`hullPoints`, `powerProjection`, `bpPerTurn`, `buildTimeTurns`) with size-variant scaling on `bpPerTurn` and `buildTimeTurns`; derives ability scores via `calculateShipAbilities()`; assembles and returns a fully typed `Ship` object with `status: UnderConstruction`, `condition: 100`, and `captain.experience: Green`. Exported `calculateShipAbilities` for independent testing and future reuse.
+
+**Key formula notes**:
+- `corp_modifier = 0.7 + corpLevel × 0.06` (level 1 → 0.76, level 5 → 1.0, level 10 → 1.3)
+- `bpPerTurn` and `buildTimeTurns` are computed from raw (pre-variant) size, then the variant multiplier is applied
+- Schematic bonuses for primary stats target keys (`armor`, `sensors`, etc.) match the stat name; secondary stat bonuses target `hullPoints`, `powerProjection`, `bpPerTurn`, `buildTimeTurns`
+
+**Tests** (`src/__tests__/engine/actions/design-blueprint.test.ts`): 35 tests — stat formula at corp level 1/5/10, tech bonus additive effect, variant multiplier on size and derived stats (Light/Standard/Heavy), schematic bonus stacking (single, multiple, cross-stat isolation), randomness bounded to [0.8, 1.2] (min/mid/max fixtures), derived stat calculations, ability score calculations, ship object completeness (condition, status, captain experience, service record, schematics list, role/variant preservation).
+
+**Tests**: 934/934 passing
+**TypeScript**: zero errors
+
+---
+
 ## Science Bug Fix (2026-02-19)
 
 **Bug**: Science was not progressing with 2 starting science corps because `distributeScience` computed `floor(2 / 9) = 0`, giving every domain 0 SP per turn.

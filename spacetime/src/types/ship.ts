@@ -1,10 +1,9 @@
 /**
- * ship.ts — Ship, Captain, ServiceRecord, and blueprint types.
+ * ship.ts — Ship, Captain, ServiceRecord, blueprint, and abilities types.
  *
  * Ships are rare, named, and precious. Each ship is a unique entity built by a
  * specific corp for a specific role, shaped by empire tech and builder's schematics.
  *
- * TODO (Story 15.1): design-blueprint.ts calculates ship stats.
  * TODO (Story 15.2): Ship commission contract creates ships via ship-generator.ts.
  * TODO (Story 15.3): captain-generator.ts generates Captain objects.
  * TODO (Story 15.4): fleet.store.ts manages the ship roster.
@@ -65,6 +64,27 @@ export interface ServiceRecord {
   destroyedTurn: TurnNumber | null
 }
 
+// ─── Ship Abilities ───────────────────────────────────────────────────────────
+
+/**
+ * Derived mission-fitness scores calculated from primary stats.
+ * Used during mission planning and resolution to assess task force capability.
+ *
+ * See Specs.md § 10 Ships Abilities for formulas.
+ *
+ * Fight         → Assault / Defense missions
+ * Investigation → Investigation / Rescue missions
+ * Support       → Escort missions
+ */
+export interface ShipAbilities {
+  /** floor((Firepower + floor(Armor × 0.75) + floor(Evasion × 0.5)) × Size / 2) */
+  fight: number
+  /** floor((floor(Speed × 0.75) + Sensors) × Size / 2) */
+  investigation: number
+  /** floor((floor(Firepower × 0.5) + floor(Sensors × 0.75)) × Size / 2) */
+  support: number
+}
+
 // ─── Ship Stats ───────────────────────────────────────────────────────────────
 
 /**
@@ -113,6 +133,8 @@ export interface Ship {
   sizeVariant: SizeVariant
   primaryStats: ShipPrimaryStats
   derivedStats: ShipDerivedStats
+  /** Mission-fitness scores derived from primary stats. Recalculated at build time. */
+  abilities: ShipAbilities
   /** Current condition as a percentage (0-100). Degrades from damage. */
   condition: number
   captain: Captain
