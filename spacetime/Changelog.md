@@ -2,6 +2,21 @@
 
 ---
 
+## Story 13.1: Exploration Engine (2026-02-19)
+
+**File**: `src/engine/formulas/exploration.ts`
+
+- `calculateExplorationGain()`: returns `randomInt(5, 15)` — exploration percentage gained per contract
+- `calculatePOICount()`: returns `2 + weightedRandom(0:40%, 1:40%, 2:20%)` — planets discovered per contract (2-4)
+- `generateOrbitScan(planet, corpLevel)`: returns `OrbitScanResult` with partial planet data based on corp level tier:
+  - Tier 1 (level 1-2): planet type and size only
+  - Tier 2 (level 3-6): + deposit types (not richness) + orbit-visible features
+  - Tier 3 (level 7-10): + exact habitability
+- `OrbitScanResult` type defined in the same file
+- Unit tests: 14 passing — gain range, POI distribution over 1000 runs, scan quality by tier
+
+---
+
 ## Playability Fixes #3 — Deposits, Growth, Corp Emergence, UI (2026-02-19)
 
 ### Bug Fixes
