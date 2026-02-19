@@ -32,129 +32,215 @@
 ---
 
 ## Epic 1: Project Foundation
+
 > Set up the project, define all TypeScript types, create utility functions, and establish static data files. No game logic yet — just the skeleton.
 
 ### Story 1.1: Project Scaffolding 🔧
+
 Initialize the Vue 3 + TypeScript project with Vite, Pinia, Vue Router, Tailwind CSS, and Vitest. Configure all tooling.
+
 ### Story 1.2: Core Types — Common 🔧
+
 Define shared types used across the entire project: Id types, TurnNumber, BPAmount, enums for planet types, sizes, resource types, etc.
+
 ### Story 1.3: Core Types — All Entities 🔧
+
 Define TypeScript interfaces for every game entity.
+
 ### Story 1.3b: Modifier System Types & Resolver 🔧🧪
+
 Define the modifier type system and implement the resolver function that colony attributes and ship stats use for local per-entity variation. Also define the EmpireBonuses type for global cumulative values.
+
 ### Story 1.4: Utility Functions 🔧🧪
+
 Implement shared utility functions for random number generation, math helpers, formatting, and ID generation.
+
 ### Story 1.5: Static Data Files 🔧
+
 Create all static data files containing game constants, tables, and templates as defined in Data.md.
 
 ## Epic 2: Game Shell & Navigation
+
 > Build the application shell: sidebar navigation, header with turn/BP display, router configuration, and empty view scaffolds. The player can navigate between screens but everything is empty.
 
 ### Story 2.1: Router Configuration 🖥️
+
 Set up Vue Router with routes for all primary screens.
+
 ### Story 2.2: App Layout Shell 🖥️
+
 Create the main application layout with sidebar navigation, top header bar, and main content area.
+
 ### Story 2.3: Empty View Scaffolds 🖥️
+
 Create placeholder views for all screens with titles and empty states.
+
 ### Story 2.4: Shared UI Components 🖥️
+
 Build reusable UI components used across multiple screens.
 
 ## Epic 3: Galaxy Generation & Sectors
+
 > Generate the galaxy (sector network) at game start. Display sectors in the Galaxy screen. This is foundational — sectors are the container for everything else.
 
 ### Story 3.1: Sector Generator 🔧🧪
+
 Implement sector generation: name, density, threat modifier.
+
 ### Story 3.2: Galaxy Generator 🔧🧪
+
 Generate the full galaxy: 10-15 sectors with adjacency graph.
+
 ### Story 3.3: Galaxy Store 🔧
+
 Create Pinia store for galaxy state.
+
 ### Story 3.4: Galaxy View 🖥️
+
 Display sector list with adjacency connections, exploration status, and basic info.
 
 ## Epic 4: Planets & Colonies — Data Model
+
 > Implement planet generation and colony data structures. Create Terra Nova as the starting colony. Display colonies in the UI. No simulation yet — just data display.
 
 ### Story 4.1: Planet Generator 🔧🧪
+
 Generate planets with type, size, features, and deposits according to Data.md rules.
+
 ### Story 4.2: Colony Generator 🔧🧪
+
 Initialize a colony from a planet and colony type selection.
+
 ### Story 4.3: Planet & Colony Stores 🔧
+
 Create Pinia stores for planets and colonies.
+
 ### Story 4.4: Colony List View 🖥️
+
 Display all colonies in a list with summary information.
+
 ### Story 4.5: Colony Detail View 🖥️
+
 Display full colony information: attributes, infrastructure, deposits, features, corporations present.
 
 ## Epic 5: Budget System
+
 > Implement the BP economy: income calculation, expense tracking, debt tokens. Display budget in header and dedicated section of dashboard.
 
 ### Story 5.1: Tax Formulas 🔧🧪
+
 Implement planet tax and corporation tax calculations.
+
 ### Story 5.2: Budget Store 🔧
+
 Create Pinia store for budget state: balance, income, expenses, debt tokens.
+
 ### Story 5.3: Budget Display 🖥️
+
 Show budget information in the header and on the dashboard.
 
 ## Epic 6: Corporations — Data Model & Lifecycle
+
 > Implement corporation generation, data model, capital system, and display. No AI behavior yet — just creating corps and viewing them.
 
 ### Story 6.1: Corporation Generator 🔧🧪
+
 Generate corporations with name, type, personality traits, and starting stats.
+
 ### Story 6.2: Corporation Store 🔧
+
 Create Pinia store for all corporations.
+
 ### Story 6.3: Corporation Capital Formulas 🔧🧪
+
 Implement capital gain calculations.
+
 ### Story 6.4: Corporations View 🖥️
+
 Display corporation list and detail views.
 
 ## Epic 7: Contract System
+
 > Implement the contract creation flow, contract execution (progress tracking), and contract completion. This is the player's primary interaction — it must feel smooth.
 
 ### Story 7.1: Contract Engine — Creation & Validation 🔧🧪
+
 Implement contract creation logic: validate inputs, calculate costs, check eligibility.
+
 ### Story 7.2: Contract Store 🔧
+
 Create Pinia store for contracts.
+
 ### Story 7.3: Contract Phase — Turn Resolution 🔧🧪
+
 Implement contract advancement during turn resolution.
+
 ### Story 7.4: Contract Creation UI — Wizard Flow 🖥️
+
 Build the multi-step contract creation interface.
+
 ### Story 7.5: Contracts View 🖥️
+
 Display active and completed contracts.
 
 ## Epic 8: Infrastructure & Production
+
 > Implement infrastructure levels, resource production and consumption calculations, and player investment in infrastructure. This connects colonies to the economy.
 
 ### Story 8.1: Production & Consumption Formulas 🔧🧪
+
 Implement all resource production and consumption calculations.
+
 ### Story 8.2: Colony Resource Flow Calculator 🔧🧪
+
 Calculate complete production and consumption for a single colony.
+
 ### Story 8.3: Player Investment Action 🔧🧪
+
 Implement direct BP investment in colony infrastructure.
+
 ### Story 8.4: Infrastructure UI Updates 🖥️
+
 Update colony detail view with functional infrastructure investment.
 
 ## Epic 9: Sector Market & Trade
+
 > Implement the sector market resolution system: production pooling, dynamism-priority purchasing, shortage resolution. This is the economic engine of the game.
 
 ### Story 9.1: Market Resolver 🔧🧪
+
 Implement full sector market resolution logic.
+
 ### Story 9.2: Market Phase — Turn Resolution 🔧🧪
+
 Integrate market resolver into turn resolution pipeline.
+
 ### Story 9.3: Market Store 🔧
+
 Create Pinia store for market state.
+
 ### Story 9.4: Market View 🖥️
+
 Display sector market dashboard.
 
 ## Epic 10: Colony Simulation
+
 > Implement colony attribute calculation, population growth, and organic infrastructure growth. Colonies become living, evolving entities.
 
 ### Story 10.1: Attribute Formulas 🔧🧪
+
 Implement all colony attribute calculations.
+
 ### Story 10.2: Colony Simulation — Growth & Population 🔧🧪
+
 Implement population growth logic and organic
+
 ### Story 10.3: Colony Phase — Turn Resolution 🔧🧪
+
 Integrate colony simulation into turn resolution.
+
 ### Story 10.4: Colony UI Updates 🖥️
+
 Update colony views to show live simulation data.
 
 ## Epic 11: Corporation AI
@@ -162,48 +248,16 @@ Update colony views to show live simulation data.
 > Implement autonomous corporation behavior: capital spending decisions, infrastructure investment, acquisition logic. Corps become alive.
 
 ### Story 11.1: Corporation Investment AI 🔧🧪
-**Description**: Implement corporation decision-making for capital spending each turn.
 
-**Files**: `src/engine/simulation/corp-ai.ts`
-
-**Acceptance Criteria**:
-- Each turn, corps with capital ≥ 2 consider investing
-- Investment priority: check sector market for resource deficits
-- Select deficit weighted by severity
-- Find highest-dynamism planet in sector with available infra slots and required inputs
-- If found and corp has capital: buy infrastructure level (cost 2)
-- Level 3+ corps can invest in any domain, lower corps only their specialty
-- Level 6+ corps consider acquisitions if capital ≥ target × 5
-- Acquisition: target must be 3+ levels below buyer, target can refuse if within 2 levels
-- On acquisition: buyer gains all target infrastructure and assets, buyer gains 1 level
-- Returns list of actions taken (investments, acquisitions) as events
-- Unit tests: investment decision with clear deficit, no suitable planet scenario, acquisition scenario, level restrictions
+Implement corporation decision-making for capital spending each turn.
 
 ### Story 11.2: Corp Phase — Turn Resolution 🔧🧪
-**Description**: Integrate corporation AI into turn resolution pipeline.
 
-**Files**: `src/engine/turn/corp-phase.ts`
-
-**Acceptance Criteria**:
-- Processes corps in order: highest level first (biggest corps act first)
-- Each corp: calculates capital gain, then runs AI decisions
-- Handles infrastructure ownership updates
-- Handles mergers/acquisitions and asset transfers
-- Returns updated corporations + events
-- Unit tests: multi-corp turn with investments and acquisition
+Integrate corporation AI into turn resolution pipeline.
 
 ### Story 11.3: Organic Corporation Emergence 🔧🧪
-**Description**: Implement natural corporation spawning on high-dynamism colonies.
 
-**Files**: Add to `src/engine/turn/corp-phase.ts` or `colony-phase.ts`
-
-**Acceptance Criteria**:
-- Each turn, colonies with dynamism ≥ 6 have a chance to spawn a new corp
-- Chance: `(dynamism - 5) × 10%` — so dynamism 6 = 10%, dynamism 10 = 50%
-- New corp type determined by colony's most prominent infrastructure domain
-- New corp receives one colony infrastructure level as its first asset (transfers from public to corporate)
-- Max one organic emergence per colony per turn
-- Unit tests: emergence chance calculation, type determination, infrastructure transfer
+Implement natural corporation spawning on high-dynamism colonies.
 
 ---
 
@@ -212,238 +266,89 @@ Update colony views to show live simulation data.
 > Wire all phases together into the master turn resolver. Implement the End Turn flow: player confirms → all phases run in order → new turn state. This is the game loop.
 
 ### Story 12.1: Turn Resolver 🔧🧪
-**Description**: Implement the master turn resolution function that calls all phases in order.
 
-**Files**: `src/engine/turn/turn-resolver.ts`
-
-**Acceptance Criteria**:
-- Calls phases in exact order: debt → income → expense → contract → mission → science → corp → colony → market → event
-- Each phase receives current state (accumulated from previous phases)
-- Collects events from all phases into unified event list
-- Returns complete updated GameState + all events
-- Increments turn number
-- Pure function: no side effects, no store access
-- Unit tests: verify phase order, verify state flows between phases, verify turn number increment
+Implement the master turn resolution function that calls all phases in order.
 
 ### Story 12.2: Income & Expense Phases 🔧🧪
-**Description**: Implement income and expense calculation phases.
 
-**Files**: `src/engine/turn/income-phase.ts`, `src/engine/turn/expense-phase.ts`
-
-**Acceptance Criteria**:
-- Income phase: sums all planet taxes + corp taxes, returns itemized income
-- Expense phase: sums all active contract costs + mission costs + player investments, returns itemized expenses
-- Both return typed result objects with per-source breakdowns
-- Unit tests: multiple income sources, multiple expense types, zero income scenario
+Implement income and expense calculation phases.
 
 ### Story 12.3: Debt Phase 🔧🧪
-**Description**: Implement debt token resolution.
 
-**Files**: `src/engine/turn/debt-phase.ts`
-
-**Acceptance Criteria**:
-- If debt tokens > 0: clear 1 token, deduct 1 BP from income
-- Returns updated debt token count and BP adjustment
-- Unit tests: token clearing, no tokens scenario, many tokens scenario
+Implement debt token resolution.
 
 ### Story 12.4: Game Store & End Turn Flow 🔧
-**Description**: Create master game store that orchestrates turn resolution and state distribution.
 
-**Files**: `src/stores/game.store.ts`
-
-**Acceptance Criteria**:
-- State: turn number, game phase (player-action / resolving / reviewing)
-- Action: `initializeGame()` generates galaxy, creates Terra Nova, sets turn 1, spawns starting corporations: one level 1 Exploration, one level 1 Construction, two level 1 Science (each owning one science infrastructure level on Terra Nova)
-- Action: `endTurn()` — collects full state from all stores → calls turn resolver → distributes results back to all stores → increments turn
-- Action: `getFullGameState()` assembles GameState from all stores
-- Getter: `currentTurn`, `gamePhase`
+Create master game store that orchestrates turn resolution and state distribution.
 
 ### Story 12.5: End Turn UI Flow 🖥️
-**Description**: Implement the End Turn button and turn transition experience.
 
-**Files**: Update `AppHeader.vue`, `DashboardView.vue`, `src/composables/useTurnActions.ts`
-
-**Acceptance Criteria**:
-- End Turn button in header: enabled during player-action phase
-- Clicking End Turn: shows confirmation dialog with budget summary (income - expenses = net)
-- If deficit: warning about debt tokens that will be created
-- On confirm: button shows "Resolving..." state, turn resolver runs
-- After resolution: turn number increments, dashboard shows new turn events
-- New turn events appear as notification cards on dashboard, priority-sorted
+Implement the End Turn button and turn transition experience.
 
 ### Story 12.6: Event Phase (Placeholder) 🔧
-**Description**: Create placeholder event phase that passes through without generating events.
 
-**Files**: `src/engine/turn/event-phase.ts`
-
-**Acceptance Criteria**:
-- Accepts game state, returns it unchanged with empty event list
-- Structure in place for future threat/event implementation
-- No actual threat logic
-
----
+Create placeholder event phase that passes through without generating events.
 
 ## Epic 13: Exploration
 
 > Implement the exploration gameplay loop: explore sectors, discover planets, orbit scan, ground survey, accept/reject.
 
 ### Story 13.1: Exploration Engine 🔧🧪
-**Description**: Implement exploration gain and planet discovery logic.
 
-**Files**: `src/engine/formulas/exploration.ts`
-
-**Acceptance Criteria**:
-- `calculateExplorationGain()`: returns `randomInt(5, 15)` (percentage)
-- `calculatePOICount()`: returns `2 + weightedRandom(0:40%, 1:40%, 2:20%)`
-- `generateOrbitScan(planet, corpLevel)`: returns partial planet data based on corp level tiers
-- Functions are pure, testable
-- Unit tests: gain range validation, POI count distribution over 1000 runs, scan quality by corp level
+Implement exploration gain and planet discovery logic.
 
 ### Story 13.2: Exploration Contract Completion 🔧🧪
-**Description**: Wire exploration results into contract completion.
 
-**Files**: Update `src/engine/turn/contract-phase.ts`
-
-**Acceptance Criteria**:
-- When exploration contract completes: add exploration gain to sector
-- Generate POI count planets using planet generator
-- Add planets to planet store with "Orbit Scanned" status
-- Orbit scan reveals info based on corp level
-- Generate events for each discovery
-- Unit tests: exploration contract completes, planets generated, sector exploration increases
+Wire exploration results into contract completion.
 
 ### Story 13.3: Accept/Reject Planet Action 🔧
-**Description**: Implement player accepting or rejecting discovered planets.
 
-**Files**: `src/engine/actions/accept-planet.ts`
-
-**Acceptance Criteria**:
-- Accept: planet status changes to "Accepted", available for ground survey and colonization contracts
-- Reject: planet status changes to "Rejected", hidden from player UI, available for corp independent settlement (future)
-- Validation: planet must be in orbit-scanned or ground-surveyed status
+Implement player accepting or rejecting discovered planets.
 
 ### Story 13.4: Ground Survey Contract 🔧
-**Description**: Wire ground survey contract to reveal full planet data.
 
-**Files**: Update contract completion logic
-
-**Acceptance Criteria**:
-- On ground survey completion: planet status changes to "Ground Surveyed"
-- All features revealed (including ground-only features)
-- Exact deposit richness revealed
-- Exact habitability revealed
-- Planet data updated in store
+Wire ground survey contract to reveal full planet data.
 
 ### Story 13.5: Exploration UI 🖥️
-**Description**: Build exploration interface within Galaxy view and contract creation.
 
-**Files**: Update `GalaxyView.vue`, `SectorCard.vue`
-
-**Acceptance Criteria**:
-- Sector detail shows exploration percentage with progress bar
-- Discovered planets listed under sector with status indicators
-- Planet cards show orbit scan data (partial info based on corp level)
-- Accept/Reject buttons on discovered planets
-- Ground survey info shown for surveyed planets (full data)
-- "Explore" quick action on explorable sectors leads to contract creation pre-filled with exploration type
-
----
+Build exploration interface within Galaxy view and contract creation.
 
 ## Epic 14: Science & Discoveries
 
 > Implement science advancement, discovery system, and schematic generation. The technology layer that feeds into ships.
 
 ### Story 14.1: Science Simulation 🔧🧪
-**Description**: Implement science point accumulation and domain advancement.
 
-**Files**: `src/engine/simulation/science-sim.ts`
-
-**Acceptance Criteria**:
-- Calculates `empire_science_per_turn = sum of all science infrastructure levels across all colonies`
-- Distributes evenly across 9 domains: `per_domain_base = floor(empire_science_per_turn / 9)`
-- Applies domain focus: if a domain is focused, its allocation is doubled
-- Only one domain may be focused at a time; focus is a player-settable field on the science state
-- Accumulates points per domain, checks against threshold: `threshold_to_next_level = current_level × 10`
-- On level up: unlocks discovery pool for that domain (adds available discoveries to pool)
-- Returns updated science state + level-up events
-- Unit tests: accumulation, level up at threshold (×10), distribution with and without focus, focus doubling effect
+Implement science point accumulation and domain advancement.
 
 ### Story 14.2: Discovery System 🔧🧪
-**Description**: Implement discovery rolling for science corporations.
 
-**Files**: Add to `src/engine/simulation/science-sim.ts`
-
-**Acceptance Criteria**:
-- Each science corp rolls for discovery each turn: `discovery_chance = (corp_level × 5) + (corp_science_infrastructure × 2) %`
-- Focus bonus: if the drawn domain is focused, double the discovery chance for that domain
-- If successful: draws random undiscovered item from available pools (domains at level 1+)
-- Discovery is permanent and empire-wide
-- Generates discovery event with name and description
-- On discovery, directly increments `gameState.empireBonuses` ship stat values — does NOT create per-entity modifiers
-- Each discovery specifies: which empireBonuses ship stat keys to increment and by how much, and which schematic categories it unlocks (one or more)
-- Discovery effects are cumulative and permanent; non-retroactive for ships already built
-- Pool exhaustion: once all discoveries at a given domain level are drawn, no further discoveries come from that level
-- Unit tests: discovery chance calculation (with and without focus), pool exhaustion, no available discoveries scenario, empireBonuses values increment correctly and persist across turns
-
+Implement discovery rolling for science corporations.
 
 ### Story 14.3: Schematic Generation 🔧🧪
-**Description**: Implement schematic development for shipbuilding corporations from discoveries.
 
-**Files**: `src/generators/schematic-generator.ts`
-
-**Acceptance Criteria**:
-- Shipbuilding corps roll for schematic development each turn: `schematic_chance = (corp_level × 2) %`
-- `max_schematics_for_corp = floor(corp_level / 2)` — corp does not develop a new schematic if already at cap
-- Schematic level determined by the corresponding science domain's current level
-- Schematic category selected randomly from unlocked categories (those unlocked by a discovered discovery)
-- Same-category schematic replaces the older version (the corp may only hold one schematic per category)
-- Stat bonus per level: flat +1 to the schematic's target ship stat (e.g., a level 3 Hull schematic gives +3 Defence). See Data.md Section 12 for the full domain → stat mapping
-- **Schematic versioning**: when the science domain for a category advances to a new level, all existing schematics in that category are automatically updated to the new level (base stat recalculated), the random modifier is preserved, and the name gains a "Mk{iteration}" suffix (e.g., Mk2, Mk3)
-- Name generated from tier prefix + category name pool
-- Returns typed Schematic object with category, level, stat bonuses, iteration counter, owner corp
-- Unit tests: chance calculation, max schematic cap, level determination from science domain, category replacement logic, stat scaling by level, name generation, schematic version update on domain level-up
+Implement schematic development for shipbuilding corporations from discoveries.
 
 ### Story 14.4: Science Phase — Turn Resolution 🔧🧪
-**Description**: Integrate science into turn resolution pipeline.
 
-**Files**: `src/engine/turn/science-phase.ts`
-
-**Acceptance Criteria**:
-- Runs science accumulation per domain (respecting focus doubling) and level checks
-- On domain level-up: triggers schematic versioning updates for all schematics in affected categories
-- Runs discovery rolls for all science corps (`discovery_chance = corp_level × 5 + corp_science_infrastructure × 2 %`)
-- Runs schematic development rolls for shipbuilding corps (`schematic_chance = corp_level × 2 %`, capped at `floor(corp_level / 2)` schematics)
-- Runs patent development rolls for all corps (`patent_chance = corp_level × 2 %`, capped at `floor(corp_level / 2)` patents). Patent bonuses per Data.md Section 14: most give +1 capital per turn per level; Combat patent gives +1 fight bonus per level
-- Returns updated science state + events (level-up events, discovery events, new schematic/patent events)
+Integrate science into turn resolution pipeline.
 
 ### Story 14.5: Science Store & View 🖥️
-**Description**: Create science store and display screen.
 
-**Files**: `src/stores/science.store.ts`, `src/views/ScienceView.vue`, `src/components/science/DomainProgress.vue`, `src/components/science/DiscoveryCard.vue`, `src/components/science/SchematicCard.vue`
-
-**Acceptance Criteria**:
-- Store holds: domain levels, accumulated progress, focused domain (one or none), discoveries list, empire tech bonuses (reads from gameState.empireBonuses)
-- Action: `applyDiscovery(discovery)` increments empireBonuses ship stat values directly and unlocks schematic categories
-- Action: `setFocus(domain | null)` sets the focused domain (replaces previous focus)
-- View shows: 9 science domains with level + progress bar (threshold = level × 10) + schematic categories unlocked per domain
-- Each domain has a "Focus" toggle — focused domain is visually highlighted and labeled "Focused (2× output)"
-- Discoveries listed chronologically with name, domain, description, and which ship stat bonuses were granted
-- Empire bonus summary: current cumulative ship stat bonuses from all discoveries (Firepower +N, Defence +N, etc.)
-- Schematics section: all corps' current schematics grouped by category, showing level, Mk iteration, and stat bonus
-- Empty states for no discoveries and no schematics
-
----
+Create science store and display screen.
 
 ## Epic 15: Ships & Blueprints
 
 > Implement ship blueprints, ship construction, and fleet display. Ships become real entities.
 
 ### Story 15.1: Blueprint System 🔧🧪
+
 **Description**: Implement ship stat generation from role, tech, corp level, schematics, and size variant.
 
 **Files**: `src/engine/actions/design-blueprint.ts`
 
 **Acceptance Criteria**:
+
 - Accepts: role, size variant (Light/Standard/Heavy), building corp, empire tech bonuses, corp schematics
 - Main stat generation per stat (size, speed, firepower, defence, detection, evasion):
   ```
@@ -471,11 +376,13 @@ Update colony views to show live simulation data.
 - Unit tests: stat formula at corp level 1/5/10, tech bonus additive effect, variant multiplier on size and derived stats, schematic bonus stacking, randomness bounded to [0.8, 1.2], derived stat calculations, ability score calculations
 
 ### Story 15.2: Ship Construction 🔧🧪
+
 **Description**: Implement ship building as a contract.
 
 **Files**: Update contract system for ship commission type
 
 **Acceptance Criteria**:
+
 - Ship commission contract requires: role selection, size variant (Light/Standard/Heavy), colony with sufficient space infrastructure, shipbuilding corp
 - Space infrastructure requirement: `required_space_infra = base_size × size_multiplier` (where base_size is the role's Base Size from Data.md and size_multiplier is 0.75/1.0/1.25)
 - Contract cost (BP/turn) = `bp_per_turn` from blueprint (already includes size variant multiplier)
@@ -486,11 +393,13 @@ Update colony views to show live simulation data.
 - Unit tests: space infra validation per role and variant, build time reduction across corp levels, cost calculation, ship object correctness on completion
 
 ### Story 15.3: Captain Generator 🔧🧪
+
 **Description**: Generate ship captains with names and experience.
 
 **Files**: `src/generators/captain-generator.ts`
 
 **Acceptance Criteria**:
+
 - Generates unique name from name pools
 - Starts at Green experience (×0.8 combat modifier)
 - Experience tracks missions completed (2 → Regular, 5 → Veteran, 10 → Elite)
@@ -498,11 +407,13 @@ Update colony views to show live simulation data.
 - Unit tests: name generation, default experience level, experience progression thresholds
 
 ### Story 15.4: Fleet Store & View 🖥️
+
 **Description**: Create fleet store and display screen.
 
 **Files**: `src/stores/fleet.store.ts`, `src/views/FleetView.vue`, `src/components/fleet/ShipCard.vue`
 
 **Acceptance Criteria**:
+
 - Store holds: ships (by ID), empire tech bonuses (cumulative from discoveries, per-stat)
 - Action: `addShip(ship)` adds completed ship to fleet
 - Action: `removeShip(id)` removes ship (on destruction), preserves service record in memorial
@@ -520,11 +431,13 @@ Update colony views to show live simulation data.
 > Implement mission creation, execution, and combat resolution. The military gameplay loop.
 
 ### Story 16.1: Mission Creation 🔧🧪
+
 **Description**: Implement mission creation and validation.
 
 **Files**: `src/engine/actions/create-mission.ts`
 
 **Acceptance Criteria**:
+
 - Player selects mission type (Escort/Assault/Defense/Rescue/Investigation), target sector, and ships for task force
 - Task force: ships from any government-owned fleet may combine; highest-experience captain becomes commander; commander's personality trait determines retreat threshold in combat
 - Validates: all selected ships are available (status "Stationed", not on another mission), target sector is valid
@@ -534,6 +447,7 @@ Update colony views to show live simulation data.
 - Unit tests: valid creation, ship already on mission rejected, non-owned ship rejected, cost calculation with and without surcharge, commander selection by experience
 
 ### Story 16.2: Combat Resolver 🔧🧪
+
 **Description**: Implement semi-abstracted combat resolution.
 
 > **Note**: Specs.md marks full combat resolution as post-prototype ("This is a TODO"). Implement a simplified version for the prototype: use task force `Fight` ability score vs a difficulty value to determine win/loss, with partial ship damage as outcome. Full phase-by-phase combat can be revisited in Epic 20.
@@ -541,6 +455,7 @@ Update colony views to show live simulation data.
 **Files**: `src/engine/simulation/combat-resolver.ts`, `src/engine/formulas/combat.ts`
 
 **Acceptance Criteria (simplified prototype)**:
+
 - Receives task force Fight score and mission difficulty (derived from mission type and target sector threat modifier)
 - Rolls outcome: win if `Fight × random(0.85, 1.15) > difficulty`, partial losses possible even on win
 - Applies captain combat modifier to Fight score (`Green ×0.8`, `Regular ×1.0`, `Veteran ×1.1`, `Elite ×1.2`)
@@ -552,11 +467,13 @@ Update colony views to show live simulation data.
 > **TODO (post-prototype)**: Replace with full phase-by-phase resolution: Initiative (avg sensors), Targeting (damaged → smallest), Exchange Rounds (3-5), Retreat Check (cautious 50% / normal 40% / aggressive 25%), Aftermath (disabled recovery 50%)
 
 ### Story 16.3: Mission Phase — Turn Resolution 🔧🧪
+
 **Description**: Integrate missions into turn resolution.
 
 **Files**: `src/engine/turn/mission-phase.ts`
 
 **Acceptance Criteria**:
+
 - Travel phase: decrement travel turns remaining
 - Execution phase: run mission logic (combat if applicable)
 - Return phase: decrement return travel turns
@@ -566,22 +483,26 @@ Update colony views to show live simulation data.
 - Returns updated missions + ships + events
 
 ### Story 16.4: Mission Store 🔧
+
 **Description**: Create Pinia store for missions.
 
 **Files**: `src/stores/mission.store.ts`
 
 **Acceptance Criteria**:
+
 - Holds active and completed missions
 - Action: `createMission(params)` validates and creates
 - Action: `advanceMissions(gameState)` calls mission phase
 - Getter: `activeMissions`, `missionsByShip(id)`
 
 ### Story 16.5: Mission UI 🖥️
+
 **Description**: Build mission creation and tracking interface.
 
 **Files**: Update `FleetView.vue`, `src/components/fleet/MissionCard.vue`, `src/components/fleet/MissionWizard.vue`, `src/composables/useMissionCreation.ts`
 
 **Acceptance Criteria**:
+
 - Mission card: type, target, task force ships, phase (travel/execution/return), turns remaining, cost/turn
 - Mission wizard: select type → select target → select ships (multi-select from available) → review cost/risk → confirm
 - Risk assessment shown: task force ability scores (Fight / Investigation / Support) surfaced per mission type — the relevant ability score determines mission fitness (Fight for Assault/Defense, Investigation for Investigation/Rescue, Support for Escort)
@@ -595,11 +516,13 @@ Update colony views to show live simulation data.
 > Implement trade route contracts connecting adjacent sectors for resource sharing.
 
 ### Story 17.1: Trade Route Contract 🔧🧪
+
 **Description**: Implement trade route as an ongoing contract type.
 
 **Files**: `src/engine/actions/create-trade-route.ts`, update market resolver
 
 **Acceptance Criteria**:
+
 - Player creates trade route contract between two adjacent sectors
 - Requires Transport corporation
 - Cost: 2 BP/turn, ongoing (no end date)
@@ -607,22 +530,26 @@ Update colony views to show live simulation data.
 - Unit tests: valid creation, non-adjacent sectors rejected, cancellation
 
 ### Story 17.2: Cross-Sector Market Integration 🔧🧪
+
 **Description**: Integrate trade routes into market resolution.
 
 **Files**: Update `src/engine/simulation/market-resolver.ts`
 
 **Acceptance Criteria**:
+
 - After internal sector market resolves, connected sectors share surplus at 50% efficiency
 - Surplus from Sector A available to Sector B's deficit planets (by dynamism order) and vice versa
 - Trade route must be active (contract not cancelled)
 - Unit tests: surplus sharing, efficiency rate, bidirectional flow
 
 ### Story 17.3: Trade Route UI 🖥️
+
 **Description**: Display trade routes in market and galaxy views.
 
 **Files**: Update `MarketView.vue`, `GalaxyView.vue`
 
 **Acceptance Criteria**:
+
 - Active trade routes shown on galaxy view as connections between sectors
 - Market view shows cross-sector imports/exports when trade route active
 - Trade route creation accessible from galaxy view (sector context menu)
@@ -634,11 +561,13 @@ Update colony views to show live simulation data.
 > Implement game persistence: autosave, manual saves, JSON export/import.
 
 ### Story 18.1: Serialization 🔧🧪
+
 **Description**: Implement game state serialization and deserialization.
 
 **Files**: `src/utils/save.ts`
 
 **Acceptance Criteria**:
+
 - `serializeGameState(state): string` — converts full GameState to JSON string
 - `deserializeGameState(json): GameState` — parses JSON back to typed state
 - Save file format includes version number and timestamp
@@ -646,11 +575,13 @@ Update colony views to show live simulation data.
 - Unit tests: round-trip serialization (serialize → deserialize → compare), invalid JSON handling
 
 ### Story 18.2: Save/Load Store & Actions 🔧
+
 **Description**: Implement save/load via LocalStorage with multiple slots.
 
 **Files**: `src/composables/useSaveLoad.ts`, update `src/stores/game.store.ts`
 
 **Acceptance Criteria**:
+
 - Autosave: triggers after every turn resolution, saves to dedicated autosave slot
 - Manual save: player can save to 3 named slots
 - Load: restores full game state from any save slot
@@ -659,11 +590,13 @@ Update colony views to show live simulation data.
 - Save slot list shows: slot name, turn number, date saved
 
 ### Story 18.3: Settings View 🖥️
+
 **Description**: Build settings screen with save/load interface.
 
 **Files**: `src/views/SettingsView.vue`
 
 **Acceptance Criteria**:
+
 - Save slots displayed with turn number and timestamp
 - "Save" button per slot (with overwrite confirmation)
 - "Load" button per slot (with confirmation)
@@ -679,11 +612,13 @@ Update colony views to show live simulation data.
 > Build the event infrastructure: event store, notification display, event feed. No threat generation yet — just the piping for events generated by other systems.
 
 ### Story 19.1: Event Store 🔧
+
 **Description**: Create event store to collect and display events from all systems.
 
 **Files**: `src/stores/event.store.ts`
 
 **Acceptance Criteria**:
+
 - Holds current turn events and historical events (last 50 turns)
 - Each event: id, turn, priority (Critical/Warning/Info/Positive), category, title, description, related entity IDs
 - Action: `addEvents(events[])` bulk adds from turn resolution
@@ -691,11 +626,13 @@ Update colony views to show live simulation data.
 - Getter: `currentTurnEvents` (sorted by priority), `unreadCount`, `eventHistory`
 
 ### Story 19.2: Notification Display 🖥️
+
 **Description**: Build event notification UI on dashboard and as overlay.
 
 **Files**: `src/components/layout/AppNotifications.vue`, update `DashboardView.vue`
 
 **Acceptance Criteria**:
+
 - Dashboard shows current turn events as cards, priority-sorted
 - Critical events (red) at top, cannot be dismissed without viewing
 - Event cards expandable for full detail
@@ -704,11 +641,13 @@ Update colony views to show live simulation data.
 - Events link to relevant entity (clicking colony event navigates to colony detail)
 
 ### Story 19.3: Dashboard — Full Implementation 🖥️
+
 **Description**: Complete the dashboard with all summary information.
 
 **Files**: `src/views/DashboardView.vue`
 
 **Acceptance Criteria**:
+
 - Turn number prominent
 - Budget summary: income, expenses, net BP, debt warning (red banner if in debt)
 - Event feed (current turn, priority-sorted: Critical → Warning → Info → Positive)

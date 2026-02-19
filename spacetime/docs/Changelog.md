@@ -2,6 +2,20 @@
 
 ---
 
+## Science Bug Fix (2026-02-19)
+
+**Bug**: Science was not progressing with 2 starting science corps because `distributeScience` computed `floor(2 / 9) = 0`, giving every domain 0 SP per turn.
+
+**Fix** (`science-sim.ts`): `distributeScience` now distributes the remainder `(empire_science % 9)` one-each to the first N domains in insertion order. With 2 SP/turn: `base = 0`, `remainder = 2` → 2 domains receive 1 SP per turn each. Level 0→1 threshold is 15 points, so science now progresses meaningfully from the start.
+
+**Science view** (`ScienceView.vue` + `science.store.ts`): Added `sciencePerTurn` computed getter (calls `calculateEmpireSciencePerTurn` via colony store). Displayed as "Generating X SP/turn" in the Science Domains section header.
+
+**Tests** (`science-phase.test.ts`, `science-sim.test.ts`): Added regression test verifying 2 infra levels produce accumulation via remainder distribution. Updated the stale "floors per-domain allocation" test that was asserting the broken floor-only behavior.
+
+**Root cause of missed detection**: All accumulation tests used `makeColony(9)` or higher (≥ 9 levels → floor ≥ 1). The `makeMinimalState` default used `makeColony(2)` but no accumulation assertions ran on it.
+
+---
+
 ## Epic 14: Science & Discoveries (Completed 2026-02-19)
 
 Implemented full science system: domain advancement, discovery rolling, schematic generation, patent development, science phase integration, and the Science UI store and view (Stories 14.1–14.5).

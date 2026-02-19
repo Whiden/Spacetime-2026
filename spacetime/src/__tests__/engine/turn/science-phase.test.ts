@@ -186,6 +186,30 @@ describe('resolveSciencePhase — science accumulation', () => {
     }
   })
 
+  it('accumulates science with starting conditions (2 infra levels via remainder distribution)', () => {
+    // Starting game: 2 science corps × 1 level each = 2 SP/turn
+    // floor(2/9) = 0 base, remainder = 2 → first 2 domains receive 1 SP each, rest receive 0
+    // This verifies science actually progresses from turn 1 (regression test for the floor(2/9)=0 bug)
+    const colony = makeColony(2)
+    const state = makeMinimalState({
+      colonies: new Map([[COLONY_ID, colony]]),
+    })
+
+    const { updatedState } = resolveSciencePhase(state)
+
+    const allDomains = [...updatedState.scienceDomains.values()]
+    const withPoints = allDomains.filter((d) => d.accumulatedPoints > 0)
+    const withoutPoints = allDomains.filter((d) => d.accumulatedPoints === 0)
+
+    // Exactly 2 domains should have received 1 SP (empire_science % 9 = 2)
+    expect(withPoints.length).toBe(2)
+    for (const domain of withPoints) {
+      expect(domain.accumulatedPoints).toBe(1)
+    }
+    // The remaining 7 domains receive 0 SP this turn
+    expect(withoutPoints.length).toBe(7)
+  })
+
   it('doubles science allocation for the focused domain', () => {
     // 18 science levels → base = 2 per domain; focused domain gets 4
     const colony = makeColony(18)

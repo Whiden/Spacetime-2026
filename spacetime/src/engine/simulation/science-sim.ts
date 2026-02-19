@@ -73,12 +73,20 @@ export function distributeScience(
   const updatedDomains = new Map<string, ScienceDomainState>()
   const events: GameEvent[] = []
 
-  // Calculate base allocation per domain
+  // Calculate base allocation per domain and remainder
+  // Remainder points (empire_science % 9) are distributed one-each to the first N domains
+  // in insertion order, so even small science values (< 9) still produce progress.
   const perDomainBase = Math.floor(empireSciencePerTurn / 9)
+  let remainderPoints = empireSciencePerTurn % 9
 
   for (const [key, domain] of domains) {
-    // Determine allocation: doubled if focused
-    const allocation = domain.focused ? perDomainBase * 2 : perDomainBase
+    // Give 1 bonus point to the first (empire_science % 9) domains
+    const remainderBonus = remainderPoints > 0 ? 1 : 0
+    if (remainderPoints > 0) remainderPoints--
+
+    // Total base for this domain (including remainder); doubled if focused
+    const baseWithRemainder = perDomainBase + remainderBonus
+    const allocation = domain.focused ? baseWithRemainder * 2 : baseWithRemainder
 
     // Accumulate points
     let accumulatedPoints = domain.accumulatedPoints + allocation

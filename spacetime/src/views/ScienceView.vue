@@ -24,7 +24,7 @@ import SchematicCard from '../components/science/SchematicCard.vue'
 
 const scienceStore = useScienceStore()
 const corpStore = useCorporationStore()
-const { allDomains, focusedDomain, allDiscoveries, empireBonuses, schematicsByCategory } = storeToRefs(scienceStore)
+const { allDomains, focusedDomain, allDiscoveries, empireBonuses, schematicsByCategory, sciencePerTurn } = storeToRefs(scienceStore)
 
 // ─── Focus toggle ─────────────────────────────────────────────────────────────
 
@@ -77,9 +77,15 @@ const hasAnySchematics = computed(() => schematicsByCategory.value.size > 0)
 
     <!-- ─── Science Domains ────────────────────────────────────────────────── -->
     <section class="mb-8">
-      <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">
-        Science Domains
-      </h2>
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-semibold text-zinc-400 uppercase tracking-wider">
+          Science Domains
+        </h2>
+        <span class="text-xs text-zinc-400">
+          Generating
+          <span class="font-semibold text-sky-400">{{ sciencePerTurn }} SP/turn</span>
+        </span>
+      </div>
       <p class="text-xs text-zinc-500 mb-4">
         Focus a domain to double its science output this turn. Only one domain may be focused at a time.
       </p>

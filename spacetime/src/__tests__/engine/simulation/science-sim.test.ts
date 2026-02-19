@@ -163,14 +163,17 @@ describe('distributeScience', () => {
     }
   })
 
-  it('floors the per-domain allocation', () => {
-    // 10 science / 9 domains = floor(1.11) = 1 per domain
+  it('distributes remainder points to the first (empire_science % 9) domains', () => {
+    // 10 science / 9 domains: base = floor(10/9) = 1, remainder = 10 % 9 = 1
+    // First 1 domain gets base+1 = 2, remaining 8 get base = 1
     const domains = makeAllDomains(0, 0)
     const result = distributeScience(domains, 10, TURN_5)
 
-    for (const [, domain] of result.updatedDomains) {
-      expect(domain.accumulatedPoints).toBe(1)
-    }
+    const allPoints = [...result.updatedDomains.values()].map((d) => d.accumulatedPoints)
+    const withTwo = allPoints.filter((p) => p === 2)
+    const withOne = allPoints.filter((p) => p === 1)
+    expect(withTwo.length).toBe(1)
+    expect(withOne.length).toBe(8)
   })
 
   it('accumulates points over multiple calls', () => {

@@ -22,9 +22,10 @@ import type { ScienceSectorType, SchematicCategory } from '../types/common'
 import type { ScienceDomainState, Discovery, Schematic, Patent } from '../types/science'
 import type { EmpireBonuses } from '../types/empire'
 import { createEmptyEmpireBonuses } from '../types/empire'
-import { createInitialScienceDomains, setDomainFocus } from '../engine/simulation/science-sim'
+import { createInitialScienceDomains, setDomainFocus, calculateEmpireSciencePerTurn } from '../engine/simulation/science-sim'
 import { applyDiscoveryEffects } from '../engine/simulation/science-sim'
 import type { DiscoveryDefinition } from '../data/discoveries'
+import { useColonyStore } from './colony.store'
 
 export const useScienceStore = defineStore('science', () => {
   // ─── State ───────────────────────────────────────────────────────────────────
@@ -77,6 +78,15 @@ export const useScienceStore = defineStore('science', () => {
   const discoveredDefinitionIds = computed<string[]>(() =>
     [...discoveries.value.values()].map((d) => d.sourceDefinitionId),
   )
+
+  /**
+   * Empire science output per turn: sum of all science infrastructure levels across all colonies.
+   * Used by the science view to show SP generation rate.
+   */
+  const sciencePerTurn = computed<number>(() => {
+    const colonyStore = useColonyStore()
+    return calculateEmpireSciencePerTurn(Array.from(colonyStore.colonies.values()))
+  })
 
   // ─── Actions ─────────────────────────────────────────────────────────────────
 
@@ -168,6 +178,7 @@ export const useScienceStore = defineStore('science', () => {
     allSchematics,
     allPatents,
     discoveredDefinitionIds,
+    sciencePerTurn,
     schematicsByCategory,
     // Actions
     setFocus,
