@@ -82,6 +82,7 @@ spacetime/
 │   │   ├── planet-types.ts        # Planet type definitions, spawn weights, base stats
 │   │   ├── planet-features.ts     # Feature definitions, modifiers, spawn rules
 │   │   ├── planet-deposits.ts     # Deposit types, resource mappings, richness levels
+│   │   ├── planet-sizes.ts        # Planet size definitions, habitability and slot modifiers
 │   │   ├── colony-types.ts        # Colony type packages, bonuses, starting infra
 │   │   ├── resources.ts           # Resource definitions, categories
 │   │   ├── infrastructure.ts      # Domain definitions, production/consumption rules

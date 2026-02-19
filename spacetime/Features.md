@@ -354,17 +354,19 @@ Update colony views to show live simulation data.
 > Implement science advancement, discovery system, and schematic generation. The technology layer that feeds into ships.
 
 ### Story 14.1: Science Simulation 🔧🧪
-**Description**: Implement science point accumulation and sector advancement.
+**Description**: Implement science point accumulation and domain advancement.
 
 **Files**: `src/engine/simulation/science-sim.ts`
 
 **Acceptance Criteria**:
-- Calculates empire_science
-- Distributes points for domains
-- Accumulates points per domain, checks against threshold
-- On level up: activates discovery pool for that domain
+- Calculates `empire_science_per_turn = sum of all science infrastructure levels across all colonies`
+- Distributes evenly across 9 domains: `per_domain_base = floor(empire_science_per_turn / 9)`
+- Applies domain focus: if a domain is focused, its allocation is doubled
+- Only one domain may be focused at a time; focus is a player-settable field on the science state
+- Accumulates points per domain, checks against threshold: `threshold_to_next_level = current_level × 10`
+- On level up: unlocks discovery pool for that domain (adds available discoveries to pool)
 - Returns updated science state + level-up events
-- Unit tests: accumulation, level up at threshold, distribution with and without corps
+- Unit tests: accumulation, level up at threshold (×10), distribution with and without focus, focus doubling effect
 
 ### Story 14.2: Discovery System 🔧🧪
 **Description**: Implement discovery rolling for science corporations.
@@ -372,15 +374,16 @@ Update colony views to show live simulation data.
 **Files**: Add to `src/engine/simulation/science-sim.ts`
 
 **Acceptance Criteria**:
-- Each science corp rolls for discovery each turn
-- If successful: draws random undiscovered item from available pools (sectors at level 1+)
+- Each science corp rolls for discovery each turn: `discovery_chance = (corp_level × 5) + (corp_science_infrastructure × 2) %`
+- Focus bonus: if the drawn domain is focused, double the discovery chance for that domain
+- If successful: draws random undiscovered item from available pools (domains at level 1+)
 - Discovery is permanent and empire-wide
 - Generates discovery event with name and description
-- Unit tests: discovery chance calculation, pool exhaustion, no available discoveries scenario
-- On discovery, directly increments `gameState.empireBonuses` values (shipStats and/or infraCaps) — does NOT create modifiers
-- Each discovery specifies: which empireBonuses keys to increment and by how much, whether it enables schematics (boolean), and which schematic categories it unlocks
-- Discovery effects update the empire tech bonus table (cumulative, permanent, non-retroactive for existing ships)
-- Unit tests verify that empireBonuses values increment correctly and persist across turns
+- On discovery, directly increments `gameState.empireBonuses` ship stat values — does NOT create per-entity modifiers
+- Each discovery specifies: which empireBonuses ship stat keys to increment and by how much, and which schematic categories it unlocks (one or more)
+- Discovery effects are cumulative and permanent; non-retroactive for ships already built
+- Pool exhaustion: once all discoveries at a given domain level are drawn, no further discoveries come from that level
+- Unit tests: discovery chance calculation (with and without focus), pool exhaustion, no available discoveries scenario, empireBonuses values increment correctly and persist across turns
 
 
 ### Story 14.3: Schematic Generation 🔧🧪
@@ -389,15 +392,16 @@ Update colony views to show live simulation data.
 **Files**: `src/generators/schematic-generator.ts`
 
 **Acceptance Criteria**:
-- Shipbuilding corps roll for schematic development each turn
-- Max schematics per corp
-- Schematic level determined by corresponding science domain level
-- Schematic category selected randomly from unlocked categories
-- Same-category schematic replaces the older version
+- Shipbuilding corps roll for schematic development each turn: `schematic_chance = (corp_level × 2) %`
+- `max_schematics_for_corp = floor(corp_level / 2)` — corp does not develop a new schematic if already at cap
+- Schematic level determined by the corresponding science domain's current level
+- Schematic category selected randomly from unlocked categories (those unlocked by a discovered discovery)
+- Same-category schematic replaces the older version (the corp may only hold one schematic per category)
 - Stat bonus per level: flat +1 to the schematic's target ship stat (e.g., a level 3 Hull schematic gives +3 Defence). See Data.md Section 12 for the full domain → stat mapping
+- **Schematic versioning**: when the science domain for a category advances to a new level, all existing schematics in that category are automatically updated to the new level (base stat recalculated), the random modifier is preserved, and the name gains a "Mk{iteration}" suffix (e.g., Mk2, Mk3)
 - Name generated from tier prefix + category name pool
-- Returns typed Schematic object with category, level, stat bonuses, source discovery, owner corp
-- Unit tests: chance calculation, max schematic cap, level determination from science domain, category replacement logic, stat scaling by level, name generation
+- Returns typed Schematic object with category, level, stat bonuses, iteration counter, owner corp
+- Unit tests: chance calculation, max schematic cap, level determination from science domain, category replacement logic, stat scaling by level, name generation, schematic version update on domain level-up
 
 ### Story 14.4: Science Phase — Turn Resolution 🔧🧪
 **Description**: Integrate science into turn resolution pipeline.
@@ -405,24 +409,28 @@ Update colony views to show live simulation data.
 **Files**: `src/engine/turn/science-phase.ts`
 
 **Acceptance Criteria**:
-- Runs science accumulation and level checks
-- Runs discovery rolls for all science corps
--  Runs schematic development rolls for shipbuilding corps based on unlocked science domain levels
--  Runs patent development rolls for all corps. Patent bonus: +1 capital per turn per level (flat, flavor-only for prototype). See Data.md Section 14 for domain → bonus mapping
-- Returns updated science state + events
+- Runs science accumulation per domain (respecting focus doubling) and level checks
+- On domain level-up: triggers schematic versioning updates for all schematics in affected categories
+- Runs discovery rolls for all science corps (`discovery_chance = corp_level × 5 + corp_science_infrastructure × 2 %`)
+- Runs schematic development rolls for shipbuilding corps (`schematic_chance = corp_level × 2 %`, capped at `floor(corp_level / 2)` schematics)
+- Runs patent development rolls for all corps (`patent_chance = corp_level × 2 %`, capped at `floor(corp_level / 2)` patents). Patent bonuses per Data.md Section 14: most give +1 capital per turn per level; Combat patent gives +1 fight bonus per level
+- Returns updated science state + events (level-up events, discovery events, new schematic/patent events)
 
 ### Story 14.5: Science Store & View 🖥️
 **Description**: Create science store and display screen.
 
-**Files**: `src/stores/science.store.ts`, `src/views/ScienceView.vue`, `src/components/science/SectorProgress.vue`, `src/components/science/DiscoveryCard.vue`, `src/components/science/SchematicCard.vue`
+**Files**: `src/stores/science.store.ts`, `src/views/ScienceView.vue`, `src/components/science/DomainProgress.vue`, `src/components/science/DiscoveryCard.vue`, `src/components/science/SchematicCard.vue`
 
 **Acceptance Criteria**:
-- Store holds: domain levels, accumulated progress, discoveries list, empire tech bonuses (reads from gameState.empireBonuses)
-- Action: `applyDiscovery(discovery)` increments empireBonuses directly and unlocks schematic categories
-- View shows: 9 science domains with level + progress bar + schematic categories unlocked per domain
-- Discoveries listed chronologically with name, domain, description, bonus contributions
-- Empire bonus summary: current cumulative bonuses per ship stat and per infra cap
-- Empty states for no discoveries
+- Store holds: domain levels, accumulated progress, focused domain (one or none), discoveries list, empire tech bonuses (reads from gameState.empireBonuses)
+- Action: `applyDiscovery(discovery)` increments empireBonuses ship stat values directly and unlocks schematic categories
+- Action: `setFocus(domain | null)` sets the focused domain (replaces previous focus)
+- View shows: 9 science domains with level + progress bar (threshold = level × 10) + schematic categories unlocked per domain
+- Each domain has a "Focus" toggle — focused domain is visually highlighted and labeled "Focused (2× output)"
+- Discoveries listed chronologically with name, domain, description, and which ship stat bonuses were granted
+- Empire bonus summary: current cumulative ship stat bonuses from all discoveries (Firepower +N, Defence +N, etc.)
+- Schematics section: all corps' current schematics grouped by category, showing level, Mk iteration, and stat bonus
+- Empty states for no discoveries and no schematics
 
 ---
 
@@ -430,21 +438,37 @@ Update colony views to show live simulation data.
 
 > Implement ship blueprints, ship construction, and fleet display. Ships become real entities.
 
-### Story 15.1: Blueprint System 🔧
-**Description**: Implement blueprint creation from schematics.
+### Story 15.1: Blueprint System 🔧🧪
+**Description**: Implement ship stat generation from role, tech, corp level, schematics, and size variant.
 
 **Files**: `src/engine/actions/design-blueprint.ts`
 
 **Acceptance Criteria**:
-- Accepts: role, size variant, building corp, empire tech bonuses, corp schematics
-- Calculate ship stats
-- Applies size variant multiplier to size stat
-- Derives hull points and power projection
-- Calculates BP/turn cost
-- Calculates ship abilities from final stats: `Fight`, `Investigation`, `Support` (see Specs.md Section 10 for formulas). These are stored on the Ship object and used for mission assessment
-- Reads empire bonuses as plain values, stores schematics as ship.modifiers for per-ship attribution
-- Returns fully typed Ship object with all stats, schematics applied list, build turn, and owning corp
-- Unit tests: stat scaling with corp level (level 1 vs level 5 vs level 10), tech bonus application, variant multiplier effect on size and derived stats, schematic bonus stacking, randomness within bounds, derived stat calculations
+- Accepts: role, size variant (Light/Standard/Heavy), building corp, empire tech bonuses, corp schematics
+- Main stat generation per stat (size, speed, firepower, defence, detection, evasion):
+  ```
+  effective_base = role_base_stat + empire_tech_bonus[stat]
+  corp_modifier = 0.7 + (corp_level × 0.06)
+  final_stat = floor((floor(effective_base × corp_modifier) + schematic_bonuses) × random(0.8, 1.2))
+  ```
+- Size variant multiplier applied to the `size` stat: Light ×0.75, Standard ×1.0, Heavy ×1.25
+- Secondary stats derived after main stats:
+  ```
+  hull_points = size × 5 + defence × 10 + schematic_bonuses + role_bonuses
+  power_projection = floor(size × 1.5) + schematic_bonuses + role_bonuses
+  bp_per_turn = max(1, floor(size / 3)) + schematic_bonuses + role_bonuses
+  base_build_time = max(3, floor(size × 1)) + schematic_bonuses + role_bonuses
+  ```
+- Size variant multiplier also applied to `bp_per_turn` and `base_build_time` (Light ×0.75, Heavy ×1.25, floored)
+- Ship abilities calculated from final stats:
+  ```
+  Fight = floor((Firepower + floor(Defence × 0.75) + floor(Evasion × 0.5)) × Size / 2)
+  Investigation = floor((floor(Speed × 0.75) + Detection) × Size / 2)
+  Support = floor((floor(Firepower × 0.5) + floor(Detection × 0.75)) × Size / 2)
+  ```
+- Reads empire bonuses as plain additive values; stores schematics on ship for attribution
+- Returns fully typed Ship object with all stats, secondary stats, abilities, schematics applied list, build turn, and owning corp
+- Unit tests: stat formula at corp level 1/5/10, tech bonus additive effect, variant multiplier on size and derived stats, schematic bonus stacking, randomness bounded to [0.8, 1.2], derived stat calculations, ability score calculations
 
 ### Story 15.2: Ship Construction 🔧🧪
 **Description**: Implement ship building as a contract.
@@ -453,14 +477,13 @@ Update colony views to show live simulation data.
 
 **Acceptance Criteria**:
 - Ship commission contract requires: role selection, size variant (Light/Standard/Heavy), colony with sufficient space infrastructure, shipbuilding corp
-- Space infra requirement
-- BP/turn
-- Base build time anda ctual build time
-- Size variant multiplier applied to cost and build time as well (Light ×0.75, Heavy ×1.25)
-- On completion: ship generated using ship stat generator, captain assigned (Green experience)
-- Ship added to fleet store with status "Stationed" at colony's sector
-- Building corp receives completion bonus as normal contract
-- Unit tests: build time calculation across corp levels, space infra validation, cost scaling by variant, ship creation on completion with correct stats
+- Space infrastructure requirement: `required_space_infra = base_size × size_multiplier` (where base_size is the role's Base Size from Data.md and size_multiplier is 0.75/1.0/1.25)
+- Contract cost (BP/turn) = `bp_per_turn` from blueprint (already includes size variant multiplier)
+- Contract duration = `base_build_time` from blueprint (already includes size variant multiplier); actual build time further reduced by corp level: `actual_build_time = max(1, floor(base_build_time × (1 - corp_level × 0.05)))`
+- On completion: ship generated using blueprint engine (Story 15.1), captain assigned at Green experience
+- Ship added to fleet store with status "Stationed" at the colony's sector
+- Building corp receives contract completion bonus as per normal contract rules
+- Unit tests: space infra validation per role and variant, build time reduction across corp levels, cost calculation, ship object correctness on completion
 
 ### Story 15.3: Captain Generator 🔧🧪
 **Description**: Generate ship captains with names and experience.
@@ -502,28 +525,31 @@ Update colony views to show live simulation data.
 **Files**: `src/engine/actions/create-mission.ts`
 
 **Acceptance Criteria**:
-- Player selects mission type, target sector, and ships for task force
-- Validates: ships are available (not on another mission), target is valid
-- Calculates: travel time (sector hops), execution duration, total cost
-- Fleet surcharge: +1 BP/turn per ship with size ≥ 7
-- Returns Mission object or validation error
-- Ships marked as "On Mission"
-- Unit tests: valid creation, ship already on mission, cost calculation
+- Player selects mission type (Escort/Assault/Defense/Rescue/Investigation), target sector, and ships for task force
+- Task force: ships from any government-owned fleet may combine; highest-experience captain becomes commander; commander's personality trait determines retreat threshold in combat
+- Validates: all selected ships are available (status "Stationed", not on another mission), target sector is valid
+- Calculates: travel time (sector hops × 1 turn per hop), execution duration (from Data.md mission durations), total BP/turn cost (mission base cost + fleet surcharge of +1 BP/turn per ship with size ≥ 7)
+- Returns typed Mission object or validation error
+- On creation: ships status set to "On Mission"
+- Unit tests: valid creation, ship already on mission rejected, non-owned ship rejected, cost calculation with and without surcharge, commander selection by experience
 
 ### Story 16.2: Combat Resolver 🔧🧪
 **Description**: Implement semi-abstracted combat resolution.
 
+> **Note**: Specs.md marks full combat resolution as post-prototype ("This is a TODO"). Implement a simplified version for the prototype: use task force `Fight` ability score vs a difficulty value to determine win/loss, with partial ship damage as outcome. Full phase-by-phase combat can be revisited in Epic 20.
+
 **Files**: `src/engine/simulation/combat-resolver.ts`, `src/engine/formulas/combat.ts`
 
-**Acceptance Criteria**:
-- Initiative: higher average sensor rating goes first
-- Targeting: priority order (damaged → smallest size), modified by personality
-- Exchange rounds (3-5): damage = firepower × captain_mod × random(0.85,1.15), absorbed = armor × random(0.9,1.1)
-- Condition tracking per ship, destruction at 0%
-- Retreat check after round 3 (threshold by personality: cautious 50%, normal 40%, aggressive 25%)
-- Disabled ship recovery: 50% if holding field
-- Returns CombatResult with per-ship outcomes, round log, overall result
-- Unit tests: initiative calculation, damage/armor interaction, retreat trigger, ship destruction, recovery roll
+**Acceptance Criteria (simplified prototype)**:
+- Receives task force Fight score and mission difficulty (derived from mission type and target sector threat modifier)
+- Rolls outcome: win if `Fight × random(0.85, 1.15) > difficulty`, partial losses possible even on win
+- Applies captain combat modifier to Fight score (`Green ×0.8`, `Regular ×1.0`, `Veteran ×1.1`, `Elite ×1.2`)
+- Condition degradation: winning task force takes 5-20% condition loss per ship; losing task force takes 30-60%
+- Ship destruction: if condition reaches 0%, ship is permanently lost
+- Returns CombatResult with: win/loss, per-ship condition deltas, destroyed ship IDs, round narrative summary
+- Unit tests: win/loss calculation, captain modifier application, condition delta range, ship destruction at 0%
+
+> **TODO (post-prototype)**: Replace with full phase-by-phase resolution: Initiative (avg sensors), Targeting (damaged → smallest), Exchange Rounds (3-5), Retreat Check (cautious 50% / normal 40% / aggressive 25%), Aftermath (disabled recovery 50%)
 
 ### Story 16.3: Mission Phase — Turn Resolution 🔧🧪
 **Description**: Integrate missions into turn resolution.
@@ -684,13 +710,13 @@ Update colony views to show live simulation data.
 
 **Acceptance Criteria**:
 - Turn number prominent
-- Budget summary: income, expenses, net, debt warning
-- Event feed (current turn, priority-sorted)
-- Empire summary cards: colony count, corp count, ship count, active contracts, science highlights
+- Budget summary: income, expenses, net BP, debt warning (red banner if in debt)
+- Event feed (current turn, priority-sorted: Critical → Warning → Info → Positive)
+- Empire summary cards: colony count, corp count, ship count, active contract count — each card links to the relevant screen
 - Quick actions: Create Contract, View Colonies, View Corporations, View Fleet
-- Each summary card links to relevant screen
-- "No active contracts" prompts contract creation
-- Starting corporations (Exploration, Construction, 2× Science) are shown immediately on the dashboard — no empty state needed for corps at game start
+- "No active contracts" state prompts contract creation with a clear call-to-action
+- Starting corporations (1 Exploration, 1 Construction, 2× Science) are visible immediately at game start — no empty state for corporations
+- Science summary card shows highest domain level and number of discoveries made (links to Science view)
 
 ---
 
