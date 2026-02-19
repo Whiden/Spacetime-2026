@@ -19,7 +19,6 @@ import type { TurnNumber, ColonyId, CorpId, BPAmount } from '../types/common'
 import { CorpType, InfraDomain } from '../types/common'
 import type { GameState, GamePhase } from '../types/game'
 import type { Galaxy } from '../types/sector'
-import { createEmptyEmpireBonuses } from '../types/empire'
 import { resolveTurn } from '../engine/turn/turn-resolver'
 import { useGalaxyStore } from './galaxy.store'
 import { useColonyStore } from './colony.store'
@@ -28,6 +27,8 @@ import { useCorporationStore } from './corporation.store'
 import { useBudgetStore } from './budget.store'
 import { useContractStore } from './contract.store'
 import { useMarketStore } from './market.store'
+import { useScienceStore } from './science.store'
+import { createInitialScienceDomains } from '../engine/simulation/science-sim'
 import { generateCorporation } from '../generators/corp-generator'
 
 export const useGameStore = defineStore('game', () => {
@@ -70,6 +71,7 @@ export const useGameStore = defineStore('game', () => {
     const colonyStore = useColonyStore()
     const corpStore = useCorporationStore()
     const budgetStore = useBudgetStore()
+    const scienceStore = useScienceStore()
 
     // 1. Generate galaxy
     galaxyStore.generate()
@@ -80,6 +82,9 @@ export const useGameStore = defineStore('game', () => {
 
     // 3. Initialize budget
     budgetStore.initialize()
+
+    // 3b. Initialize science domains (all at level 0)
+    scienceStore.updateScienceDomains(createInitialScienceDomains())
 
     // 4. Spawn starting corporations on Terra Nova
     const terraNovaPlanetId = _getTerraNovaPlanetId(colonyStore, startingSectorId)
@@ -104,6 +109,7 @@ export const useGameStore = defineStore('game', () => {
     const budgetStore = useBudgetStore()
     const contractStore = useContractStore()
     const marketStore = useMarketStore()
+    const scienceStore = useScienceStore()
 
     const galaxy: Galaxy = {
       sectors: galaxyStore.sectors,
@@ -130,7 +136,7 @@ export const useGameStore = defineStore('game', () => {
         calculatedTurn: turn.value,
       },
 
-      empireBonuses: createEmptyEmpireBonuses(),
+      empireBonuses: scienceStore.empireBonuses,
 
       galaxy,
 
@@ -142,11 +148,11 @@ export const useGameStore = defineStore('game', () => {
       ships: new Map(),
       missions: new Map(),
 
-      // Science (empty until Epic 13)
-      scienceDomains: new Map(),
-      discoveries: new Map(),
-      schematics: new Map(),
-      patents: new Map(),
+      // Science — initialized from science store
+      scienceDomains: new Map(scienceStore.scienceDomains),
+      discoveries: new Map(scienceStore.discoveries),
+      schematics: new Map(scienceStore.schematics),
+      patents: new Map(scienceStore.patents),
 
       // Trade
       sectorMarkets: new Map(marketStore.sectorMarkets),
@@ -214,6 +220,7 @@ export const useGameStore = defineStore('game', () => {
     const contractStore = useContractStore()
     const galaxyStore = useGalaxyStore()
     const marketStore = useMarketStore()
+    const scienceStore = useScienceStore()
 
     // Colonies
     for (const colony of state.colonies.values()) {
@@ -251,6 +258,19 @@ export const useGameStore = defineStore('game', () => {
     // Market — replace the entire sector markets map.
     // $patch with a Map ref requires an explicit cast due to Pinia typing limitations.
     marketStore.$patch({ sectorMarkets: new Map(state.sectorMarkets) as Map<import('../types/common').SectorId, import('../types/trade').SectorMarketState> })
+
+    // Science — update domain states, discoveries, schematics, patents, and empire bonuses
+    scienceStore.updateScienceDomains(state.scienceDomains)
+    scienceStore.updateEmpireBonuses(state.empireBonuses)
+    for (const discovery of state.discoveries.values()) {
+      scienceStore.addDiscovery(discovery)
+    }
+    for (const schematic of state.schematics.values()) {
+      scienceStore.updateSchematic(schematic)
+    }
+    for (const patent of state.patents.values()) {
+      scienceStore.addPatent(patent)
+    }
   }
 
   return {
