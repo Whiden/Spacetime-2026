@@ -2,6 +2,38 @@
 
 ---
 
+## Story 17.1: Trade Route Contract (2026-02-20)
+
+**Files**: `src/engine/actions/create-trade-route.ts` (new), `src/stores/contract.store.ts` (updated), `src/__tests__/engine/actions/create-trade-route.test.ts` (new)
+
+### Engine action implemented
+
+- `createTradeRoute(params)` — thin wrapper around `createContract()` specialised for TradeRoute contracts:
+  - Validates both sectors exist and are adjacent (via `sectorAdjacency` map).
+  - Validates assigned corp is Transport type (or Megacorp level 6+); no cross-type allowed.
+  - Sets cost to 2 BP/turn and duration sentinel to 9999 (ongoing — no fixed end).
+  - Returns `TradeRouteCreationResult` (success with Contract, or failure with `ContractValidationError`).
+
+### Store action added
+
+- `cancelTradeRoute(id, currentTurn)` added to `useContractStore`:
+  - Validates the contract exists, is Active, and is of type TradeRoute.
+  - Delegates to `completeContract()` — marks Completed, sets `completedTurn`, removes BP/turn expense.
+  - Returns `true` on success, `false` if the contract doesn't exist or is not a cancellable trade route.
+
+### Acceptance criteria met
+
+- Player creates trade route contract between two adjacent sectors ✓
+- Requires Transport corporation ✓
+- Cost: 2 BP/turn, ongoing (no end date — sentinel 9999) ✓
+- Player can cancel trade route (ends contract) ✓
+- Unit tests: valid creation ✓, non-adjacent sectors rejected ✓, cancellation ✓
+
+**Tests**: 10/10 passing (create-trade-route.test.ts)
+**TypeScript**: zero errors
+
+---
+
 ## Story 16.5: Mission UI (2026-02-20)
 
 **Files**: `src/composables/useMissionCreation.ts` (new), `src/components/fleet/MissionCard.vue` (new), `src/components/fleet/MissionWizard.vue` (new), `src/views/FleetView.vue` (updated)

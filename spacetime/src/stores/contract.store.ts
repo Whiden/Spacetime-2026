@@ -13,7 +13,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { ContractId, CorpId, ColonyId } from '../types/common'
-import { ContractStatus } from '../types/common'
+import { ContractStatus, ContractType } from '../types/common'
 import type { Contract } from '../types/contract'
 import type { CreateContractParams } from '../engine/actions/create-contract'
 import { createContract } from '../engine/actions/create-contract'
@@ -148,6 +148,27 @@ export const useContractStore = defineStore('contract', () => {
   }
 
   /**
+   * Cancels an active trade route contract immediately.
+   *
+   * Trade routes have no fixed end date (duration sentinel 9999), so the player
+   * cancels them explicitly. Cancellation marks the contract as Completed and
+   * removes its BP/turn expense from the budget store.
+   *
+   * Returns true if the contract existed and was an active TradeRoute; false otherwise.
+   *
+   * @param id - The trade route contract ID to cancel
+   * @param currentTurn - The current turn number (used to set completedTurn)
+   */
+  function cancelTradeRoute(id: ContractId, currentTurn: number): boolean {
+    const contract = contracts.value.get(id)
+    if (!contract || contract.status !== ContractStatus.Active) return false
+    if (contract.type !== ContractType.TradeRoute) return false
+
+    completeContract(id, currentTurn)
+    return true
+  }
+
+  /**
    * Marks a contract as failed.
    * Removes its expense from the budget store.
    *
@@ -182,6 +203,7 @@ export const useContractStore = defineStore('contract', () => {
     createNewContract,
     advanceContract,
     completeContract,
+    cancelTradeRoute,
     failContract,
   }
 })
