@@ -2,6 +2,56 @@
 
 ---
 
+## Story 16.1: Mission Creation (2026-02-20)
+
+**Files**: `src/engine/actions/create-mission.ts` (new), `src/__tests__/engine/actions/create-mission.test.ts` (new)
+
+### Functions implemented
+
+- `createMission(params, state, randFn?)` — Pure function that validates and creates a `Mission` object:
+  1. **Validation**: rejects empty ship list, missing sector, unknown ship IDs, non-Stationed ships, and corp-owned ships (must be `'government'`).
+  2. **Travel time**: BFS on `galaxy.adjacency` to find the shortest hop count between the task force's home sector and the target sector. `travelTurnsRemaining = returnTurnsRemaining = hopCount`.
+  3. **Execution duration**: sampled from each mission type's `[min, max]` range (injectable `randFn` for deterministic tests).
+  4. **Cost**: `baseBPPerTurn[type] + count(ships where size ≥ 7)` — fleet surcharge per large ship.
+  5. **Commander**: highest-experience captain across all task force ships. Ties broken by first occurrence.
+  6. **Ship status**: returns a new `updatedShips` map with all task force ships set to `OnMission`. Does not mutate `state.ships`.
+  7. Returns `{ success: true, mission, updatedShips }` or `{ success: false, error }`.
+
+- Error codes: `NO_SHIPS_SELECTED`, `SHIP_NOT_FOUND`, `SHIP_NOT_AVAILABLE`, `SHIP_NOT_GOVERNMENT`, `SECTOR_NOT_FOUND`, `NO_HOME_SECTOR`.
+
+### Mission data (from Data.md § 15)
+
+| Type          | Base BP/turn | Duration range |
+|---------------|-------------|----------------|
+| Escort        | 1           | 1              |
+| Assault       | 3           | 3–8            |
+| Defense       | 2           | 1–3            |
+| Rescue        | 2           | 2–5            |
+| Investigation | 1           | 2–4            |
+
+### Key decisions
+
+- Travel time is computed via BFS on the adjacency graph rather than a flat hop count, supporting multi-hop routes correctly.
+- The surcharge threshold (size ≥ 7) matches Data.md's definition of large ships requiring extended logistics.
+- `randFn` injectable for all tests — execution duration is fully deterministic in test context.
+
+### Acceptance criteria met
+
+- Player selects mission type, target sector, and ships for task force ✓
+- Highest-experience captain becomes commander ✓
+- Validates all ships are Stationed and government-owned ✓
+- Calculates travel time (sector hops × 1 turn per hop) ✓
+- Calculates execution duration from Data.md mission durations ✓
+- Calculates total BP/turn cost (base + fleet surcharge ≥ size 7) ✓
+- Returns typed Mission object or validation error ✓
+- Ships status set to OnMission on creation ✓
+- Unit tests: valid creation ✓, ship already on mission rejected ✓, non-owned ship rejected ✓, cost calculation with and without surcharge ✓, commander selection by experience ✓
+
+**Tests**: 20/20 passing (create-mission.test.ts)
+**TypeScript**: zero errors
+
+---
+
 ## Story 15.4: Fleet Store & View (2026-02-20)
 
 **Files**: `src/stores/fleet.store.ts` (new), `src/views/FleetView.vue` (updated), `src/components/fleet/ShipCard.vue` (new), `src/stores/game.store.ts` (updated)
