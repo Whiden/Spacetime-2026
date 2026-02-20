@@ -2,6 +2,21 @@
 
 ---
 
+## Story 19.1: Event Store (Completed 2026-02-20)
+
+Created the event store that collects and exposes game events from all systems.
+
+**Store** (`src/stores/event.store.ts`): Pinia store with flat `events: GameEvent[]` state and `latestTurn` tracker. `addEvents(events, turn)` — bulk-appends events from a resolved turn and prunes history beyond 50 turns. `dismissEvent(id)` — marks a single event as read. `loadEvents(events, turn)` — restores event state from a deserialized save. `resetEvents()` — clears all events on new game. Getters: `currentTurnEvents` (events from the latest turn, sorted Critical → Warning → Info → Positive), `unreadCount` (total undismissed events), `eventHistory` (all turns newest-first, each priority-sorted).
+
+**game.store.ts**: Wired event store into the game lifecycle — `initializeGame()` calls `resetEvents()`, `endTurn()` calls `addEvents()` with the new turn's events, `loadGame()` calls `loadEvents()` to restore history from a save.
+
+**Tests** (`src/__tests__/stores/event.store.test.ts`): 23 tests covering addEvents (append, latestTurn tracking, no-decrease guard, accumulation, 51-turn pruning, 50-turn retention), currentTurnEvents (filtering, priority sort, empty state), unreadCount (mixed dismissed, all dismissed, empty), eventHistory (newest-first ordering, per-turn priority sort, empty), dismissEvent (mutation, isolation, unknown-id no-op, unreadCount decrement), loadEvents (replace existing, set latestTurn), resetEvents (clear events, reset latestTurn).
+
+**Tests**: 23/23 passing
+**TypeScript**: zero errors
+
+---
+
 ## Story 18.1: Serialization (Completed 2026-02-20)
 
 Implemented game state serialization and deserialization for save file persistence.

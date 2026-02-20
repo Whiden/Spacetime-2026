@@ -30,6 +30,7 @@ import { useMarketStore } from './market.store'
 import { useScienceStore } from './science.store'
 import { useFleetStore } from './fleet.store'
 import { useMissionStore } from './mission.store'
+import { useEventStore } from './event.store'
 import { createInitialScienceDomains } from '../engine/simulation/science-sim'
 import { generateCorporation } from '../generators/corp-generator'
 import { useSaveLoad } from '../composables/useSaveLoad'
@@ -93,7 +94,11 @@ export const useGameStore = defineStore('game', () => {
     const terraNovaPlanetId = _getTerraNovaPlanetId(colonyStore, startingSectorId)
     _spawnStartingCorporations(corpStore, colonyStore, terraNovaPlanetId, startingSectorId)
 
-    // 5. Set turn and phase
+    // 5. Reset event store for a fresh game
+    const eventStore = useEventStore()
+    eventStore.resetEvents()
+
+    // 6. Set turn and phase
     turn.value = 1 as TurnNumber
     phase.value = 'player_action'
   }
@@ -198,8 +203,10 @@ export const useGameStore = defineStore('game', () => {
     const { autosave } = useSaveLoad()
     autosave(updatedState)
 
-    // 6. Store events from this turn for the UI to display
+    // 6. Store events from this turn in the event store and on lastTurnEvents
     lastTurnEvents.value = events
+    const eventStore = useEventStore()
+    eventStore.addEvents(events, updatedState.turn)
 
     // 7. Advance turn and return directly to player_action.
     // Events are displayed non-blocking on the dashboard — no acknowledgement required.
@@ -216,6 +223,9 @@ export const useGameStore = defineStore('game', () => {
     turn.value = state.turn
     phase.value = 'player_action'
     lastTurnEvents.value = []
+    // Restore event history from the loaded save
+    const eventStore = useEventStore()
+    eventStore.loadEvents(state.events, state.turn)
   }
 
   /**
