@@ -2,6 +2,21 @@
 
 ---
 
+## Story 18.1: Serialization (Completed 2026-02-20)
+
+Implemented game state serialization and deserialization for save file persistence.
+
+**Utils** (`src/utils/save.ts`): `serializeGameState(state): string` — converts full `GameState` to a JSON string wrapped in a `SaveFile` envelope `{ version, timestamp, gameState }`. All `Map<string, V>` fields are converted to plain `Record<string, V>` objects for JSON compatibility. `deserializeGameState(json): GameState` — parses JSON, validates structure and version, then restores all plain objects back to `Map` instances. Throws descriptive `Error` on invalid JSON, missing fields, or unsupported version number. `SAVE_VERSION = 1` constant tracks format version.
+
+**Type cleanup** (`src/types/game.ts`): Removed Story 18.1 TODO comments now that implementation is complete.
+
+**Tests** (`src/__tests__/utils/save.test.ts`): 17 tests covering serialization output (valid JSON, version field, ISO timestamp, Maps serialized as objects, scalar field preservation), deserialization error handling (invalid JSON, missing fields, wrong version), and full round-trip fidelity (scalars, colony data, planet data, empty Maps, galaxy, arrays, empireBonuses, sectorMarkets).
+
+**Tests**: 17/17 passing
+**TypeScript**: zero errors
+
+---
+
 ## Story 15.1: Blueprint System (Completed 2026-02-19)
 
 Implemented ship stat generation from role, tech, corp level, schematics, and size variant.

@@ -9,7 +9,6 @@
  * See utils/save.ts for the serialization strategy.
  *
  * TODO (Story 12.4): game.store.ts assembles GameState from all stores via getFullGameState().
- * TODO (Story 18.1): utils/save.ts handles serialization of the full GameState.
  */
 
 import type { TurnNumber, BPAmount, SectorId } from './common'
@@ -126,7 +125,6 @@ export interface PhaseResult {
  * The persisted save file format. Versioned for future migration compatibility.
  * See utils/save.ts for serialization implementation.
  *
- * TODO (Story 18.1): Serialization/deserialization in utils/save.ts.
  */
 export interface SaveFile {
   version: number
