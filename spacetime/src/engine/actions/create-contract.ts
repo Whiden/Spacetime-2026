@@ -11,7 +11,7 @@
  */
 
 import type { CorpId, TurnNumber, BPAmount } from '../../types/common'
-import { ContractType, ContractStatus } from '../../types/common'
+import { ContractType, ContractStatus, InfraDomain } from '../../types/common'
 import type { Contract, ContractTarget, ColonizationParams, ShipCommissionParams } from '../../types/contract'
 import type { Corporation } from '../../types/corporation'
 import type { Colony } from '../../types/colony'
@@ -20,6 +20,8 @@ import type { Sector } from '../../types/sector'
 import { PlanetStatus } from '../../types/common'
 import { CONTRACT_TYPE_DEFINITIONS, calculateExplorationDuration } from '../../data/contracts'
 import { COLONY_TYPE_DEFINITIONS } from '../../data/colony-types'
+import { SHIP_ROLE_DEFINITIONS, SIZE_VARIANT_MULTIPLIERS } from '../../data/ship-roles'
+import { getTotalLevels } from '../../types/infrastructure'
 import { generateContractId } from '../../utils/id'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -42,6 +44,7 @@ export type ContractValidationError =
   | 'TARGET_NOT_FOUND'              // Target entity not found
   | 'MISSING_COLONY_TYPE'           // Colonization requires colonyType param
   | 'MISSING_SHIP_PARAMS'           // Ship commission requires role + sizeVariant
+  | 'INSUFFICIENT_SPACE_INFRA'      // Colony lacks required space infrastructure level
 
 export interface ContractCreationSuccess {
   success: true
@@ -200,7 +203,17 @@ function validateTarget(
     case ContractType.ShipCommission: {
       if (target.type !== 'colony') return 'INVALID_TARGET_TYPE'
       if (!params.shipCommissionParams) return 'MISSING_SHIP_PARAMS'
-      if (!params.colonies.has(target.colonyId)) return 'TARGET_NOT_FOUND'
+      const colony = params.colonies.get(target.colonyId)
+      if (!colony) return 'TARGET_NOT_FOUND'
+      // Validate colony has sufficient space infrastructure
+      // required_space_infra = base_size × size_multiplier (floored)
+      const { role, sizeVariant } = params.shipCommissionParams
+      const roleDef = SHIP_ROLE_DEFINITIONS[role]
+      const sizeMultipliers = SIZE_VARIANT_MULTIPLIERS[sizeVariant]
+      const requiredSpaceInfra = Math.floor(roleDef.baseStats.size * sizeMultipliers.sizeMultiplier)
+      const spaceInfraState = colony.infrastructure[InfraDomain.SpaceIndustry]
+      const actualSpaceInfra = spaceInfraState ? getTotalLevels(spaceInfraState) : 0
+      if (actualSpaceInfra < requiredSpaceInfra) return 'INSUFFICIENT_SPACE_INFRA'
       break
     }
 
@@ -225,9 +238,9 @@ function validateTarget(
  * Calculates the BP/turn cost for a contract.
  * Most contracts use the base cost from the definition.
  * Colonization uses the colony type definition.
- * Ship commission cost will be by ship size (deferred to Story 15.2).
+ * Ship commission cost is derived from the role base size and size variant (Story 15.2).
  */
-function calculateBpPerTurn(params: CreateContractParams): BPAmount {
+function calculateBpPerTurn(params: CreateContractParams, corp?: Corporation): BPAmount {
   switch (params.type) {
     case ContractType.Colonization:
       if (params.colonizationParams) {
@@ -237,12 +250,39 @@ function calculateBpPerTurn(params: CreateContractParams): BPAmount {
       break
 
     case ContractType.ShipCommission:
-      // TODO (Story 15.2): Ship commission cost calculated from role + size variant.
-      // For now, use base definition cost as placeholder.
-      return CONTRACT_TYPE_DEFINITIONS[params.type].baseBpPerTurn as BPAmount
+      if (params.shipCommissionParams) {
+        return calculateShipCommissionBpPerTurn(params.shipCommissionParams, corp)
+      }
+      break
   }
 
   return CONTRACT_TYPE_DEFINITIONS[params.type].baseBpPerTurn as BPAmount
+}
+
+/**
+ * Computes the deterministic bp_per_turn for a ship commission at contract-creation time.
+ *
+ * Uses random = 1.0 (midpoint of [0.8, 1.2]) so the displayed cost is representative.
+ * The actual ship built on completion may vary due to randomness, but the BP/turn
+ * cost locked at creation uses this deterministic estimate.
+ *
+ * Formula mirrors design-blueprint.ts:
+ *   corp_modifier  = 0.7 + corpLevel × 0.06
+ *   rawSize        = floor(role_base_size × corp_modifier × 1.0)  [random = 1.0]
+ *   baseBpPerTurn  = max(1, floor(rawSize / 3)) [no schematic bonuses at creation]
+ *   bpPerTurn      = max(1, floor(baseBpPerTurn × size_cost_multiplier))
+ */
+function calculateShipCommissionBpPerTurn(
+  params: ShipCommissionParams,
+  corp?: Corporation,
+): BPAmount {
+  const roleDef = SHIP_ROLE_DEFINITIONS[params.role]
+  const sizeMultipliers = SIZE_VARIANT_MULTIPLIERS[params.sizeVariant]
+  const corpLevel = corp?.level ?? 1
+  const corpModifier = 0.7 + corpLevel * 0.06
+  const rawSize = Math.floor(roleDef.baseStats.size * corpModifier)
+  const baseBpPerTurn = Math.max(1, Math.floor(rawSize / 3))
+  return Math.max(1, Math.floor(baseBpPerTurn * sizeMultipliers.costMultiplier)) as BPAmount
 }
 
 /**
@@ -272,14 +312,41 @@ function calculateDuration(
       return 9999
 
     case ContractType.ShipCommission:
-      // TODO (Story 15.2): Ship build time calculated from role base + size variant.
-      // For now, use base definition as placeholder.
+      if (params.shipCommissionParams) {
+        return calculateShipCommissionDuration(params.shipCommissionParams, corp)
+      }
       return CONTRACT_TYPE_DEFINITIONS[params.type].baseDurationTurns as number
   }
 
   const base = CONTRACT_TYPE_DEFINITIONS[params.type].baseDurationTurns
   if (typeof base === 'number') return base
   return 3 // Fallback for any 'by_type' entries not handled above
+}
+
+/**
+ * Computes the actual build time for a ship commission contract.
+ *
+ * Formula (Story 15.2):
+ *   base_build_time (from blueprint, deterministic, random = 1.0):
+ *     corp_modifier  = 0.7 + corpLevel × 0.06
+ *     rawSize        = floor(role_base_size × corp_modifier)
+ *     baseBuildTime  = max(3, floor(rawSize × 1)) + role_bonuses
+ *     buildTimeTurns = max(1, floor(baseBuildTime × size_build_time_multiplier))
+ *   actual_build_time = max(1, floor(buildTimeTurns × (1 - corp_level × 0.05)))
+ */
+function calculateShipCommissionDuration(
+  params: ShipCommissionParams,
+  corp: Corporation,
+): number {
+  const roleDef = SHIP_ROLE_DEFINITIONS[params.role]
+  const sizeMultipliers = SIZE_VARIANT_MULTIPLIERS[params.sizeVariant]
+  const corpLevel = corp.level
+  const corpModifier = 0.7 + corpLevel * 0.06
+  const rawSize = Math.floor(roleDef.baseStats.size * corpModifier)
+  const roleBuildTimeBonus = roleDef.derivedStatBonuses.buildTimeTurns ?? 0
+  const baseBuildTime = Math.max(3, Math.floor(rawSize)) + roleBuildTimeBonus
+  const buildTimeTurns = Math.max(1, Math.floor(baseBuildTime * sizeMultipliers.buildTimeMultiplier))
+  return Math.max(1, Math.floor(buildTimeTurns * (1 - corpLevel * 0.05)))
 }
 
 // ─── Main Creation Function ───────────────────────────────────────────────────
@@ -321,7 +388,7 @@ export function createContract(params: CreateContractParams): ContractCreationRe
   }
 
   // 4. Calculate costs and duration
-  const bpPerTurn = calculateBpPerTurn(params)
+  const bpPerTurn = calculateBpPerTurn(params, corp)
   const duration = calculateDuration(params, corp)
 
   // 5. Build the Contract object

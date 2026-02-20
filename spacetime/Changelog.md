@@ -2,6 +2,48 @@
 
 ---
 
+## Story 15.2: Ship Construction (2026-02-20)
+
+**Files**: `src/engine/actions/create-contract.ts` (updated), `src/engine/turn/contract-phase.ts` (updated), `src/__tests__/engine/story-15-2-ship-commission.test.ts` (new)
+
+### Functions implemented / updated
+
+- `createContract` — ShipCommission validation now:
+  - Checks `required_space_infra = floor(role_base_size × size_variant_multiplier)` against colony's SpaceIndustry total levels.
+  - Returns `INSUFFICIENT_SPACE_INFRA` error if colony falls short.
+  - Computes `bpPerTurn` deterministically from role + variant + corp level (random=1.0 midpoint, no schematics at creation time).
+  - Computes `durationTurns` as `max(1, floor(buildTimeTurns × (1 - corp_level × 0.05)))`.
+
+- `resolveShipCommissionCompletion()` — New completion handler in `contract-phase.ts`:
+  1. Looks up the target colony and assigned corp.
+  2. Calls `designBlueprint()` with the contract's role/variant, corp schematics, and empire tech bonuses.
+  3. Sets ship status to `Stationed` at the colony's sector.
+  4. Adds ship to `updatedShips` map returned in phase result.
+  5. Emits a `fleet`-category `Positive` event.
+
+- `resolveContractPhase` — now copies and returns `state.ships` (previously passed through unchanged).
+
+### Key decisions
+
+- `bpPerTurn` and `durationTurns` at contract creation are deterministic estimates (random=1.0, no schematics). The actual ship built on completion varies due to randomness and uses the corp's real schematics.
+- `actual_build_time = max(1, floor(base_build_time × (1 - corp_level × 0.05)))` reduces build time linearly, capped at 50% reduction at level 10.
+- Ship name defaults to `"{corp.name} Vessel"` — Story 15.3 (Captain Generator) will provide a proper name.
+- `ShipStatus.Stationed` is set at completion; no fleet store exists yet (Story 15.4).
+
+### Acceptance criteria met
+
+- Space infra requirement validated per role and variant ✓
+- Build time reduction across corp levels 1–10 ✓
+- Cost (bp_per_turn) scales with role and size variant ✓
+- Ship object correctness on completion (role, variant, status, homeSectorId) ✓
+- Ship added to `state.ships` on contract completion ✓
+- Building corp receives completion bonus per normal contract rules ✓
+
+**Tests**: 18/18 passing (story-15-2-ship-commission.test.ts) + 38/38 contract-phase.test.ts (no regressions)
+**TypeScript**: zero errors
+
+---
+
 ## Story 14.4: Science Phase — Turn Resolution (2026-02-19)
 
 **Files**: `src/engine/turn/science-phase.ts` (full implementation), `src/generators/patent-generator.ts` (new)

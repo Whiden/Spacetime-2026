@@ -9,7 +9,7 @@
  *   applies orbit scan based on corp level, generates discovery events per planet
  * - GroundSurvey: updates planet status to GroundSurveyed
  * - Colonization: generates a new colony via colony-generator, links corp
- * - ShipCommission: stub — ship generation deferred to Epic 15
+ * - ShipCommission: generates ship via designBlueprint, adds to ships map with Stationed status
  * - TradeRoute: ongoing (sentinel 9999) — never auto-completes
  *
  * On any contract completion, the assigned corporation receives a capital bonus:
@@ -17,7 +17,7 @@
  * (See Specs.md § 3 Contract Completion Bonus and § 4 Contract System)
  *
  * TODO (Story 7.4): ContractWizard.vue drives createNewContract() from UI.
- * TODO (Story 15.2): resolveShipCommissionCompletion() builds ship with stat generator.
+ * TODO (Story 15.3): Captain generator replaces the placeholder captain in designBlueprint.
  */
 
 import type { GameState, PhaseResult } from '../../types/game'
@@ -26,13 +26,15 @@ import type { Contract } from '../../types/contract'
 import type { Colony } from '../../types/colony'
 import type { Planet } from '../../types/planet'
 import type { Corporation } from '../../types/corporation'
-import { ContractStatus, ContractType, EventPriority, PlanetStatus } from '../../types/common'
+import type { Ship } from '../../types/ship'
+import { ContractStatus, ContractType, EventPriority, PlanetStatus, ShipStatus } from '../../types/common'
 import type { TurnNumber, CorpId, PlanetId, SectorId } from '../../types/common'
 import { generateColony } from '../../generators/colony-generator'
 import { generatePlanet } from '../../generators/planet-generator'
-import { generateEventId } from '../../utils/id'
+import { generateEventId, generateShipId } from '../../utils/id'
 import { calculateCompletionBonus } from '../formulas/growth'
 import { calculateExplorationGain, calculatePOICount, generateOrbitScan } from '../formulas/exploration'
+import { designBlueprint } from '../actions/design-blueprint'
 import type { Sector } from '../../types/sector'
 
 // ─── Phase Entry Point ───────────────────────────────────────────────────────
@@ -60,6 +62,7 @@ export function resolveContractPhase(state: GameState): PhaseResult {
   const updatedPlanets = new Map(state.planets)
   const updatedCorporations = new Map(state.corporations)
   const updatedSectors = new Map(state.galaxy.sectors)
+  const updatedShips = new Map(state.ships)
 
   for (const [id, contract] of updatedContracts) {
     if (contract.status !== ContractStatus.Active) continue
@@ -81,8 +84,8 @@ export function resolveContractPhase(state: GameState): PhaseResult {
       }
       updatedContracts.set(id, completed)
 
-      // Apply completion effects (colony creation, planet status, corp presence)
-      applyCompletionEffects(completed, state, updatedColonies, updatedPlanets, updatedCorporations, updatedSectors, events)
+      // Apply completion effects (colony creation, planet status, corp presence, ship build)
+      applyCompletionEffects(completed, state, updatedColonies, updatedPlanets, updatedCorporations, updatedSectors, updatedShips, events)
 
       // Award capital bonus to the assigned corporation (Specs.md § 3 & § 4)
       rewardCompletionBonus(completed, updatedCorporations)
@@ -105,6 +108,7 @@ export function resolveContractPhase(state: GameState): PhaseResult {
       colonies: updatedColonies,
       planets: updatedPlanets,
       corporations: updatedCorporations,
+      ships: updatedShips,
     },
     events,
   }
@@ -123,6 +127,7 @@ function applyCompletionEffects(
   updatedPlanets: Map<string, Planet>,
   updatedCorporations: Map<string, Corporation>,
   updatedSectors: Map<string, Sector>,
+  updatedShips: Map<string, Ship>,
   events: GameEvent[],
 ): void {
   switch (contract.type) {
@@ -139,8 +144,7 @@ function applyCompletionEffects(
       break
 
     case ContractType.ShipCommission:
-      // TODO (Story 15.2): Generate ship using ship stat generator with role, variant,
-      // corp schematics, and empire tech bonuses.
+      resolveShipCommissionCompletion(contract, state, updatedColonies, updatedCorporations, updatedShips, events)
       break
 
     case ContractType.TradeRoute:
@@ -302,6 +306,66 @@ function resolveColonizationCompletion(
       planetsPresent: [...corp.planetsPresent, planet.id as PlanetId],
     })
   }
+}
+
+/**
+ * Ship commission completion (Story 15.2):
+ * 1. Generates a Ship via designBlueprint using the contract's role/variant, the building
+ *    corp's schematics, and empire tech bonuses.
+ * 2. Sets ship status to Stationed at the colony's sector.
+ * 3. Adds the ship to updatedShips.
+ * 4. Emits a ship-completed event.
+ */
+function resolveShipCommissionCompletion(
+  contract: Contract,
+  state: GameState,
+  updatedColonies: Map<string, Colony>,
+  updatedCorporations: Map<string, Corporation>,
+  updatedShips: Map<string, Ship>,
+  events: GameEvent[],
+): void {
+  if (contract.target.type !== 'colony') return
+  if (!contract.shipCommissionParams) return
+
+  const colony = updatedColonies.get(contract.target.colonyId)
+  if (!colony) return
+
+  const corp = updatedCorporations.get(contract.assignedCorpId)
+  if (!corp) return
+
+  const { role, sizeVariant } = contract.shipCommissionParams
+  const corpSchematics = corp.assets.schematics
+
+  const ship = designBlueprint({
+    shipId: generateShipId(),
+    shipName: `${corp.name} Vessel`,
+    role,
+    sizeVariant,
+    buildingCorp: corp,
+    empireBonuses: state.empireBonuses,
+    corpSchematics,
+    homeSectorId: colony.sectorId,
+    builtTurn: contract.completedTurn ?? (state.turn as TurnNumber),
+  })
+
+  // Station the completed ship at the colony's sector
+  const stationedShip: Ship = {
+    ...ship,
+    status: ShipStatus.Stationed,
+  }
+
+  updatedShips.set(stationedShip.id, stationedShip)
+
+  events.push({
+    id: generateEventId(),
+    turn: state.turn,
+    priority: EventPriority.Positive,
+    category: 'fleet',
+    title: 'Ship Construction Complete',
+    description: `A new ${role} vessel has been commissioned and is now stationed at ${colony.name}.`,
+    relatedEntityIds: [contract.id, stationedShip.id, colony.sectorId],
+    dismissed: false,
+  })
 }
 
 // ─── Completion Bonus ─────────────────────────────────────────────────────────
