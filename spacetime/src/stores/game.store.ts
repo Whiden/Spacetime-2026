@@ -28,6 +28,7 @@ import { useBudgetStore } from './budget.store'
 import { useContractStore } from './contract.store'
 import { useMarketStore } from './market.store'
 import { useScienceStore } from './science.store'
+import { useFleetStore } from './fleet.store'
 import { createInitialScienceDomains } from '../engine/simulation/science-sim'
 import { generateCorporation } from '../generators/corp-generator'
 
@@ -110,6 +111,7 @@ export const useGameStore = defineStore('game', () => {
     const contractStore = useContractStore()
     const marketStore = useMarketStore()
     const scienceStore = useScienceStore()
+    const fleetStore = useFleetStore()
 
     const galaxy: Galaxy = {
       sectors: galaxyStore.sectors,
@@ -145,7 +147,7 @@ export const useGameStore = defineStore('game', () => {
       planets: new Map(planetStore.planets),
       corporations: new Map(corpStore.corporations),
       contracts: new Map(contractStore.contracts),
-      ships: new Map(),
+      ships: new Map(fleetStore.ships),
       missions: new Map(),
 
       // Science — initialized from science store
@@ -221,6 +223,7 @@ export const useGameStore = defineStore('game', () => {
     const galaxyStore = useGalaxyStore()
     const marketStore = useMarketStore()
     const scienceStore = useScienceStore()
+    const fleetStore = useFleetStore()
 
     // Colonies
     for (const colony of state.colonies.values()) {
@@ -271,6 +274,9 @@ export const useGameStore = defineStore('game', () => {
     for (const patent of state.patents.values()) {
       scienceStore.addPatent(patent)
     }
+
+    // Fleet — sync all ships (including newly commissioned ones from contract-phase)
+    fleetStore.updateShips(state.ships)
   }
 
   return {

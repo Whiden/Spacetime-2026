@@ -2,6 +2,58 @@
 
 ---
 
+## Story 15.4: Fleet Store & View (2026-02-20)
+
+**Files**: `src/stores/fleet.store.ts` (new), `src/views/FleetView.vue` (updated), `src/components/fleet/ShipCard.vue` (new), `src/stores/game.store.ts` (updated)
+
+### Store implemented
+
+- `useFleetStore` — holds all commissioned ships (`Map<ShipId, Ship>`) and a `memorial` map of destroyed ships' `ServiceRecord`.
+- `addShip(ship)` — registers a completed ship in the fleet.
+- `removeShip(id)` — destroys a ship, preserving its `ServiceRecord` in the memorial before deletion.
+- `updateShips(map)` — bulk-replaces ship state after turn resolution (called by `game.store._distributeResults`).
+- `getShip(id)` — O(1) lookup.
+- `getShipsBySector(sectorId)` — filters by `homeSectorId`.
+- `getShipsByStatus(status)` — filters by `ShipStatus`.
+- `availableShips` (computed) — stationed ships (not on mission), eligible for new missions.
+
+### game.store.ts wired
+
+- `getFullGameState()` now reads `fleetStore.ships` instead of passing an empty `Map`.
+- `_distributeResults()` calls `fleetStore.updateShips(state.ships)` after each turn resolution, so ships completed by `contract-phase` appear in the fleet UI immediately.
+
+### ShipCard.vue
+
+- Compact summary card: name · role · size label, captain name + experience badge (color-coded).
+- Six stat bars (Size/Speed/Firepower/Armor/Sensors/Evasion): value, bar fill (capped at 15), color-coded Poor→Average→Good→Excellent→Exceptional labels.
+- Ability scores row: Fight (red), Investigation (sky), Support (emerald), schematic count.
+- Condition bar: color-coded green/amber/red, percentage shown.
+- Status badge: Stationed/On Mission/Under Repair/Under Construction.
+- Expandable detail panel: full stat breakdown, derived stats (HP/PP/BP/build time), schematics list, captain service record (missions/battles/experience), build turn and owning corp.
+
+### FleetView.vue
+
+- Ships grouped by sector with section headers.
+- "Under Construction" section shows active `ShipCommission` contracts as `ContractCard` components.
+- Summary bar: total ships, available count, under-construction count.
+- "Commission Ship" button opens `ContractWizard` pre-filled with `ShipCommission` type.
+- Empty state with full guidance text (matches acceptance criteria spec exactly).
+
+### Acceptance criteria met
+
+- Store holds ships by ID, `getShip`, `getShipsBySector`, `getShipsByStatus`, `availableShips` ✓
+- `addShip` / `removeShip` (preserves service record in memorial) ✓
+- View: ships grouped by sector with status indicators, ship commission contracts in progress ✓
+- Ship card: name, role, size with label, stat bars with labels, ability scores, captain name + experience, condition bar, status, schematics applied ✓
+- Ship detail (expanded): full stat breakdown, schematics list, captain service record, build turn, owning corp ✓
+- "Commission Ship" button leads to contract creation (ShipCommission pre-fill) ✓
+- Empty state with spec-matching guidance text ✓
+
+**Tests**: 27/27 game.store.test.ts passing (no regressions)
+**TypeScript**: zero errors
+
+---
+
 ## Story 15.3: Captain Generator (2026-02-20)
 
 **Files**: `src/generators/captain-generator.ts` (new), `src/data/captain-names.ts` (new), `src/engine/actions/design-blueprint.ts` (updated), `src/__tests__/generators/captain-generator.test.ts` (new)
