@@ -10,7 +10,7 @@
  * - endTurn() assembles a GameState snapshot, calls resolveTurn(), and distributes results.
  *
  * TODO (Story 12.5): EndTurn UI button triggers endTurn() from this store.
- * TODO (Story 18.1): Save/load uses getFullGameState() for serialization.
+ * TODO (Story 18.3): SaveLoadPanel UI for export/import.
  */
 
 import { defineStore } from 'pinia'
@@ -32,6 +32,7 @@ import { useFleetStore } from './fleet.store'
 import { useMissionStore } from './mission.store'
 import { createInitialScienceDomains } from '../engine/simulation/science-sim'
 import { generateCorporation } from '../generators/corp-generator'
+import { useSaveLoad } from '../composables/useSaveLoad'
 
 export const useGameStore = defineStore('game', () => {
   // ─── State ───────────────────────────────────────────────────────────────────
@@ -193,13 +194,28 @@ export const useGameStore = defineStore('game', () => {
     // 4. Distribute results back to stores
     _distributeResults(updatedState)
 
-    // 5. Store events from this turn for the UI to display
+    // 5. Autosave after every turn resolution
+    const { autosave } = useSaveLoad()
+    autosave(updatedState)
+
+    // 6. Store events from this turn for the UI to display
     lastTurnEvents.value = events
 
-    // 6. Advance turn and return directly to player_action.
+    // 7. Advance turn and return directly to player_action.
     // Events are displayed non-blocking on the dashboard — no acknowledgement required.
     turn.value = updatedState.turn
     phase.value = 'player_action'
+  }
+
+  /**
+   * Restores full game state from a deserialized GameState (from any save slot).
+   * Distributes the loaded state to all domain stores and updates turn/phase.
+   */
+  function loadGame(state: GameState) {
+    _distributeResults(state)
+    turn.value = state.turn
+    phase.value = 'player_action'
+    lastTurnEvents.value = []
   }
 
   /**
@@ -297,6 +313,7 @@ export const useGameStore = defineStore('game', () => {
     initializeGame,
     getFullGameState,
     endTurn,
+    loadGame,
     acknowledgeResults,
   }
 })

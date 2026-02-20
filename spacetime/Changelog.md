@@ -2,6 +2,29 @@
 
 ---
 
+## Story 18.2: Save/Load Store & Actions (2026-02-20)
+
+**Files**: `src/composables/useSaveLoad.ts` (new), `src/stores/game.store.ts` (updated)
+
+### `useSaveLoad.ts` composable
+- `autosave(state)` — serializes GameState to `spacetime_save_auto` in LocalStorage after every turn.
+- `saveToSlot(slot, state)` — saves to one of 3 named manual slots (`spacetime_save_slot_0/1/2`); returns `true` on success.
+- `deleteSlot(slot)` — removes a manual slot from LocalStorage.
+- `loadFromSlot(slot)` — deserializes and returns a `GameState` from any slot (`'auto'` | 0–2); returns `null` with `errorMessage` on failure.
+- `slotList` — reactive computed list of `SaveSlotInfo` for all 4 slots (name, turn number, date saved, occupied flag); reads metadata without full deserialization.
+- `exportToJson(state, filename?)` — serializes state and triggers browser `.json` file download.
+- `importFromJson(files)` — reads a `FileList`, validates version, deserializes and returns `GameState`; sets `errorMessage` on invalid input.
+- `errorMessage` / `successMessage` — reactive status strings for UI feedback.
+
+### `game.store.ts` updates
+- Added `loadGame(state)` action — distributes a loaded `GameState` to all domain stores and resets turn/phase/events (mirrors `_distributeResults`).
+- `endTurn()` now calls `autosave()` after turn resolution (step 5 in pipeline).
+- `loadGame` exposed in store return object.
+
+**Tests**: 15 new tests in `src/__tests__/composables/useSaveLoad.test.ts` (32 total with save.test.ts); all passing.
+
+---
+
 ## Story 17.3: Trade Route UI (2026-02-20)
 
 **Files**: `src/components/galaxy/SectorCard.vue` (updated), `src/components/galaxy/SectorGraph.vue` (updated), `src/views/GalaxyView.vue` (updated), `src/views/MarketView.vue` (updated)
