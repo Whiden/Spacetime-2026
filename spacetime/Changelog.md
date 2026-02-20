@@ -2,6 +2,39 @@
 
 ---
 
+## Story 15.3: Captain Generator (2026-02-20)
+
+**Files**: `src/generators/captain-generator.ts` (new), `src/data/captain-names.ts` (new), `src/engine/actions/design-blueprint.ts` (updated), `src/__tests__/generators/captain-generator.test.ts` (new)
+
+### Functions implemented
+
+- `generateCaptain(randFn?)` — Generates a new Captain with a random "FirstName LastName" from sci-fi/naval name pools, starting at `Green` experience, 0 missions, 0 battles, and a unique `cpt_`-prefixed ID.
+- `getExperienceLevel(missionsCompleted)` — Pure function deriving experience tier from mission count:
+  - 0–1 → `Green` (×0.8)
+  - 2–4 → `Regular` (×1.0)
+  - 5–9 → `Veteran` (×1.1)
+  - 10+ → `Elite` (×1.2)
+
+### Key decisions
+
+- Name pools live in `src/data/captain-names.ts` (48 first names, 49 last names) — multicultural, naval-sci-fi blend.
+- `randFn` injectable for deterministic testing (same pattern as blueprint/schematic generators).
+- `design-blueprint.ts` now calls `generateCaptain(randFn)` instead of the hardcoded `'Unassigned'` placeholder. The same `randFn` is threaded through so tests remain deterministic.
+- `getExperienceLevel` is exported for direct unit testing and future use in mission resolution (Story 16.3).
+
+### Acceptance criteria met
+
+- Generates unique name from name pools ✓
+- Starts at Green experience (×0.8 combat modifier) ✓
+- Experience tracks missions completed (2 → Regular, 5 → Veteran, 10 → Elite) ✓
+- Returns typed Captain object ✓
+- Unit tests: name generation ✓, default experience level ✓, experience progression thresholds ✓
+
+**Tests**: 17/17 passing (captain-generator.test.ts) + 18/18 story-15-2-ship-commission (no regressions)
+**TypeScript**: zero errors
+
+---
+
 ## Story 15.2: Ship Construction (2026-02-20)
 
 **Files**: `src/engine/actions/create-contract.ts` (updated), `src/engine/turn/contract-phase.ts` (updated), `src/__tests__/engine/story-15-2-ship-commission.test.ts` (new)

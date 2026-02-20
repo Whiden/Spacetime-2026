@@ -25,8 +25,6 @@
  *
  * Pure TypeScript — no Vue or Pinia imports.
  *
- * TODO (Story 15.2): Called from contract-phase.ts on ShipCommission completion to produce
- *   the actual Ship object (with generated name, captain, homeSectorId, etc.).
  * TODO (Story 15.4): fleet.store.ts holds the completed ships from this blueprint.
  */
 
@@ -34,9 +32,10 @@ import type { Ship, ShipPrimaryStats, ShipDerivedStats, ShipAbilities } from '..
 import type { Schematic } from '../../types/science'
 import type { Corporation } from '../../types/corporation'
 import type { EmpireBonuses } from '../../types/empire'
-import type { ShipId, CaptainId, SectorId, TurnNumber, CorpId } from '../../types/common'
-import { ShipRole, SizeVariant, ShipStatus, CaptainExperience } from '../../types/common'
+import type { ShipId, SectorId, TurnNumber, CorpId } from '../../types/common'
+import { ShipRole, SizeVariant, ShipStatus } from '../../types/common'
 import { SHIP_ROLE_DEFINITIONS, SIZE_VARIANT_MULTIPLIERS } from '../../data/ship-roles'
+import { generateCaptain } from '../../generators/captain-generator'
 
 // ─── Input ────────────────────────────────────────────────────────────────────
 
@@ -279,13 +278,7 @@ export function designBlueprint(input: DesignBlueprintInput): Ship {
     derivedStats,
     abilities,
     condition: 100,
-    captain: {
-      id: `cpt_blueprint_${shipId}` as CaptainId,
-      name: 'Unassigned',
-      experience: CaptainExperience.Green,
-      missionsCompleted: 0,
-      battlesCount: 0,
-    },
+    captain: generateCaptain(randFn),
     serviceRecord: {
       shipId,
       builtTurn,
