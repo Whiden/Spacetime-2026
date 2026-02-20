@@ -2,6 +2,61 @@
 
 ---
 
+## Story 16.2: Combat Resolver (2026-02-20)
+
+**Files**: `src/engine/formulas/combat.ts` (new), `src/engine/simulation/combat-resolver.ts` (new), `src/__tests__/engine/simulation/combat-resolver.test.ts` (new)
+
+### Functions implemented
+
+- `applyCommanderModifier(fightScore, experience)` — Applies captain experience multiplier to raw Fight score (`floor(fight × modifier)`).
+- `resolveCombatRoll(effectiveFight, difficulty, roll)` — Returns true (victory) if `effectiveFight × variance > difficulty` where variance = `random(0.85, 1.15)`.
+- `sampleWinConditionLoss(roll)` — Samples condition loss fraction for winners: `[0.05, 0.20]`.
+- `sampleLoseConditionLoss(roll)` — Samples condition loss fraction for losers: `[0.30, 0.60]`.
+- `applyConditionDamage(currentCondition, lossFraction)` — Returns new condition, rounded, clamped to `[0, 100]`.
+- `resolveCombat(input)` — Main resolver: sums task force Fight scores, applies commander modifier, calculates difficulty from mission type base × sector `threatModifier`, rolls outcome, applies per-ship condition deltas, marks ships destroyed at condition 0.
+
+### Algorithm
+
+1. Sum all ship `abilities.fight` scores in the task force.
+2. Apply commander experience modifier (`Green ×0.8 / Regular ×1.0 / Veteran ×1.1 / Elite ×1.2`).
+3. Compute difficulty: `MISSION_BASE_DIFFICULTY[type] × sector.threatModifier`.
+4. Roll: win if `effectiveFight × random(0.85, 1.15) > difficulty`.
+5. Per ship: sample condition loss from win range (5–20%) or loss range (30–60%).
+6. Ships with `conditionAfter ≤ 0` are marked `destroyed: true`.
+7. Returns `CombatResult` with `outcome`, `shipOutcomes`, `narrative`, and empty `rounds` (post-prototype placeholder).
+
+### Mission base difficulty values
+
+| Type          | Base Difficulty |
+|---------------|----------------|
+| Escort        | 10              |
+| Assault       | 20              |
+| Defense       | 15              |
+| Rescue        | 12              |
+| Investigation | 8               |
+
+### Key decisions
+
+- `rounds: []` returned as a placeholder — full per-round exchange data is post-prototype (Epic 20).
+- `disabledAndRecovered: false` on all `ShipCombatOutcome` — post-prototype feature.
+- `randFn` injectable throughout for deterministic testing.
+- Uses existing `CombatResult` and `ShipCombatOutcome` types from `src/types/combat.ts` unchanged.
+
+### Acceptance criteria met
+
+- Receives task force Fight score and mission difficulty (type × threat modifier) ✓
+- Win if `Fight × random(0.85, 1.15) > difficulty` ✓
+- Captain combat modifier applied to Fight score ✓
+- Winning task force: 5–20% condition loss per ship ✓
+- Losing task force: 30–60% condition loss per ship ✓
+- Ship destroyed when condition reaches 0% ✓
+- Returns `CombatResult` with win/loss, per-ship condition deltas, destroyed ship IDs, narrative ✓
+- Unit tests: win/loss calculation ✓, captain modifier ✓, condition delta ranges ✓, ship destruction at 0% ✓
+
+**Tests**: 12/12 passing (combat-resolver.test.ts)
+
+---
+
 ## Story 16.1: Mission Creation (2026-02-20)
 
 **Files**: `src/engine/actions/create-mission.ts` (new), `src/__tests__/engine/actions/create-mission.test.ts` (new)
