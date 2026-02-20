@@ -8,22 +8,27 @@
  *      every colony at the start of the phase, so last turn's shortages don't persist.
  *   2. For each sector, run `resolveMarket()` to get colony flows, shortages, and
  *      export bonuses.
- *   3. Apply new shortage malus modifiers onto affected colonies:
- *        - Food shortage       → 'qualityOfLife'  −2 (additive)
- *        - ConsumerGoods sh.   → 'qualityOfLife'  −1 (additive)
- *        - TransportCapacity sh.→ 'accessibility' −1 (additive)
+ *   3. Apply cross-sector trade from active trade routes (Story 17.2):
+ *      After all sectors resolve internally, for each active trade route:
+ *        - A→B pass: exporter=A, importer=B
+ *        - B→A pass: exporter=B, importer=A
+ *      Both passes evaluated simultaneously (pre-trade internal flows).
+ *      Surplus shared at 50% efficiency; dynamism-priority within importer sector.
+ *   4. Apply new shortage malus modifiers onto affected colonies:
+ *        - Food shortage        → 'qualityOfLife'  −2 (additive)
+ *        - ConsumerGoods sh.    → 'qualityOfLife'  −1 (additive)
+ *        - TransportCapacity sh.→ 'accessibility'  −1 (additive)
  *      (Industrial input shortages reduce manufacturing output via colony-sim, not here.)
- *   4. Apply export bonus modifiers onto exporting colonies:
+ *   5. Apply export bonus modifiers onto exporting colonies:
  *        - Per exported resource type → 'dynamism' +1 (additive)
- *   5. Update `state.sectorMarkets` with the new SectorMarketState for each sector.
- *   6. Generate Warning events for colonies that have shortages.
+ *   6. Update `state.sectorMarkets` with the new SectorMarketState for each sector,
+ *      including inbound/outbound trade flows.
+ *   7. Generate Warning events for colonies that have shortages (after cross-sector trade).
  *
  * The shortage modifiers written here are consumed by colony-phase in the NEXT turn
  * (turn order: colony-phase 8 → market-phase 9). They persist on `colony.modifiers`
  * but are cleared at the start of each market-phase, so they are always up to date.
  *
- * TODO (Story 17.2): After internal resolution, apply cross-sector surplus sharing
- *   from active trade routes at 50% efficiency.
  * TODO (Story 10.3): colony-phase.ts reads the shortage/export modifiers set here
  *   when recalculating colony attributes each turn.
  *
@@ -34,11 +39,11 @@ import type { GameState, PhaseResult } from '../../types/game'
 import type { GameEvent } from '../../types/event'
 import type { Colony } from '../../types/colony'
 import type { Modifier } from '../../types/modifier'
-import type { Shortage, ExportBonus } from '../../types/resource'
-import type { SectorMarketState } from '../../types/trade'
+import type { Shortage, ExportBonus, ColonyResourceSummary } from '../../types/resource'
+import type { SectorMarketState, TradeFlow } from '../../types/trade'
 import type { ColonyId, TurnNumber } from '../../types/common'
-import { ResourceType, EventPriority } from '../../types/common'
-import { resolveMarket } from '../simulation/market-resolver'
+import { ResourceType, EventPriority, ContractType, ContractStatus } from '../../types/common'
+import { resolveMarket, applyCrossSectorTradePass } from '../simulation/market-resolver'
 import { generateModifierId, generateEventId } from '../../utils/id'
 
 // ─── Shortage Malus Table ─────────────────────────────────────────────────────
@@ -70,14 +75,22 @@ export function resolveMarketPhase(state: GameState): PhaseResult {
   // they don't stack with the new values computed below.
   const updatedColonies = clearMarketModifiers(state.colonies)
 
-  // Step 2-5: Resolve the market for each sector.
-  const updatedSectorMarkets = new Map<string, SectorMarketState>(state.sectorMarkets)
+  // ── Internal Market Resolution (Step 2) ─────────────────────────────────────
+  // Resolve each sector's internal market first. Collect results keyed by sectorId.
 
-  for (const [sectorId, sector] of state.galaxy.sectors) {
-    // Collect colonies in this sector using the already-cleared map.
+  // Per-sector resolved colony flows after internal resolution.
+  const sectorColonyFlows = new Map<string, Map<string, ColonyResourceSummary>>()
+  // Per-sector export bonuses.
+  const sectorExportBonuses = new Map<string, ExportBonus[]>()
+  // Colonies per sector (after modifier clearing).
+  const coloniesBySector = new Map<string, Colony[]>()
+
+  for (const [sectorId] of state.galaxy.sectors) {
     const sectorColonies = [...updatedColonies.values()].filter(
       (c) => c.sectorId === sectorId,
     )
+    coloniesBySector.set(sectorId, sectorColonies)
+
     if (sectorColonies.length === 0) continue
 
     // Build deposits map: colonyId → planet deposits.
@@ -87,11 +100,104 @@ export function resolveMarketPhase(state: GameState): PhaseResult {
       depositsMap.set(colony.id, planet?.deposits ?? [])
     }
 
-    // Run the five-phase market resolution for this sector.
     const result = resolveMarket(sectorId, sectorColonies, depositsMap)
+    sectorColonyFlows.set(sectorId, result.colonyFlows)
+    sectorExportBonuses.set(sectorId, result.exportBonuses)
+  }
 
-    // Step 3: Apply shortage modifiers onto affected colonies.
-    for (const shortage of result.sectorSummary.shortages) {
+  // ── Cross-Sector Trade (Step 3, Story 17.2) ──────────────────────────────────
+  // For each active trade route, evaluate surplus sharing between the two sectors.
+  // Both passes (A→B and B→A) use pre-trade flows (snapshot from internal resolution).
+  // This prevents one direction's imports from affecting the other direction this turn.
+
+  // Collect active trade route contracts.
+  const activeTradeRoutes = [...state.contracts.values()].filter(
+    (c) =>
+      c.type === ContractType.TradeRoute &&
+      c.status === ContractStatus.Active,
+  )
+
+  // Per-sector accumulated trade flows for recording in SectorMarketState.
+  const inboundFlowsBySector = new Map<string, TradeFlow[]>()
+  const outboundFlowsBySector = new Map<string, TradeFlow[]>()
+
+  for (const contract of activeTradeRoutes) {
+    if (contract.target.type !== 'sector_pair') continue
+
+    const { sectorIdA, sectorIdB } = contract.target
+
+    // Take snapshot of flows BEFORE this trade route's passes run.
+    const flowsA = sectorColonyFlows.get(sectorIdA)
+    const flowsB = sectorColonyFlows.get(sectorIdB)
+    const coloniesA = coloniesBySector.get(sectorIdA) ?? []
+    const coloniesB = coloniesBySector.get(sectorIdB) ?? []
+
+    if (!flowsA || !flowsB) continue
+
+    // A → B pass (A exports to B).
+    const passAtoB = applyCrossSectorTradePass({
+      exporter: { sectorId: sectorIdA, colonyFlows: flowsA, colonies: coloniesA },
+      importer: { sectorId: sectorIdB, colonyFlows: flowsB, colonies: coloniesB },
+    })
+
+    // B → A pass (B exports to A). Uses original flowsA/flowsB (pre-trade snapshot).
+    const passBtoA = applyCrossSectorTradePass({
+      exporter: { sectorId: sectorIdB, colonyFlows: flowsB, colonies: coloniesB },
+      importer: { sectorId: sectorIdA, colonyFlows: flowsA, colonies: coloniesA },
+    })
+
+    // Merge updated importer flows back.
+    // A's imports come from the B→A pass; B's imports come from the A→B pass.
+    if (passBtoA.tradeFlows.length > 0 || passAtoB.tradeFlows.length > 0) {
+      // Update sector A flows with what A received from B.
+      sectorColonyFlows.set(sectorIdA, passBtoA.importerFlows)
+      // Update sector B flows with what B received from A.
+      sectorColonyFlows.set(sectorIdB, passAtoB.importerFlows)
+    }
+
+    // Accumulate trade flow records for both sectors.
+    for (const [sectorId, flows] of [
+      [sectorIdA, outboundFlowsBySector],
+      [sectorIdB, outboundFlowsBySector],
+    ] as [string, Map<string, TradeFlow[]>][]) {
+      if (!flows.has(sectorId)) flows.set(sectorId, [])
+    }
+    for (const [sectorId, flows] of [
+      [sectorIdA, inboundFlowsBySector],
+      [sectorIdB, inboundFlowsBySector],
+    ] as [string, Map<string, TradeFlow[]>][]) {
+      if (!flows.has(sectorId)) flows.set(sectorId, [])
+    }
+
+    // A→B: outbound from A, inbound to B.
+    for (const tf of passAtoB.tradeFlows) {
+      outboundFlowsBySector.get(sectorIdA)!.push(tf)
+      inboundFlowsBySector.get(sectorIdB)!.push(tf)
+    }
+    // B→A: outbound from B, inbound to A.
+    for (const tf of passBtoA.tradeFlows) {
+      outboundFlowsBySector.get(sectorIdB)!.push(tf)
+      inboundFlowsBySector.get(sectorIdA)!.push(tf)
+    }
+  }
+
+  // ── Apply Modifiers & Events (Steps 4-7) ─────────────────────────────────────
+  // Re-derive shortages from the final (post-trade) colony flows, then apply modifiers.
+
+  const updatedSectorMarkets = new Map<string, SectorMarketState>(state.sectorMarkets)
+
+  for (const [sectorId, sector] of state.galaxy.sectors) {
+    const sectorColonies = coloniesBySector.get(sectorId) ?? []
+    if (sectorColonies.length === 0) continue
+
+    const finalFlows = sectorColonyFlows.get(sectorId)!
+    const exportBonuses = sectorExportBonuses.get(sectorId) ?? []
+
+    // Derive shortages from the final resolved flows.
+    const finalShortages = deriveFinalShortages(finalFlows)
+
+    // Apply shortage modifiers onto affected colonies.
+    for (const shortage of finalShortages) {
       const colony = updatedColonies.get(shortage.colonyId)
       if (!colony) continue
 
@@ -104,8 +210,8 @@ export function resolveMarketPhase(state: GameState): PhaseResult {
       }
     }
 
-    // Step 4: Apply export bonus modifiers onto exporting colonies.
-    for (const bonus of result.exportBonuses) {
+    // Apply export bonus modifiers onto exporting colonies.
+    for (const bonus of exportBonuses) {
       const colony = updatedColonies.get(bonus.colonyId)
       if (!colony) continue
 
@@ -116,12 +222,19 @@ export function resolveMarketPhase(state: GameState): PhaseResult {
       })
     }
 
-    // Step 5: Store the updated sector market state.
-    updatedSectorMarkets.set(sectorId, buildSectorMarketState(result.sectorSummary))
+    // Store the updated sector market state (including cross-sector flows).
+    updatedSectorMarkets.set(sectorId, {
+      sectorId,
+      totalProduction: computeTotalProduction(finalFlows),
+      totalConsumption: computeTotalConsumption(finalFlows),
+      netSurplus: computeNetSurplus(finalFlows),
+      inboundFlows: inboundFlowsBySector.get(sectorId) ?? [],
+      outboundFlows: outboundFlowsBySector.get(sectorId) ?? [],
+    })
 
-    // Step 6: Generate Warning events for colonies with shortages in this sector.
+    // Generate shortage warning events after cross-sector trade.
     const shortageEvents = buildShortageEvents(
-      result.sectorSummary.shortages,
+      finalShortages,
       updatedColonies,
       sector.name,
       state.turn,
@@ -137,6 +250,71 @@ export function resolveMarketPhase(state: GameState): PhaseResult {
     },
     events,
   }
+}
+
+// ─── Shortage Derivation ──────────────────────────────────────────────────────
+
+/**
+ * Derives the list of shortages from final resolved colony flows.
+ * A shortage exists when inShortage is true in the flow.
+ */
+function deriveFinalShortages(
+  colonyFlows: Map<string, ColonyResourceSummary>,
+): Shortage[] {
+  const shortages: Shortage[] = []
+  for (const [colonyId, flow] of colonyFlows) {
+    for (const resource of Object.values(ResourceType)) {
+      if (flow[resource].inShortage) {
+        const deficit = flow[resource].consumed - flow[resource].produced - flow[resource].imported
+        shortages.push({
+          colonyId: colonyId as ColonyId,
+          resource,
+          deficitAmount: Math.max(0, deficit),
+        })
+      }
+    }
+  }
+  return shortages
+}
+
+// ─── Sector Summary Helpers ───────────────────────────────────────────────────
+
+function computeTotalProduction(colonyFlows: Map<string, ColonyResourceSummary>): Record<ResourceType, number> {
+  const totals = zeroRecord()
+  for (const flow of colonyFlows.values()) {
+    for (const r of Object.values(ResourceType)) {
+      totals[r] += flow[r].produced
+    }
+  }
+  return totals
+}
+
+function computeTotalConsumption(colonyFlows: Map<string, ColonyResourceSummary>): Record<ResourceType, number> {
+  const totals = zeroRecord()
+  for (const flow of colonyFlows.values()) {
+    for (const r of Object.values(ResourceType)) {
+      totals[r] += flow[r].consumed
+    }
+  }
+  return totals
+}
+
+function computeNetSurplus(colonyFlows: Map<string, ColonyResourceSummary>): Record<ResourceType, number> {
+  const prod = computeTotalProduction(colonyFlows)
+  const cons = computeTotalConsumption(colonyFlows)
+  const net = zeroRecord()
+  for (const r of Object.values(ResourceType)) {
+    net[r] = prod[r] - cons[r]
+  }
+  return net
+}
+
+function zeroRecord(): Record<ResourceType, number> {
+  const record = {} as Record<ResourceType, number>
+  for (const r of Object.values(ResourceType)) {
+    record[r] = 0
+  }
+  return record
 }
 
 // ─── Modifier Clearing ────────────────────────────────────────────────────────
@@ -197,28 +375,6 @@ function buildExportBonusModifier(bonus: ExportBonus): Modifier {
     sourceType: 'shortage',
     sourceId: `export_${bonus.resource}`,
     sourceName: `${bonus.resource} Export Bonus`,
-  }
-}
-
-// ─── Sector Market State Builder ──────────────────────────────────────────────
-
-/**
- * Converts a SectorMarketSummary from the resolver into a SectorMarketState
- * suitable for storage in GameState.sectorMarkets.
- *
- * Cross-sector trade flows are empty at this stage.
- * TODO (Story 17.2): Populate inboundFlows and outboundFlows from active trade routes.
- */
-function buildSectorMarketState(
-  summary: import('../../types/resource').SectorMarketSummary,
-): SectorMarketState {
-  return {
-    sectorId: summary.sectorId,
-    totalProduction: summary.totalProduction,
-    totalConsumption: summary.totalConsumption,
-    netSurplus: summary.netSurplus,
-    inboundFlows: [],
-    outboundFlows: [],
   }
 }
 

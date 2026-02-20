@@ -2,6 +2,46 @@
 
 ---
 
+## Story 17.2: Cross-Sector Market Integration (2026-02-20)
+
+**Files**: `src/engine/simulation/market-resolver.ts` (updated), `src/engine/turn/market-phase.ts` (updated), `src/__tests__/engine/simulation/cross-sector-trade.test.ts` (new)
+
+### Engine logic implemented
+
+**`market-resolver.ts` — new export: `applyCrossSectorTradePass(input)`**
+
+- Evaluates one directional pass of cross-sector surplus sharing (exporter → importer).
+- Algorithm:
+  1. Sum exporter's net surplus per tradeable resource (produced - consumed + imported).
+  2. Apply 50% efficiency: `available = floor(netSurplus × 0.5)`.
+  3. Distribute to importer colonies in dynamism-priority order (highest first).
+  4. Update importer colony flows: increase `imported`, clear `inShortage` if deficit resolved.
+  5. Record `TradeFlow` for each resource actually transferred.
+- Returns `{ importerFlows, tradeFlows }` — pure, no mutations.
+
+**`market-phase.ts` — cross-sector integration**
+
+- After all sectors complete internal resolution, active TradeRoute contracts are collected from `state.contracts` (status Active, type TradeRoute).
+- For each active trade route:
+  - A→B pass and B→A pass both run using **pre-trade internal flows** (snapshot before any cross-sector transfer).
+  - This ensures bidirectional passes are simultaneous and independent — A's imports don't reduce B's surplus this turn and vice versa.
+  - Updated importer flows merged back to sector flow maps.
+  - Trade flow records accumulated per sector for `SectorMarketState.inboundFlows` / `outboundFlows`.
+- Shortages re-derived from final (post-trade) colony flows before applying shortage modifiers and generating events.
+- `buildSectorMarketState` replaced with inline construction that includes populated `inboundFlows` / `outboundFlows`.
+
+### Acceptance criteria met
+
+- After internal sector market resolves, connected sectors share surplus at 50% efficiency ✓
+- Surplus from Sector A available to Sector B's deficit colonies (by dynamism order) and vice versa ✓
+- Trade route must be active (contract not cancelled — checks `status === Active`) ✓
+- Unit tests: surplus sharing ✓, efficiency rate (floor × 0.5) ✓, bidirectional flow (independent passes) ✓
+
+**Tests**: 19/19 passing (cross-sector-trade.test.ts) + 60/60 market/trade-route tests (no regressions)
+**TypeScript**: zero errors
+
+---
+
 ## Story 17.1: Trade Route Contract (2026-02-20)
 
 **Files**: `src/engine/actions/create-trade-route.ts` (new), `src/stores/contract.store.ts` (updated), `src/__tests__/engine/actions/create-trade-route.test.ts` (new)

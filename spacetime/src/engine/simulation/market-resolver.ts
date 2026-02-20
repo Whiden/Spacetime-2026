@@ -14,9 +14,10 @@
  * Export Bonuses: A colony that contributes surplus that is actually consumed by
  * another colony receives +1 Dynamism. Applied by market-phase.ts (Story 9.2).
  *
- * TODO (Story 9.2): market-phase.ts calls this resolver for each sector, applies
- *   shortage modifiers to colony attributes, and applies export bonuses.
- * TODO (Story 17.2): Cross-sector trade route surplus sharing added to this resolver.
+ * Cross-Sector Trade (Story 17.2):
+ *   After all sectors resolve internally, `applyCrossSectorTrade()` flows surplus
+ *   between connected sectors via active trade routes at 50% efficiency.
+ *   Dynamism-priority purchasing still applies within the importing sector.
  *
  * Pure TypeScript — no Vue or Pinia imports.
  */
@@ -25,6 +26,7 @@ import type { Colony } from '../../types/colony'
 import type { Deposit } from '../../types/planet'
 import type { ColonyResourceSummary, ResourceFlow, Shortage, SectorMarketSummary, ExportBonus } from '../../types/resource'
 import type { SectorId, ColonyId } from '../../types/common'
+import type { TradeFlow } from '../../types/trade'
 import { ResourceType } from '../../types/common'
 import { calculateColonyResourceFlow } from './colony-sim'
 
@@ -282,4 +284,146 @@ export function resolveMarket(
     sectorSummary,
     exportBonuses,
   }
+}
+
+// ─── Cross-Sector Trade ────────────────────────────────────────────────────────
+
+/**
+ * Input for a single cross-sector trade pass between two sectors.
+ * Called once per trade route (bidirectional — A→B and B→A evaluated simultaneously).
+ */
+export interface CrossSectorTradeInput {
+  /** Sector that has surplus to offer (the exporter this pass). */
+  exporter: {
+    sectorId: SectorId
+    /** Resolved colony flows after internal market resolution for this sector. */
+    colonyFlows: Map<string, ColonyResourceSummary>
+    /** All colonies in this sector (for dynamism-priority sorting). */
+    colonies: Colony[]
+  }
+  /** Sector that has deficits to fill (the importer this pass). */
+  importer: {
+    sectorId: SectorId
+    colonyFlows: Map<string, ColonyResourceSummary>
+    colonies: Colony[]
+  }
+}
+
+/** Updated flows and trade flows for one directional pass of cross-sector trade. */
+export interface CrossSectorTradePassResult {
+  /** Updated importer colony flows (some deficits may be resolved). */
+  importerFlows: Map<string, ColonyResourceSummary>
+  /** Trade flow records for each resource that was actually transferred. */
+  tradeFlows: TradeFlow[]
+}
+
+/**
+ * CROSS_SECTOR_EFFICIENCY — fraction of exporting sector's surplus shared.
+ * Per Specs.md § 7: cross-sector surplus shared at 50% efficiency.
+ * Only floor(surplus × 0.5) units are available to the importing sector.
+ */
+const CROSS_SECTOR_EFFICIENCY = 0.5
+
+/**
+ * Applies one directional pass of cross-sector trade from exporter → importer.
+ *
+ * Algorithm:
+ *   For each tradeable resource:
+ *     1. Sum net surplus remaining in the exporter's pool (colonies with positive remaining surplus).
+ *     2. Apply 50% efficiency: available = floor(netSurplus × 0.5)
+ *     3. Distribute available units to importer deficit colonies in dynamism order.
+ *     4. Record TradeFlow if any units were actually transferred.
+ *
+ * Returns updated importer colony flows and the trade flow records generated.
+ * Does NOT mutate exporter flows (exporter surplus is not reduced — it's a copy, not a deduction).
+ * The exporting sector keeps its surplus; we only lend 50% of it cross-sector.
+ *
+ * @param input - Exporter and importer sector data after internal resolution.
+ * @returns Updated importer flows and trade flow records.
+ */
+export function applyCrossSectorTradePass(input: CrossSectorTradeInput): CrossSectorTradePassResult {
+  const { exporter, importer } = input
+
+  // Work on a mutable copy of importer flows so we can update them per resource.
+  const updatedImporterFlows = new Map<string, ColonyResourceSummary>(importer.colonyFlows)
+
+  const tradeFlows: TradeFlow[] = []
+
+  // Importer colonies sorted by dynamism descending — highest gets first access to cross-sector imports.
+  const sortedImporterColonies = [...importer.colonies].sort(
+    (a, b) => b.attributes.dynamism - a.attributes.dynamism,
+  )
+
+  for (const resource of TRADEABLE_RESOURCES) {
+    // Step 1: Calculate net surplus of the exporting sector.
+    // A colony's net surplus is its final remaining surplus after imports were applied.
+    // We use: netSurplus = produced - consumed + imported  (from its resolved flow).
+    // However, the simplest approach: sum positive remainders.
+    // surplus in resolved flow = produced - consumed + imported - deficit_remaining.
+    // After internal resolution: flow.surplus = produced - consumed, flow.imported = what was received.
+    // Remaining surplus = flow.surplus + flow.imported  (positive means genuinely surplus).
+
+    let exporterNetSurplus = 0
+    for (const flow of exporter.colonyFlows.values()) {
+      const resourceFlow = flow[resource]
+      // net = produced - consumed + imported. Surplus is positive if colony still has excess.
+      const net = resourceFlow.produced - resourceFlow.consumed + resourceFlow.imported
+      if (net > 0) {
+        exporterNetSurplus += net
+      }
+    }
+
+    if (exporterNetSurplus <= 0) continue // nothing to export
+
+    // Step 2: Apply 50% efficiency.
+    const available = Math.floor(exporterNetSurplus * CROSS_SECTOR_EFFICIENCY)
+    if (available <= 0) continue
+
+    // Step 3: Distribute to importer colonies in dynamism priority order.
+    let remaining = available
+    let totalReceived = 0
+
+    for (const colony of sortedImporterColonies) {
+      if (remaining <= 0) break
+
+      const currentFlow = updatedImporterFlows.get(colony.id)!
+      const resourceFlow = currentFlow[resource]
+
+      // Only colonies still in deficit benefit from cross-sector imports.
+      // Deficit = consumed - produced - imported (positive means unmet need).
+      const deficit = resourceFlow.consumed - resourceFlow.produced - resourceFlow.imported
+      if (deficit <= 0) continue
+
+      const received = Math.min(deficit, remaining)
+      remaining -= received
+      totalReceived += received
+
+      // Update the importer colony's flow: increase imported, clear shortage if deficit resolved.
+      const newImported = resourceFlow.imported + received
+      const remainingDeficit = Math.max(0, deficit - received)
+
+      updatedImporterFlows.set(colony.id, {
+        ...currentFlow,
+        [resource]: {
+          ...resourceFlow,
+          imported: newImported,
+          inShortage: remainingDeficit > 0,
+        },
+      })
+    }
+
+    // Step 4: Record a TradeFlow if any units were actually received by the importer.
+    if (totalReceived > 0) {
+      tradeFlows.push({
+        fromSectorId: exporter.sectorId,
+        toSectorId: importer.sectorId,
+        resource,
+        surplusAvailable: exporterNetSurplus,
+        transferred: available,
+        received: totalReceived,
+      })
+    }
+  }
+
+  return { importerFlows: updatedImporterFlows, tradeFlows }
 }
