@@ -2,6 +2,47 @@
 
 ---
 
+## Story 19.2: Notification Display (2026-02-20)
+
+**Files**: `src/components/layout/AppNotifications.vue` (new), `src/components/layout/AppHeader.vue` (updated), `src/views/DashboardView.vue` (updated)
+
+### Components implemented
+
+**`AppNotifications.vue`**
+- Overlay panel anchored below the header, full viewport height, scrollable.
+- Shows all retained event history grouped by turn, newest turn first.
+- Each event: priority-colored dot, title, priority label (Critical/Warning), description, entity navigation link.
+- Clicking an event with a related entity (colony, corp) navigates to its detail view and closes the panel.
+- Dismiss button (×) marks event as read; already-read events shown with reduced opacity.
+- Backdrop click closes the panel.
+
+**`AppHeader.vue`** updated
+- Bell icon button (🔔) in the right action area toggles `AppNotifications` overlay.
+- Red badge shows `unreadCount` from `useEventStore`; hidden when 0; capped display at "99+".
+- `notificationsOpen` ref controls visibility; closed via `@close` emit from the panel.
+
+**`DashboardView.vue`** updated
+- Current-turn events rendered as expandable priority-sorted cards (Critical → Warning → Info → Positive).
+- Card border and background color-coded by priority (red/amber/zinc/emerald tones).
+- Priority label badge shown on each card.
+- Expand (▸/▾) button reveals full description.
+- Dismiss (×) button calls `eventStore.dismissEvent(id)`; dismissed cards shown at 50% opacity.
+- Entity navigation: "View details →" button shown when a related colony/corp ID is detected; navigates to detail view.
+- Removed dependency on `useTurnActions.sortedEvents` (now reads `eventStore.currentTurnEvents` directly).
+
+### Acceptance criteria met
+
+- Dashboard shows current turn events as cards, priority-sorted ✓
+- Critical events (red) at top, expandable for full detail ✓
+- Event cards expandable ✓
+- Notification badge on header shows unread count ✓
+- Notification panel (overlay) accessible from header, shows recent events across turns ✓
+- Events link to relevant entity (colony → colony detail, corp → corp detail) ✓
+
+**TypeScript**: zero errors
+
+---
+
 ## Story 18.3: Settings View (2026-02-20)
 
 **Files**: `src/views/SettingsView.vue` (implemented)

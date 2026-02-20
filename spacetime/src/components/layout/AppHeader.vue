@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useBudgetDisplay } from '../../composables/useBudgetDisplay'
 import { useTurnActions } from '../../composables/useTurnActions'
+import { useEventStore } from '../../stores/event.store'
 import ConfirmDialog from '../shared/ConfirmDialog.vue'
+import AppNotifications from './AppNotifications.vue'
 
 const {
   currentBP,
@@ -25,6 +28,11 @@ const {
   cancelEndTurn,
   confirmEndTurn,
 } = useTurnActions()
+
+const eventStore = useEventStore()
+
+/** Whether the notification overlay panel is open. */
+const notificationsOpen = ref(false)
 </script>
 
 <template>
@@ -57,17 +65,37 @@ const {
       </div>
     </div>
 
-    <!-- Right: End Turn -->
-    <button
-      :disabled="!canEndTurn"
-      :class="canEndTurn
-        ? 'bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer'
-        : 'bg-indigo-600/50 text-indigo-300 cursor-not-allowed opacity-50'"
-      class="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
-      @click="requestEndTurn"
-    >
-      {{ isResolving ? 'Resolving...' : 'End Turn' }}
-    </button>
+    <!-- Right: Notification badge + End Turn -->
+    <div class="flex items-center gap-3">
+      <!-- Notification bell with unread badge -->
+      <button
+        class="relative p-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
+        title="Notifications"
+        @click="notificationsOpen = !notificationsOpen"
+      >
+        <!-- Bell icon (unicode) -->
+        <span class="text-base leading-none">🔔</span>
+        <!-- Unread count badge -->
+        <span
+          v-if="eventStore.unreadCount > 0"
+          class="absolute -top-1 -right-1 min-w-[1.1rem] h-[1.1rem] flex items-center justify-center
+                 rounded-full bg-red-600 text-[9px] font-bold text-white px-1"
+        >
+          {{ eventStore.unreadCount > 99 ? '99+' : eventStore.unreadCount }}
+        </span>
+      </button>
+
+      <button
+        :disabled="!canEndTurn"
+        :class="canEndTurn
+          ? 'bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer'
+          : 'bg-indigo-600/50 text-indigo-300 cursor-not-allowed opacity-50'"
+        class="px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
+        @click="requestEndTurn"
+      >
+        {{ isResolving ? 'Resolving...' : 'End Turn' }}
+      </button>
+    </div>
 
     <!-- Confirmation Dialog -->
     <ConfirmDialog
@@ -77,6 +105,12 @@ const {
       confirm-label="End Turn"
       @confirm="confirmEndTurn"
       @cancel="cancelEndTurn"
+    />
+
+    <!-- Notification overlay panel -->
+    <AppNotifications
+      v-if="notificationsOpen"
+      @close="notificationsOpen = false"
     />
   </header>
 </template>
