@@ -2,6 +2,44 @@
 
 ---
 
+## Story 16.3: Mission Phase — Turn Resolution (2026-02-20)
+
+**Files**: `src/engine/turn/mission-phase.ts` (full implementation), `src/__tests__/engine/turn/mission-phase.test.ts` (new)
+
+### Functions implemented
+
+- `resolveMissionPhase(state, randFn?)` — Phase #5 of turn resolution. Full pipeline per active mission (completedTurn === null):
+  1. **Travel**: decrements `travelTurnsRemaining`; transitions to Execution on last travel turn.
+  2. **Execution**: decrements `executionTurnsRemaining`; on last turn, runs mission logic — combat resolver for Assault/Defense/Escort, no-damage success for Rescue/Investigation.
+  3. **Return**: decrements `returnTurnsRemaining`; on last return turn, marks mission Completed and ships Stationed.
+  4. **Ship loss**: destroyed ships removed from `state.ships`; Critical `fleet` event generated per ship lost.
+  5. **All lost**: if entire task force destroyed, mission completes immediately as `missing` with a `Task Force Lost` Critical event.
+  6. **Captain experience**: on mission completion, increments `missionsCompleted` on captain + service record, then re-derives experience level via `getExperienceLevel`.
+  7. **Mission report**: set on execution completion with `outcome` (success / partial_success / missing), `summary`, `shipsLost`, `shipsReturned`, and `combatSummary` for combat missions.
+
+### Key decisions
+
+- Travel → Execution transition happens within the same turn: when `travelTurnsRemaining === 1`, both phases advance in one call.
+- Combat resolver called via injectable `randFn` (defaults to `Math.random`) — fully deterministic in tests.
+- Non-combat missions (Rescue, Investigation) skip `resolveCombat`; ships return with 100% condition.
+- `COMBAT_MISSIONS = { Assault, Defense, Escort }` — the three mission types that use the Fight score resolver.
+- Ships are removed from `state.ships` immediately on destruction; the fleet store (Story 16.4) will be updated by `_distributeResults` in `game.store.ts`.
+
+### Acceptance criteria met
+
+- Travel phase: decrement travel turns remaining ✓
+- Execution phase: run mission logic (combat if applicable) ✓
+- Return phase: decrement return travel turns ✓
+- On completion: ships return to Stationed status, generate mission report ✓
+- On ship loss: remove ship, generate loss event ✓
+- Captain experience gain: increment after mission completion ✓
+- Returns updated missions + ships + events ✓
+
+**Tests**: 16/16 passing (mission-phase.test.ts)
+**TypeScript**: zero errors
+
+---
+
 ## Story 16.2: Combat Resolver (2026-02-20)
 
 **Files**: `src/engine/formulas/combat.ts` (new), `src/engine/simulation/combat-resolver.ts` (new), `src/__tests__/engine/simulation/combat-resolver.test.ts` (new)
