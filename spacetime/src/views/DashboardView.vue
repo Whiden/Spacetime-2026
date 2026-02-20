@@ -1,20 +1,25 @@
 <script setup lang="ts">
 /**
- * DashboardView — Home screen with budget summary, debt warning, and event feed.
+ * DashboardView — Home screen with turn info, budget summary, debt warning,
+ * event feed, empire summary cards, science summary, and quick actions.
  *
  * Story 19.2: Current-turn events shown as expandable priority-sorted cards.
- * Critical events (red) are pinned at top. Dismiss marks an event as read.
- * Clicking a card with a related entity navigates to its detail view.
+ * Story 19.3: Full dashboard — empire summary cards, science summary, quick actions.
  *
- * TODO (Story 19.3): Full dashboard with empire summary cards, quick actions.
+ * TODO (Story 20+): Surface mission count and mission quick action when missions are added.
  */
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useBudgetDisplay } from '../composables/useBudgetDisplay'
 import { useEventStore } from '../stores/event.store'
+import { useColonyStore } from '../stores/colony.store'
+import { useCorporationStore } from '../stores/corporation.store'
+import { useContractStore } from '../stores/contract.store'
+import { useFleetStore } from '../stores/fleet.store'
+import { useScienceStore } from '../stores/science.store'
+import { useGameStore } from '../stores/game.store'
 import { EventPriority } from '../types/common'
 import type { GameEvent } from '../types/event'
-import StatCard from '../components/shared/StatCard.vue'
 
 const router = useRouter()
 
@@ -32,6 +37,30 @@ const {
 } = useBudgetDisplay()
 
 const eventStore = useEventStore()
+const colonyStore = useColonyStore()
+const corpStore = useCorporationStore()
+const contractStore = useContractStore()
+const fleetStore = useFleetStore()
+const scienceStore = useScienceStore()
+const gameStore = useGameStore()
+
+// ─── Empire summary ───────────────────────────────────────────────────────────
+
+const currentTurn = computed(() => gameStore.currentTurn)
+const colonyCount = computed(() => colonyStore.colonyCount)
+const corpCount = computed(() => corpStore.corpCount)
+const shipCount = computed(() => fleetStore.shipCount)
+const activeContractCount = computed(() => contractStore.activeContracts.length)
+
+/** Highest science domain level across all domains (0 at game start). */
+const highestDomainLevel = computed(() =>
+  Math.max(0, ...scienceStore.allDomains.map((d) => d.level)),
+)
+
+/** Total number of discoveries made empire-wide. */
+const discoveryCount = computed(() => scienceStore.allDiscoveries.length)
+
+// ─── Event feed ───────────────────────────────────────────────────────────────
 
 /** Current turn events, already priority-sorted by the store. */
 const currentEvents = computed(() => eventStore.currentTurnEvents)
@@ -66,7 +95,7 @@ const priorityLabelColor: Record<EventPriority, string> = {
   [EventPriority.Positive]: 'text-emerald-400',
 }
 
-// ─── Actions ──────────────────────────────────────────────────────────────────
+// ─── Event actions ────────────────────────────────────────────────────────────
 
 /** Track which events are expanded (by ID). */
 const expandedIds = new Set<string>()
@@ -84,7 +113,7 @@ function dismiss(event: GameEvent): void {
 
 /**
  * Returns router path for first recognizable related entity, or null.
- * TODO (Story 19.3): extend with more entity types as views become available.
+ * Supports colonies and corporations. Ships and missions added in future stories.
  */
 function entityRoute(event: GameEvent): string | null {
   for (const id of event.relatedEntityIds) {
@@ -102,9 +131,53 @@ function navigateToEntity(event: GameEvent): void {
 
 <template>
   <div>
-    <h1 class="text-2xl font-semibold text-white mb-6">Dashboard</h1>
+    <!-- Turn number -->
+    <div class="flex items-baseline gap-3 mb-6">
+      <h1 class="text-2xl font-semibold text-white">Dashboard</h1>
+      <span class="text-sm text-zinc-400">Turn {{ currentTurn }}</span>
+    </div>
 
-    <!-- Current Turn Events Panel -->
+    <!-- ── Debt Warning ──────────────────────────────────────────────────── -->
+    <div
+      v-if="hasDebt"
+      class="rounded-lg border border-red-800/50 bg-red-950/30 px-4 py-3 mb-6"
+    >
+      <div class="flex items-center gap-3">
+        <span class="text-red-400 text-lg">⚠</span>
+        <div>
+          <p class="text-sm font-medium text-red-300">
+            Debt Crisis — {{ debtTokens }} debt token{{ debtTokens !== 1 ? 's' : '' }} active
+          </p>
+          <p class="text-xs text-red-400/80 mt-0.5">
+            All colonies suffer -{{ stabilityMalus }} stability. 1 token cleared per turn at a cost of 1 BP.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Budget Summary ────────────────────────────────────────────────── -->
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      <div class="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3">
+        <p class="text-xs text-zinc-500 uppercase tracking-wider mb-1">Balance</p>
+        <span class="text-lg font-semibold text-white">{{ currentBP }} BP</span>
+      </div>
+      <div class="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3">
+        <p class="text-xs text-zinc-500 uppercase tracking-wider mb-1">Income / Turn</p>
+        <span class="text-lg font-semibold text-emerald-400">+{{ income }} BP</span>
+      </div>
+      <div class="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3">
+        <p class="text-xs text-zinc-500 uppercase tracking-wider mb-1">Expenses / Turn</p>
+        <span class="text-lg font-semibold text-red-400">-{{ expenses }} BP</span>
+      </div>
+      <div class="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3">
+        <p class="text-xs text-zinc-500 uppercase tracking-wider mb-1">Net / Turn</p>
+        <span class="text-lg font-semibold" :class="netColorClass">
+          {{ net > 0 ? '+' : '' }}{{ net }} BP
+        </span>
+      </div>
+    </div>
+
+    <!-- ── Current Turn Events ───────────────────────────────────────────── -->
     <div
       v-if="currentEvents.length > 0"
       class="rounded-xl border border-indigo-700/40 bg-indigo-950/20 p-4 mb-6"
@@ -155,7 +228,7 @@ function navigateToEntity(event: GameEvent): void {
 
             <!-- Right: expand toggle + dismiss -->
             <div class="flex items-center gap-2 shrink-0">
-              <!-- Dismiss — Critical events can be dismissed after viewing (expand first) -->
+              <!-- Dismiss -->
               <button
                 class="text-xs text-zinc-600 hover:text-zinc-300 transition-colors"
                 :title="event.dismissed ? 'Already read' : 'Mark as read'"
@@ -176,39 +249,126 @@ function navigateToEntity(event: GameEvent): void {
       </div>
     </div>
 
-    <!-- Budget Summary Cards -->
-    <div class="grid grid-cols-4 gap-4 mb-6">
-      <StatCard label="Balance" :value="`${currentBP} BP`" />
-      <StatCard label="Income / Turn" :value="`+${income} BP`" />
-      <StatCard label="Expenses / Turn" :value="`-${expenses} BP`" />
-      <div class="rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3">
-        <p class="text-xs text-zinc-500 uppercase tracking-wider mb-1">Net / Turn</p>
-        <span class="text-lg font-semibold" :class="netColorClass">
-          {{ net > 0 ? '+' : '' }}{{ net }} BP
-        </span>
-      </div>
+    <!-- ── Empire Summary Cards ──────────────────────────────────────────── -->
+    <h2 class="text-sm font-medium text-zinc-400 uppercase tracking-wider mb-3">Empire</h2>
+    <div class="grid grid-cols-2 gap-4 mb-6 sm:grid-cols-4">
+      <!-- Colonies -->
+      <button
+        class="rounded-xl border border-zinc-800 bg-zinc-900/50 px-4 py-4 text-left hover:border-indigo-600/50 hover:bg-zinc-800/50 transition-colors"
+        @click="router.push('/colonies')"
+      >
+        <p class="text-xs text-zinc-500 uppercase tracking-wider mb-1">Colonies</p>
+        <p class="text-2xl font-semibold text-white">{{ colonyCount }}</p>
+        <p class="text-xs text-indigo-400 mt-1">View colonies →</p>
+      </button>
+
+      <!-- Corporations -->
+      <button
+        class="rounded-xl border border-zinc-800 bg-zinc-900/50 px-4 py-4 text-left hover:border-indigo-600/50 hover:bg-zinc-800/50 transition-colors"
+        @click="router.push('/corporations')"
+      >
+        <p class="text-xs text-zinc-500 uppercase tracking-wider mb-1">Corporations</p>
+        <p class="text-2xl font-semibold text-white">{{ corpCount }}</p>
+        <p class="text-xs text-indigo-400 mt-1">View corporations →</p>
+      </button>
+
+      <!-- Fleet -->
+      <button
+        class="rounded-xl border border-zinc-800 bg-zinc-900/50 px-4 py-4 text-left hover:border-indigo-600/50 hover:bg-zinc-800/50 transition-colors"
+        @click="router.push('/fleet')"
+      >
+        <p class="text-xs text-zinc-500 uppercase tracking-wider mb-1">Ships</p>
+        <p class="text-2xl font-semibold text-white">{{ shipCount }}</p>
+        <p class="text-xs text-indigo-400 mt-1">View fleet →</p>
+      </button>
+
+      <!-- Active Contracts -->
+      <button
+        class="rounded-xl border border-zinc-800 bg-zinc-900/50 px-4 py-4 text-left hover:border-indigo-600/50 hover:bg-zinc-800/50 transition-colors"
+        @click="router.push('/contracts')"
+      >
+        <p class="text-xs text-zinc-500 uppercase tracking-wider mb-1">Active Contracts</p>
+        <p class="text-2xl font-semibold text-white">{{ activeContractCount }}</p>
+        <p
+          v-if="activeContractCount === 0"
+          class="text-xs text-amber-400 mt-1"
+        >
+          No contracts — create one →
+        </p>
+        <p v-else class="text-xs text-indigo-400 mt-1">View contracts →</p>
+      </button>
     </div>
 
-    <!-- Debt Warning -->
-    <div
-      v-if="hasDebt"
-      class="rounded-lg border border-red-800/50 bg-red-950/30 px-4 py-3 mb-6"
+    <!-- ── Science Summary ────────────────────────────────────────────────── -->
+    <button
+      class="w-full rounded-xl border border-zinc-800 bg-zinc-900/50 px-4 py-4 text-left hover:border-indigo-600/50 hover:bg-zinc-800/50 transition-colors mb-6"
+      @click="router.push('/science')"
     >
-      <div class="flex items-center gap-3">
-        <span class="text-red-400 text-lg">⚠</span>
+      <div class="flex items-center justify-between">
         <div>
-          <p class="text-sm font-medium text-red-300">
-            Debt Crisis — {{ debtTokens }} debt token{{ debtTokens !== 1 ? 's' : '' }} active
-          </p>
-          <p class="text-xs text-red-400/80 mt-0.5">
-            All colonies suffer -{{ stabilityMalus }} stability. 1 token cleared per turn at a cost of 1 BP.
+          <p class="text-xs text-zinc-500 uppercase tracking-wider mb-1">Science</p>
+          <p class="text-sm text-zinc-200">
+            Highest domain level:
+            <span class="font-semibold text-violet-300">{{ highestDomainLevel }}</span>
+            &nbsp;·&nbsp;
+            Discoveries:
+            <span class="font-semibold text-violet-300">{{ discoveryCount }}</span>
           </p>
         </div>
+        <p class="text-xs text-indigo-400">View science →</p>
       </div>
+    </button>
+
+    <!-- ── Quick Actions ──────────────────────────────────────────────────── -->
+    <h2 class="text-sm font-medium text-zinc-400 uppercase tracking-wider mb-3">Quick Actions</h2>
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <button
+        class="rounded-lg border border-indigo-700/40 bg-indigo-950/20 px-4 py-3 text-sm font-medium text-indigo-300 hover:bg-indigo-900/30 transition-colors"
+        @click="router.push('/contracts')"
+      >
+        + Create Contract
+      </button>
+      <button
+        class="rounded-lg border border-zinc-700/50 bg-zinc-900/30 px-4 py-3 text-sm font-medium text-zinc-300 hover:bg-zinc-800/50 transition-colors"
+        @click="router.push('/colonies')"
+      >
+        View Colonies
+      </button>
+      <button
+        class="rounded-lg border border-zinc-700/50 bg-zinc-900/30 px-4 py-3 text-sm font-medium text-zinc-300 hover:bg-zinc-800/50 transition-colors"
+        @click="router.push('/corporations')"
+      >
+        View Corporations
+      </button>
+      <button
+        class="rounded-lg border border-zinc-700/50 bg-zinc-900/30 px-4 py-3 text-sm font-medium text-zinc-300 hover:bg-zinc-800/50 transition-colors"
+        @click="router.push('/fleet')"
+      >
+        View Fleet
+      </button>
     </div>
 
-    <!-- Income & Expense Breakdown -->
-    <div class="grid grid-cols-2 gap-6 mb-6">
+    <!-- ── No Active Contracts CTA ───────────────────────────────────────── -->
+    <div
+      v-if="activeContractCount === 0"
+      class="mt-6 rounded-xl border border-amber-700/30 bg-amber-950/10 px-6 py-5 flex items-center justify-between"
+    >
+      <div>
+        <p class="text-sm font-medium text-amber-300">No active contracts</p>
+        <p class="text-xs text-amber-400/70 mt-0.5">
+          Contracts drive exploration, colonization, and trade. Start one to grow your empire.
+        </p>
+      </div>
+      <button
+        class="shrink-0 ml-4 rounded-lg border border-amber-600/50 bg-amber-900/30 px-4 py-2 text-sm font-medium text-amber-300 hover:bg-amber-800/40 transition-colors"
+        @click="router.push('/contracts')"
+      >
+        Create Contract
+      </button>
+    </div>
+
+    <!-- ── Income & Expense Breakdown ────────────────────────────────────── -->
+    <div class="grid grid-cols-2 gap-6 mt-6">
       <!-- Income Breakdown -->
       <div class="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
         <h2 class="text-sm font-medium text-zinc-400 uppercase tracking-wider mb-3">Income Breakdown</h2>
@@ -270,12 +430,6 @@ function navigateToEntity(event: GameEvent): void {
           </div>
         </div>
       </div>
-    </div>
-
-    <!-- Placeholder for future dashboard content -->
-    <div class="flex flex-col items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900/50 py-12 px-8">
-      <p class="text-zinc-400 text-sm">Welcome to Spacetime. Your empire begins here.</p>
-      <p class="text-zinc-500 text-xs mt-2">Events and empire overview will appear as systems come online.</p>
     </div>
   </div>
 </template>

@@ -2,6 +2,32 @@
 
 ---
 
+## Story 19.3: Dashboard — Full Implementation (2026-02-20)
+
+**Files**: `src/views/DashboardView.vue` (updated)
+
+### Changes
+
+**`DashboardView.vue`** fully implemented:
+- Turn number shown prominently alongside the "Dashboard" heading.
+- Budget summary (Balance, Income/Turn, Expenses/Turn, Net/Turn) retained at top with debt warning banner below.
+- Event feed (current-turn, priority-sorted Critical → Warning → Info → Positive) retained from Story 19.2.
+- Empire summary cards grid (2×2 on mobile, 4-column on sm+): Colonies, Corporations, Ships, Active Contracts — each card is a full navigation button linking to the relevant screen.
+- Science summary card: shows highest domain level and total discovery count, links to Science view.
+- Quick actions row: Create Contract (indigo accent), View Colonies, View Corporations, View Fleet.
+- "No active contracts" CTA banner: amber-toned, prompts contract creation with an inline button; hidden once a contract exists.
+- Income and expense breakdowns moved to the bottom of the page for detail-on-demand.
+- Starting corporations visible immediately (corp store initializes them at game start — no empty state).
+
+**Key architecture decisions:**
+- `highestDomainLevel` uses `Math.max(0, ...domains.map(d => d.level))` — returns 0 safely at game start with no domains.
+- `activeContractCount === 0` drives both the contracts card sub-label and the CTA banner.
+- No new engine code required — all data read from existing store getters.
+
+**Tests:** No new tests needed (pure UI story, all store logic covered by existing tests). 357 passing.
+
+---
+
 ## Story 19.2: Notification Display (2026-02-20)
 
 **Files**: `src/components/layout/AppNotifications.vue` (new), `src/components/layout/AppHeader.vue` (updated), `src/views/DashboardView.vue` (updated)
