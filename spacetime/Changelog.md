@@ -2,6 +2,38 @@
 
 ---
 
+## Story 16.4: Mission Store (2026-02-20)
+
+**Files**: `src/stores/mission.store.ts` (new), `src/stores/game.store.ts` (updated), `src/__tests__/stores/mission.store.test.ts` (new)
+
+### Store implemented
+
+- `useMissionStore` — holds all missions (active and completed) in a `Map<MissionId, Mission>`.
+- `createMission(params, state, randFn?)` — delegates to `engineCreateMission`; on success registers the mission in the store and returns the updated ships map.
+- `advanceMissions(gameState, randFn?)` — calls `resolveMissionPhase`; syncs updated missions back into the store; returns the `PhaseResult` for `game.store` to distribute ships and events.
+- `updateMissions(map)` — bulk-replaces the missions map (called by `game.store._distributeResults` after turn resolution).
+- `activeMissions` (computed) — missions with `completedTurn === null`.
+- `completedMissions` (computed) — missions with `completedTurn !== null`.
+- `missionsByShip(shipId)` — returns all missions (active or completed) whose task force includes the given ship.
+
+### game.store.ts wired
+
+- `getFullGameState()` now reads `missionStore.missions` instead of passing an empty `Map`.
+- `_distributeResults()` calls `missionStore.updateMissions(state.missions)` after each turn resolution.
+
+### Acceptance criteria met
+
+- Holds active and completed missions ✓
+- Action: `createMission(params)` validates and creates ✓
+- Action: `advanceMissions(gameState)` calls mission phase ✓
+- Getter: `activeMissions` ✓
+- Getter: `missionsByShip(id)` ✓
+
+**Tests**: 14/14 passing (mission.store.test.ts) + 27/27 game.store.test.ts (no regressions)
+**TypeScript**: zero errors
+
+---
+
 ## Story 16.3: Mission Phase — Turn Resolution (2026-02-20)
 
 **Files**: `src/engine/turn/mission-phase.ts` (full implementation), `src/__tests__/engine/turn/mission-phase.test.ts` (new)
