@@ -2,6 +2,55 @@
 
 ---
 
+## Story 17.3: Trade Route UI (2026-02-20)
+
+**Files**: `src/components/galaxy/SectorCard.vue` (updated), `src/components/galaxy/SectorGraph.vue` (updated), `src/views/GalaxyView.vue` (updated), `src/views/MarketView.vue` (updated)
+
+### Galaxy View
+
+**`GalaxyView.vue`**
+- Imports `useContractStore`; derives `tradeRoutePairs: [SectorId, SectorId][]` from active `TradeRoute` contracts.
+- `getTradeRouteNames(sectorId)` — returns names of partner sectors connected by active trade routes.
+- `openTradeRouteWizard(sectorId)` — opens `ContractWizard` pre-filled with `TradeRoute` type and the selected sector as Sector A.
+- Summary bar shows "N trade routes active" count (amber) when any exist.
+
+**`SectorCard.vue`**
+- New prop `tradeRouteNames: string[]` — names of connected sectors with active routes.
+- Trade route count badge (amber) shown in the card header when routes are active.
+- "Trade Route" quick-action button shown on sectors with player presence; emits `create-trade-route`.
+- Expanded detail shows "Active Trade Routes" section listing partner sector names as amber chips.
+
+**`SectorGraph.vue`**
+- New prop `tradeRoutePairs: [SectorId, SectorId][]`.
+- `hasTradeRoute(a, b)` helper checks whether a connection is covered by an active route.
+- Connections with an active trade route rendered in amber with a `↔` indicator.
+- Legend updated to include trade route annotation.
+
+### Market View
+
+**`MarketView.vue`**
+- Imports `TradeFlow` type from `src/types/trade`.
+- `inboundFlows` / `outboundFlows` derived from `sectorMarket.value.inboundFlows` / `outboundFlows` (populated by Story 17.2).
+- `groupFlowsByPartner(flows, localSectorId)` — groups flows by partner sector for compact display.
+- `inboundByPartner` / `outboundByPartner` computed maps.
+- "Cross-Sector Trade" panel (amber-tinted, below per-colony breakdown) shown when `hasCrossSectorTrade`:
+  - **Imports** section: flows grouped by exporting sector, showing resource, surplus available, and received amount.
+  - **Exports** section: flows grouped by importing sector, showing resource, surplus available, and transferred amount.
+- Legend updated with cross-sector trade entry.
+
+### Acceptance criteria met
+
+- Active trade routes shown on galaxy view as connections between sectors ✓
+  - Sector network graph highlights trade-route edges in amber with `↔`
+  - Sector cards show trade route count badge and partner names when expanded
+- Market view shows cross-sector imports/exports when trade route active ✓
+- Trade route creation accessible from galaxy view (sector context menu) ✓
+  - "Trade Route" quick-action button on sectors with presence opens `ContractWizard` pre-filled
+
+**TypeScript**: zero errors
+
+---
+
 ## Story 17.2: Cross-Sector Market Integration (2026-02-20)
 
 **Files**: `src/engine/simulation/market-resolver.ts` (updated), `src/engine/turn/market-phase.ts` (updated), `src/__tests__/engine/simulation/cross-sector-trade.test.ts` (new)

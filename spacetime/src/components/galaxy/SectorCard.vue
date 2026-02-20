@@ -5,6 +5,7 @@
  *
  * Emits 'explore' when the Explore quick action is clicked.
  * Emits 'accept-planet' / 'reject-planet' for discovered planet actions.
+ * Emits 'create-trade-route' when the Create Trade Route button is clicked.
  */
 import { ref, computed } from 'vue'
 import type { SectorId } from '../../types/common'
@@ -25,12 +26,15 @@ const props = defineProps<{
   hasPresence: boolean
   /** Planets discovered in this sector (OrbitScanned, GroundSurveyed, Accepted). */
   planets: Planet[]
+  /** Names of sectors connected to this one by active trade routes. */
+  tradeRouteNames: string[]
 }>()
 
 const emit = defineEmits<{
   explore: [sectorId: SectorId]
   'accept-planet': [planetId: string]
   'reject-planet': [planetId: string]
+  'create-trade-route': [sectorId: SectorId]
 }>()
 
 const expanded = ref(false)
@@ -102,6 +106,11 @@ function onExplore(event: Event) {
   emit('explore', props.sector.id)
 }
 
+function onCreateTradeRoute(event: Event) {
+  event.stopPropagation()
+  emit('create-trade-route', props.sector.id)
+}
+
 function onAccept(event: Event, planetId: string) {
   event.stopPropagation()
   emit('accept-planet', planetId)
@@ -162,6 +171,14 @@ function onReject(event: Event, planetId: string) {
         >
           {{ visiblePlanets.length }} planet{{ visiblePlanets.length !== 1 ? 's' : '' }}
         </span>
+
+        <!-- Trade route badge -->
+        <span
+          v-if="tradeRouteNames.length > 0"
+          class="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400"
+        >
+          {{ tradeRouteNames.length }} trade route{{ tradeRouteNames.length !== 1 ? 's' : '' }}
+        </span>
       </div>
 
       <div class="flex items-center gap-3 shrink-0">
@@ -184,6 +201,15 @@ function onReject(event: Event, planetId: string) {
           @click="onExplore"
         >
           Explore
+        </button>
+
+        <!-- Create Trade Route quick action -->
+        <button
+          v-if="hasPresence"
+          class="text-[10px] font-medium px-2 py-1 rounded bg-amber-600/20 text-amber-400 hover:bg-amber-600/40 transition-colors"
+          @click="onCreateTradeRoute"
+        >
+          Trade Route
         </button>
 
         <!-- Expand chevron -->
@@ -337,7 +363,19 @@ function onReject(event: Event, planetId: string) {
           No planets discovered yet.
         </p>
 
-        <!-- TODO (Story 7.5): List active contracts in this sector here -->
+        <!-- Active Trade Routes -->
+        <div v-if="tradeRouteNames.length > 0" class="mt-3 pt-3 border-t border-zinc-800/50">
+          <p class="text-zinc-500 text-xs mb-1">Active Trade Routes</p>
+          <div class="flex flex-wrap gap-1">
+            <span
+              v-for="name in tradeRouteNames"
+              :key="name"
+              class="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-400"
+            >
+              ↔ {{ name }}
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   </div>

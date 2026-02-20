@@ -3,21 +3,13 @@
  * MarketView — Sector market dashboard.
  *
  * Story 9.4 — Market View (Epic 9: Sector Market & Trade).
- *
- * Acceptance criteria:
- * - Sector selector (tabs) to switch between sectors.
- * - Per resource: production total, consumption total, surplus/deficit with color coding.
- * - Planet-by-planet breakdown: which colony produces/consumes what.
- * - Shortage warnings prominent.
- * - Export bonus indicators shown per colony.
+ * Story 17.3 — Trade Route UI: cross-sector import/export flows shown per sector.
  *
  * Data flow:
- * - Galaxy store → all sectors (tab list)
+ * - Galaxy store → all sectors (tab list, sector names for trade flow labels)
  * - Colony store → colonies per sector
  * - Market store → per-sector totals, per-colony flows/shortages/export bonuses
- *
- * TODO (Story 17.3): Show active trade routes and cross-sector flows in this view.
- * TODO (Story 12.4): Market data refreshes automatically after each turn via game.store.ts.
+ *   inboundFlows / outboundFlows on SectorMarketState (populated by Story 17.2)
  */
 import { ref, computed } from 'vue'
 import { useGalaxyStore } from '../stores/galaxy.store'
@@ -26,6 +18,7 @@ import { useMarketStore } from '../stores/market.store'
 import { ResourceType } from '../types/common'
 import type { SectorId, ColonyId } from '../types/common'
 import type { Colony } from '../types/colony'
+import type { TradeFlow } from '../types/trade'
 import ResourceRow from '../components/market/ResourceRow.vue'
 import MarketSummary from '../components/market/MarketSummary.vue'
 
@@ -166,6 +159,42 @@ const sectorColonyExportBonuses = computed(() => {
 
 /** Whether the market has been resolved at least once (store has data). */
 const hasMarketData = computed<boolean>(() => sectorMarket.value !== null)
+
+// ─── Trade Flow Data ──────────────────────────────────────────────────────────
+
+/** Inbound trade flows for the selected sector (imports from other sectors). */
+const inboundFlows = computed<TradeFlow[]>(() => sectorMarket.value?.inboundFlows ?? [])
+
+/** Outbound trade flows for the selected sector (exports to other sectors). */
+const outboundFlows = computed<TradeFlow[]>(() => sectorMarket.value?.outboundFlows ?? [])
+
+/** Whether the selected sector has any cross-sector trade flows. */
+const hasCrossSectorTrade = computed<boolean>(
+  () => inboundFlows.value.length > 0 || outboundFlows.value.length > 0,
+)
+
+/** Resolves a sector ID to its display name. */
+function sectorDisplayName(sectorId: SectorId): string {
+  return galaxyStore.getSector(sectorId)?.name ?? sectorId
+}
+
+/** Groups trade flows by the partner sector ID for compact display. */
+function groupFlowsByPartner(flows: TradeFlow[], localSectorId: SectorId): Map<SectorId, TradeFlow[]> {
+  const map = new Map<SectorId, TradeFlow[]>()
+  for (const flow of flows) {
+    const partnerId = flow.fromSectorId === localSectorId ? flow.toSectorId : flow.fromSectorId
+    if (!map.has(partnerId)) map.set(partnerId, [])
+    map.get(partnerId)!.push(flow)
+  }
+  return map
+}
+
+const inboundByPartner = computed(() =>
+  groupFlowsByPartner(inboundFlows.value, effectiveSelectedSectorId.value ?? '' as SectorId),
+)
+const outboundByPartner = computed(() =>
+  groupFlowsByPartner(outboundFlows.value, effectiveSelectedSectorId.value ?? '' as SectorId),
+)
 </script>
 
 <template>
@@ -301,8 +330,73 @@ const hasMarketData = computed<boolean>(() => sectorMarket.value !== null)
           />
         </div>
 
+        <!-- Cross-Sector Trade Flows -->
+        <div v-if="hasCrossSectorTrade" class="rounded-lg border border-amber-800/40 bg-amber-950/20">
+          <div class="px-5 py-4 border-b border-amber-800/30">
+            <h2 class="text-sm font-semibold text-amber-300">Cross-Sector Trade</h2>
+            <p class="text-xs text-amber-400/70 mt-0.5">
+              Resource flows via active trade routes (50% efficiency applied).
+            </p>
+          </div>
+          <div class="px-5 py-4 space-y-4">
+            <!-- Imports (inbound) -->
+            <div v-if="inboundFlows.length > 0">
+              <p class="text-xs font-medium text-zinc-400 mb-2">Imports</p>
+              <div
+                v-for="[partnerId, flows] in inboundByPartner"
+                :key="partnerId"
+                class="mb-3"
+              >
+                <p class="text-[10px] text-amber-400/80 mb-1">
+                  ← from {{ sectorDisplayName(partnerId as SectorId) }}
+                </p>
+                <div class="space-y-1">
+                  <div
+                    v-for="flow in flows"
+                    :key="flow.resource"
+                    class="flex items-center justify-between text-xs"
+                  >
+                    <span class="text-zinc-400">{{ flow.resource }}</span>
+                    <div class="flex items-center gap-3 text-[10px]">
+                      <span class="text-zinc-600">surplus {{ flow.surplusAvailable }}</span>
+                      <span class="text-amber-400">→ {{ flow.received }} received</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Exports (outbound) -->
+            <div v-if="outboundFlows.length > 0">
+              <p class="text-xs font-medium text-zinc-400 mb-2">Exports</p>
+              <div
+                v-for="[partnerId, flows] in outboundByPartner"
+                :key="partnerId"
+                class="mb-3"
+              >
+                <p class="text-[10px] text-amber-400/80 mb-1">
+                  → to {{ sectorDisplayName(partnerId as SectorId) }}
+                </p>
+                <div class="space-y-1">
+                  <div
+                    v-for="flow in flows"
+                    :key="flow.resource"
+                    class="flex items-center justify-between text-xs"
+                  >
+                    <span class="text-zinc-400">{{ flow.resource }}</span>
+                    <div class="flex items-center gap-3 text-[10px]">
+                      <span class="text-zinc-600">surplus {{ flow.surplusAvailable }}</span>
+                      <span class="text-amber-400">{{ flow.transferred }} transferred</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Legend -->
-        <div class="flex items-center gap-6 text-xs text-zinc-500 px-1">
+        <div class="flex flex-wrap items-center gap-6 text-xs text-zinc-500 px-1">
           <span class="flex items-center gap-1.5">
             <span class="text-emerald-400 font-medium">+N</span> Produced
           </span>
@@ -317,6 +411,9 @@ const hasMarketData = computed<boolean>(() => sectorMarket.value !== null)
           </span>
           <span class="flex items-center gap-1.5">
             <span class="text-red-400">⚠ shortage</span> Shortage — attribute penalty active
+          </span>
+          <span class="flex items-center gap-1.5">
+            <span class="text-amber-400">↔</span> Cross-sector trade (50% efficiency)
           </span>
         </div>
       </div>

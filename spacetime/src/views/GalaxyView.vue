@@ -5,15 +5,16 @@
  * Auto-generates the galaxy on first load if no sectors exist.
  * Shows discovered planets per sector with Accept/Reject actions.
  * "Explore" quick action opens the contract wizard pre-filled with Exploration type.
- *
- * TODO (Story 17.3): Show trade route connections between sectors.
+ * "Trade Route" quick action opens the contract wizard pre-filled with TradeRoute type.
+ * Active trade routes displayed in the sector network graph and on sector cards.
  */
 import { computed, ref } from 'vue'
 import type { SectorId } from '../types/common'
-import { ContractType } from '../types/common'
+import { ContractType, ContractStatus } from '../types/common'
 import type { Planet } from '../types/planet'
 import { useGalaxyStore } from '../stores/galaxy.store'
 import { usePlanetStore } from '../stores/planet.store'
+import { useContractStore } from '../stores/contract.store'
 import SectorCard from '../components/galaxy/SectorCard.vue'
 import SectorGraph from '../components/galaxy/SectorGraph.vue'
 import EmptyState from '../components/shared/EmptyState.vue'
@@ -21,17 +22,48 @@ import ContractWizard from '../components/contract/ContractWizard.vue'
 
 const galaxyStore = useGalaxyStore()
 const planetStore = usePlanetStore()
+const contractStore = useContractStore()
+
+// ─── Trade Routes ─────────────────────────────────────────────────────────────
+
+/**
+ * All active trade route sector pairs derived from active TradeRoute contracts.
+ */
+const tradeRoutePairs = computed<[SectorId, SectorId][]>(() =>
+  contractStore.activeContracts
+    .filter((c) => c.type === ContractType.TradeRoute && c.target.type === 'sector_pair')
+    .map((c) => {
+      const t = c.target as { type: 'sector_pair'; sectorIdA: SectorId; sectorIdB: SectorId }
+      return [t.sectorIdA, t.sectorIdB]
+    }),
+)
+
+/** Returns names of sectors connected to the given sector by active trade routes. */
+function getTradeRouteNames(sectorId: SectorId): string[] {
+  return tradeRoutePairs.value
+    .filter(([a, b]) => a === sectorId || b === sectorId)
+    .map(([a, b]) => {
+      const otherId = a === sectorId ? b : a
+      return galaxyStore.getSector(otherId)?.name ?? 'Unknown'
+    })
+}
 
 // ─── Contract Wizard ──────────────────────────────────────────────────────────
 
 const showWizard = ref(false)
-/** Pre-selected type when opening wizard from Explore action. */
+/** Pre-selected type when opening wizard from a quick action. */
 const wizardPresetType = ref<ContractType | null>(null)
-/** Pre-selected sector ID when opening wizard from Explore action. */
+/** Pre-selected sector ID when opening wizard from a quick action. */
 const wizardPresetSectorId = ref<SectorId | null>(null)
 
 function openExploreWizard(sectorId: SectorId) {
   wizardPresetType.value = ContractType.Exploration
+  wizardPresetSectorId.value = sectorId
+  showWizard.value = true
+}
+
+function openTradeRouteWizard(sectorId: SectorId) {
+  wizardPresetType.value = ContractType.TradeRoute
   wizardPresetSectorId.value = sectorId
   showWizard.value = true
 }
@@ -103,6 +135,7 @@ function getPlanetsForSector(sectorId: SectorId): Planet[] {
         <span>{{ explorableSectorIds.size }} explorable</span>
         <span>{{ presentSectorIds.size }} with presence</span>
         <span>{{ planetStore.allPlanets.filter(p => p.status !== 'Rejected' && p.status !== 'Undiscovered').length }} planets discovered</span>
+        <span v-if="tradeRoutePairs.length > 0" class="text-amber-400">{{ tradeRoutePairs.length }} trade route{{ tradeRoutePairs.length !== 1 ? 's' : '' }} active</span>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -117,9 +150,11 @@ function getPlanetsForSector(sectorId: SectorId): Planet[] {
             :is-explorable="explorableSectorIds.has(sector.id)"
             :has-presence="presentSectorIds.has(sector.id)"
             :planets="getPlanetsForSector(sector.id)"
+            :trade-route-names="getTradeRouteNames(sector.id)"
             @explore="openExploreWizard"
             @accept-planet="handleAcceptPlanet"
             @reject-planet="handleRejectPlanet"
+            @create-trade-route="openTradeRouteWizard"
           />
         </div>
 
@@ -131,6 +166,7 @@ function getPlanetsForSector(sectorId: SectorId): Planet[] {
             :starting-sector-id="galaxyStore.startingSectorId"
             :present-sector-ids="presentSectorIds"
             :explorable-sector-ids="explorableSectorIds"
+            :trade-route-pairs="tradeRoutePairs"
           />
         </div>
       </div>
