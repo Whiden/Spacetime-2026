@@ -2,6 +2,33 @@
 
 ---
 
+## Story 18.3: Settings View (2026-02-20)
+
+**Files**: `src/views/SettingsView.vue` (implemented)
+
+### Features implemented
+
+- **Autosave slot** — shown separately at the top; displays turn number and timestamp; "Load" button only (no overwrite).
+- **3 manual save slots** — each shows name, turn number, and date saved. "Save" button triggers overwrite confirmation when slot is occupied. "Load" button requires confirmation before restoring.
+- **Export to File** — calls `useSaveLoad.exportToJson()` to download current state as a `.json` file.
+- **Import from File** — hidden `<input type="file">` triggered by button; calls `useSaveLoad.importFromJson()`; on success, shows a confirmation dialog before loading the state and navigating to dashboard.
+- **New Game** — red danger-zone button with confirmation; calls `gameStore.initializeGame()` then navigates to dashboard.
+- **Feedback messages** — `successMessage` (emerald) and `errorMessage` (red) from composable shown at top of page.
+
+### Acceptance criteria met
+
+- Save slots displayed with turn number and timestamp ✓
+- "Save" button per slot with overwrite confirmation ✓
+- "Load" button per slot with confirmation ✓
+- "Export to File" button downloads JSON ✓
+- "Import from File" button with file picker ✓
+- "New Game" button with confirmation (starts fresh) ✓
+- Autosave slot shown separately (load only, no overwrite) ✓
+
+**TypeScript**: zero errors
+
+---
+
 ## Story 18.2: Save/Load Store & Actions (2026-02-20)
 
 **Files**: `src/composables/useSaveLoad.ts` (new), `src/stores/game.store.ts` (updated)
