@@ -2,6 +2,53 @@
 
 ---
 
+## Story 16.5: Mission UI (2026-02-20)
+
+**Files**: `src/composables/useMissionCreation.ts` (new), `src/components/fleet/MissionCard.vue` (new), `src/components/fleet/MissionWizard.vue` (new), `src/views/FleetView.vue` (updated)
+
+### Components implemented
+
+- `useMissionCreation` composable — manages the 4-step mission wizard state:
+  - `step` (1–4), `selectedType`, `selectedSector`, `selectedShipIds`
+  - `availableShips` — stationed government ships only
+  - `abilityLabel` — relevant ability per mission type (Fight / Investigation / Support)
+  - `taskForceAbility` — summed ability score across selected ships
+  - `estimatedCost` — base BP/turn + fleet surcharge (size ≥ 7)
+  - `confirm()` — calls `missionStore.createMission()` then syncs fleet store with `updateShips()`
+  - `MISSION_ABILITY_LABEL` exported for use in child components
+
+- `MissionCard.vue` — compact expandable card for active and completed missions:
+  - Type badge (color-coded per mission type), target sector name, phase label, turns remaining, BP/turn cost
+  - Expanded: task force ship names, phase progress (travel/execution/return turns each), mission report
+  - Report: outcome label (Success / Partial Success / Failure), "Task Force Has Not Returned" for missing outcome, ships lost, combat summary
+
+- `MissionWizard.vue` — 4-step modal wizard:
+  - Step 1: Mission type selection (with description + relevant ability shown)
+  - Step 2: Target sector selection (with threat modifier shown)
+  - Step 3: Ship multi-select — each ship shows its relevant ability score and captain name/experience
+  - Step 4: Review — task force ships, ability total, estimated BP/turn cost; error message on failure
+
+### FleetView.vue updated
+
+- Imports `useMissionStore`, `MissionCard`, `MissionWizard`
+- Active missions section shown with count, before ships-by-sector
+- Completed missions section shown below active missions
+- "Send Mission" button in header — visible only when government-owned stationed ships exist
+- Summary bar now includes "On mission" count
+- `shipNameMap` computed for MissionCard ship name lookup (avoids store import in leaf component)
+
+### Acceptance criteria met
+
+- Mission card: type, target, task force ships, phase, turns remaining, cost/turn ✓
+- Mission wizard: type → target → ships (multi-select with ability scores) → review → confirm ✓
+- Risk assessment: relevant ability score (Fight / Investigation / Support) surfaced per mission type ✓
+- Mission reports expandable: outcome, losses, combat summary ✓
+- "Task Force Has Not Returned" shown for missing outcome ✓
+
+**TypeScript**: zero errors
+
+---
+
 ## Story 16.4: Mission Store (2026-02-20)
 
 **Files**: `src/stores/mission.store.ts` (new), `src/stores/game.store.ts` (updated), `src/__tests__/stores/mission.store.test.ts` (new)
